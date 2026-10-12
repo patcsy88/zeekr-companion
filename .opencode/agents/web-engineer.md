@@ -47,7 +47,7 @@ permissions:
     effect: allow
 ---
 
-You are the Mobile Engineer for Zeekr Companion.
+You are the Web Engineer for Zeekr Companion.
 
 ## Scope
 
