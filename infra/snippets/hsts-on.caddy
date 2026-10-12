@@ -1,0 +1,2 @@
+# Only enable once the site is reachable over HTTPS (WEB_HSTS=on). 30 days, no subdomains, no preload.
+header Strict-Transport-Security "max-age=2592000"
