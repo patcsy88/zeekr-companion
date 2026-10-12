@@ -1,0 +1,95 @@
+"""SQLAlchemy models. Every change here needs an Alembic migration."""
+
+from __future__ import annotations
+
+import datetime as dt
+import uuid
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    Index,
+    Integer,
+    MetaData,
+    String,
+    Text,
+    Uuid,
+    desc,
+    func,
+    text,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
+
+class Base(DeclarativeBase):
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+class Vehicle(Base):
+    """The single vehicle profile. `singleton` + a unique constraint allows at most one row."""
+
+    __tablename__ = "vehicle"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    singleton: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), unique=True
+    )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    variant: Mapped[str] = mapped_column(String(100), nullable=False, server_default="")
+    drive: Mapped[str] = mapped_column(String(20), nullable=False)
+    steering: Mapped[str] = mapped_column(String(20), nullable=False)
+    registration: Mapped[str | None] = mapped_column(String(20))
+    vin: Mapped[str | None] = mapped_column(String(17))
+    purchase_date: Mapped[dt.date | None] = mapped_column(Date)
+    purchase_price_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    tyre_spec: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("singleton", name="singleton_true"),
+        CheckConstraint("purchase_price_minor >= 0", name="price_non_negative"),
+        CheckConstraint("vin IS NULL OR char_length(vin) = 17", name="vin_length"),
+    )
+
+
+class ServiceRecord(Base):
+    __tablename__ = "service_record"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    odometer: Mapped[int] = mapped_column(Integer, nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    cost_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("odometer >= 0", name="odometer_non_negative"),
+        CheckConstraint("cost_minor >= 0", name="cost_non_negative"),
+        CheckConstraint("char_length(description) BETWEEN 1 AND 500", name="description_length"),
+        Index("ix_service_record_history", desc("date"), desc("created_at"), desc("id")),
+    )
