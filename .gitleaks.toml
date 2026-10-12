@@ -1,0 +1,23 @@
+# gitleaks configuration (secret scan gate, see docs/testing/test-strategy.md).
+# Extends the default ruleset. Only the three test-only fixtures below are allowlisted, each by exact
+# path and for one rule. Nothing outside services/api/tests is allowlisted, and no rule is disabled.
+
+title = "Zeekr Companion"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "services/api/tests/conftest.py: TOKEN_SECRET is a made-up test-only signing key (marked test-only), used only against throwaway test databases"
+targetRules = ["generic-api-key"]
+paths = ['''^services/api/tests/conftest\.py$''']
+
+[[allowlists]]
+description = "services/api/tests/test_secret_hygiene.py: GOOD_SECRET is a made-up high-diversity value that proves a strong secret is accepted (marked test-only)"
+targetRules = ["generic-api-key"]
+paths = ['''^services/api/tests/test_secret_hygiene\.py$''']
+
+[[allowlists]]
+description = "services/api/tests/test_hardening.py: DB_PASSWORD is a made-up value used to prove passwords are not logged (marked test-only)"
+targetRules = ["generic-api-key"]
+paths = ['''^services/api/tests/test_hardening\.py$''']

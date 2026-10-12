@@ -1,0 +1,36 @@
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+.venv/
+*.pyc
+.expo/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Tool caches and build artefacts
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.vite/
+playwright-report/
+test-results/
+
+# Private documents
+zeekr-private-docs/
+
+# Sensitive or generated artefacts (NFR-3): never commit keys, dumps, backups or documents
+*.pem
+*.key
+*.dump
+*.sql
+*.sqlite
+*.bak
+backups/
+*.pdf
+.coverage
+htmlcov/
