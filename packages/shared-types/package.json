@@ -1,0 +1,23 @@
+{
+  "name": "@zeekr-companion/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types generated from the FastAPI OpenAPI schema. Types only: no runtime code, no React or DOM.",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts"
+    }
+  },
+  "files": ["src"],
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check:drift": "node scripts/generate.mjs --check",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}
