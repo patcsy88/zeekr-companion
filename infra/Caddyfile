@@ -1,0 +1,88 @@
+# Reverse proxy for Zeekr Companion (Caddy, free and open source).
+# Serves the built web client from /srv/web and forwards /api/* and /health to the API.
+#
+# - Plain HTTP only. No TLS, certificate or remote-access tool is configured: none is chosen yet.
+#   `auto_https off` stops Caddy trying to obtain certificates.
+# - Caddy replaces any client-supplied X-Forwarded-For with the real peer address (no
+#   `trusted_proxies` is configured on purpose), so a client cannot choose its own rate-limit bucket.
+# - HSTS is added only when WEB_HSTS=on (see infra/README.md); browsers ignore it over plain HTTP.
+
+{
+	admin off
+	auto_https off
+}
+
+(security_headers) {
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		# The app uses no camera, microphone, location, payment or USB features (checked in apps/web/src).
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+		# No popups or cross-window references are used.
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+}
+
+:8080 {
+	# Selects snippets/hsts-on.caddy or snippets/hsts-off.caddy. A bad value fails closed (no start).
+	import {$HSTS_SNIPPET}
+	import security_headers
+
+	# Same cap as the API (64 KiB). Over-size bodies are answered with the contract's error shape
+	# below, so the client sees one behaviour whether the proxy or the API rejects them.
+	request_body {
+		max_size 65536
+	}
+
+	# Never serve dotfiles or source maps, even if one ends up in the build output.
+	@hidden path_regexp hidden (^|/)\.[^/]|\.map$
+	handle @hidden {
+		respond "Not found" 404
+	}
+
+	handle /api/* {
+		# The API sets "Cache-Control: no-store" itself (contract) and is the source of truth.
+		# "?" makes Caddy add it only when the upstream response did not (for example a 502 from
+		# the proxy), so the header never appears twice.
+		header ?Cache-Control "no-store"
+		reverse_proxy api:8000
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	# Fingerprinted build output: safe to cache for a long time.
+	handle /assets/* {
+		root * /srv/web
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# index.html, sw.js, the manifest and client-side routes (fallback to index.html): always
+	# revalidate, so a new deployment and a new service worker are picked up.
+	handle {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle_errors {
+		import security_headers
+		header Cache-Control "no-store"
+
+		@toolarge expression {err.status_code} == 413
+		handle @toolarge {
+			header Content-Type "application/json"
+			respond `{"error":{"code":"validation_error","message":"Request failed validation.","details":[{"field":"body","issue":"request body is too large"}]}}` 400
+		}
+
+		handle {
+			header Content-Type "text/plain; charset=utf-8"
+			respond "{err.status_code} {err.status_text}" {err.status_code}
+		}
+	}
+}
