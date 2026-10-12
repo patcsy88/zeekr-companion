@@ -3,14 +3,6 @@
  * without timezone conversion. Timestamps from the API are UTC and are shown in local time.
  */
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-export function localToday(now: Date = new Date()): string {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
 export function utcToday(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
