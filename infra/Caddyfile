@@ -6,6 +6,10 @@
 # - Caddy replaces any client-supplied X-Forwarded-For with the real peer address (no
 #   `trusted_proxies` is configured on purpose), so a client cannot choose its own rate-limit bucket.
 # - HSTS is added only when WEB_HSTS=on (see infra/README.md); browsers ignore it over plain HTTP.
+# - Remote access is Tailscale Serve on the host, proxying to this port (ADR-003). Serve adds
+#   Tailscale-User-Login (an account email), Tailscale-User-Name, Tailscale-User-Profile-Pic and
+#   Tailscale-Headers-Info. They are deleted from every request below so the API, the static file
+#   server and the logs never see them, and nothing can be keyed on them.
 
 {
 	admin off
@@ -29,6 +33,10 @@
 	# Selects snippets/hsts-on.caddy or snippets/hsts-off.caddy. A bad value fails closed (no start).
 	import {$HSTS_SNIPPET}
 	import security_headers
+
+	# Drop every Tailscale-* request header (identity headers and any future ones) before any
+	# handler runs. A trailing * deletes by prefix; the match is case-insensitive.
+	request_header -Tailscale-*
 
 	# Same cap as the API (64 KiB). Over-size bodies are answered with the contract's error shape
 	# below, so the client sees one behaviour whether the proxy or the API rejects them.
