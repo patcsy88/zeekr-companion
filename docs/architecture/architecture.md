@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **proposed**, pending owner approval. Technology choices are recorded in ADR-001 (backend, database, deployment) and ADR-002 (web client, **proposed**). Where ADR-002 is approved it supersedes the mobile choice in ADR-001.
+Status: **proposed**, pending owner approval. Technology choices are recorded in ADR-001 (backend, database, deployment), ADR-002 (web client) and ADR-003 (remote access and HTTPS through Tailscale, accepted by the owner 2026-10-13). Where ADR-002 is approved it supersedes the mobile choice in ADR-001.
 
 ## Overview
 
@@ -79,7 +79,8 @@ The slice implements `vehicle` and `service_record` first. Other tables are adde
 - Same-origin serving: no CORS configuration. No wildcard origins.
 - The proxy sets CSP, `X-Content-Type-Options`, `Referrer-Policy`, `no-store` for `/api/*`, `no-cache` for `index.html` and `sw.js`, and HSTS once HTTPS exists. The API reads the client address from forwarded headers, trusted only from the proxy, so the auth rate limit still works.
 - **HTTPS is required for service workers and offline use on the phone** (service workers need a secure context, unverified here). No HTTPS origin exists yet, because remote access is undecided and no public exposure is allowed (NFR-6). Development and automated tests use `localhost`, which is a secure context.
-- Remote access: private overlay or equivalent. No public port. The tool is pending owner approval and now also determines how HTTPS is obtained.
+- Remote access (decided 2026-10-13, ADR-003): Tailscale. `tailscale serve` on the host terminates HTTPS and proxies to the Caddy `web` port, which stays bound to `127.0.0.1` (proposed; sidecar is the alternative). No public port, Funnel off, HSTS off until verified. The real tailnet and host names are never written in this public repo. Until the owner steps are done the phone has no HTTPS origin.
+- Client address behind Serve and Caddy is expected to be one constant address, so the login limiter effectively has a single bucket (unverified, to be tested). `FORWARDED_ALLOW_IPS` is unchanged.
 - Hostname stability: browser storage and the installed PWA are per origin. Choose the hostname once.
 - Scheduled `pg_dump` to a location off the array, with a restore test.
 
@@ -92,7 +93,8 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 | Risk | Mitigation |
 |---|---|
 | Homelab downtime leaves the app without a backend | Offline cache and queue |
-| No HTTPS origin until remote access is chosen, so offline cannot be proven on the phone | Test on `localhost` in Playwright; owner decides the HTTPS route; phone checks stay blocked and are reported as such |
+| No HTTPS origin until Tailscale is set up (chosen 2026-10-13, ADR-003), so offline cannot be proven on the phone | Test on `localhost` in Playwright; owner completes the Tailscale steps; phone checks stay blocked and are reported as such until run |
+| Tailscale machine name is public in certificate-transparency logs; Tailnet policy mistakes could expose host services | Neutral names, restrictive policy, Funnel off, checks in ADR-003 |
 | iOS Safari may evict browser storage (unverified) | Server is source of truth; show unsynced items; flush promptly |
 | No background sync or push on iOS Safari for the MVP | Sync while open; reminders shown in-app only |
 | XSS exposes the token and cache | Memory-only token, strict CSP, no third-party scripts, dependency audit |
@@ -105,7 +107,7 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 
 1. Approve ADR-002 and choose option (b) Vite PWA or option (a) Expo web.
 2. Approve a reverse proxy container (Caddy proposed, nginx acceptable). It is a new component.
-3. Choose the HTTPS route and the remote access tool. Both are new external services or costs and need approval.
+3. ~~Choose the HTTPS route and the remote access tool.~~ **Decided 2026-10-13: Tailscale (free Personal plan), Funnel off, nothing public** (ADR-003, accepted by the owner). Still open inside ADR-003: host `tailscale serve` versus sidecar, machine and tailnet names, HSTS on/off, key expiry, account MFA.
 4. Accept that cached data is readable without signing in, or request an app lock.
 5. Decide whether offline-queue behaviour becomes an acceptance criterion (proposed AC-9).
 6. Approve `gitleaks` and Playwright browser downloads as tools.

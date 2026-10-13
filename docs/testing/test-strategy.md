@@ -11,7 +11,7 @@ Status: **proposed**, updated 2026-10-11 for the web client (ADR-002). Commands 
 | Web unit and component | Vitest + Testing Library + `fake-indexeddb` + MSW | Components, hooks, cache, sync queue |
 | End to end | Playwright against the production build on `localhost` | Slice flows. Chromium for offline tests, WebKit as a rough smoke test only (not iOS Safari) |
 | Compose / proxy smoke | shell + curl | Stack starts, `/health` through the proxy, security headers |
-| Manual | Physical iPhone, installed PWA | Offline behaviour, install, storage. **Blocked until an HTTPS origin exists** |
+| Manual | Physical iPhone, installed PWA | Offline behaviour, install, storage. **Blocked until the Tailscale HTTPS origin is set up (ADR-003)** |
 
 ## Quality gates
 
@@ -56,6 +56,8 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-7 | Vitest cache test and Playwright cold start with the API stopped. Manual iPhone check: **blocked on HTTPS** |
 | AC-8 | All gates |
 | AC-9 | Vitest queue tests and Playwright offline create then reconnect, asserting exactly one record on the server |
+
+Remote-access checks from ADR-003 (manual, owner holds the iPhone; reports use placeholder names only): HTTPS smoke from the iPhone on cellular; headers present exactly once; rate-limit keying behind Tailscale Serve and Caddy; Tailscale identity headers never reach the API; no public port and Funnel off.
 
 Additional checks from ADR-002: auth rate limit keys on the real client address behind the proxy; security headers and CSP present; the service worker never caches `/api/*`.
 
