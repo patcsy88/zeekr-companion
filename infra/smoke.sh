@@ -29,6 +29,7 @@ check() { # check "description" expected actual
 
 cleanup() {
   for c in ${extra_containers:-}; do docker rm -f "$c" >/dev/null 2>&1 || true; done
+  if [ -n "${extra_network:-}" ]; then docker network rm "$extra_network" >/dev/null 2>&1 || true; fi
   compose down --volumes --remove-orphans --rmi local >/dev/null 2>&1 || true
   rm -f "$envfile"
 }
@@ -165,6 +166,47 @@ echo "$logs" | sed -n '1,3p'
 if echo "$logs" | grep -q "client=$a_ip"; then ok "API logs client A's real address ($a_ip)"; else bad "API did not log client A's real address"; fi
 if echo "$logs" | grep -q "client=198.51.100\|client=203.0.113"; then bad "API logged a spoofed address as the client"; else ok "API logs the real peer, not the spoofed one"; fi
 if echo "$logs" | grep -q "client=$proxy_ip\b"; then bad "API saw the proxy address as the client"; else ok "API does not see the proxy address as the client"; fi
+
+echo "--- host-side requests (how Tailscale Serve on the host will arrive): one shared bucket"
+# Serve connects to 127.0.0.1:$port on the host, so Caddy sees the Docker gateway address, never
+# the tailnet address. Every such request must be one client to the API, whatever it claims.
+edge_gw="$(docker network inspect -f '{{(index .IPAM.Config 0).Gateway}}' "${project}_edge")"
+hs=(-H 'Tailscale-User-Login: placeholder@example.invalid' -H 'Tailscale-User-Name: Placeholder')
+for i in 1 2 3 4 5; do
+  curl -s -o /dev/null -X POST -H 'content-type: application/json' -H "X-Forwarded-For: 198.51.100.$((100 + i))" "${hs[@]}" -d '{"password":"wrong"}' "$base/api/v1/auth/token"
+done
+check "host-side login with a new spoofed X-Forwarded-For is still locked out" 429 "$(code -X POST -H 'content-type: application/json' -H 'X-Forwarded-For: 203.0.113.250' "${hs[@]}" -d "{\"password\":\"$pass\"}" "$base/api/v1/auth/token")"
+host_clients="$(compose logs api 2>&1 | grep -E 'failed login attempt|blocked by rate limit|login succeeded' | sed -n 's/.*client=\([^ ]*\).*/\1/p' | grep -vxF -e "$a_ip" -e "$b_ip" | sort -u | tr '\n' ' ' | sed 's/ $//')"
+echo "      client address(es) the API saw for host-side requests: $host_clients (edge gateway: $edge_gw)"
+check "host-side requests share exactly one client address" 1 "$(printf '%s\n' "$host_clients" | wc -w | tr -d ' ')"
+if printf '%s' "$host_clients" | grep -q '198.51.100\|203.0.113'; then bad "a spoofed X-Forwarded-For became the client address"; else ok "spoofed X-Forwarded-For did not become the client address"; fi
+if compose logs api 2>&1 | grep -qi 'placeholder@example\|tailscale-'; then bad "API logs contain Tailscale identity header content"; else ok "API logs contain no Tailscale identity header content"; fi
+
+echo "--- Tailscale identity headers are stripped before the API and static files (real Caddyfile)"
+# A second Caddy with the real Caddyfile in front of an echo upstream that returns the request
+# headers it received. Separate network so the real stack and its alias "api" are untouched.
+enet="${project}-echo"; eapi="${project}-echo-api"; eweb="${project}-echo-web"
+extra_containers="$extra_containers $eapi $eweb"
+extra_network="$enet"
+docker network create "$enet" >/dev/null
+docker run -d --name "$eapi" --network "$enet" --network-alias api --entrypoint python \
+  -v "$here/tests/header-echo.py:/echo.py:ro" "$api_image" /echo.py >/dev/null
+docker run -d --name "$eweb" --network "$enet" -p "127.0.0.1:0:8080" \
+  -e HSTS_SNIPPET=/etc/caddy/snippets/hsts-off.caddy \
+  -v "$here/Caddyfile:/etc/caddy/Caddyfile:ro" -v "$here/snippets:/etc/caddy/snippets:ro" \
+  -v "$here/web-placeholder:/srv/web:ro" "$(docker inspect -f '{{.Config.Image}}' "$web_cid")" >/dev/null
+eport="$(docker port "$eweb" 8080/tcp | grep -v '::' | sed 's/.*://')"
+for _ in $(seq 1 30); do [ "$(code "http://127.0.0.1:$eport/health" || true)" = 200 ] && break; sleep 0.5; done
+ts=(-H 'Tailscale-User-Login: placeholder@example.invalid' -H 'tailscale-user-name: Placeholder' -H 'TAILSCALE-USER-PROFILE-PIC: https://example.invalid/p.png' -H 'Tailscale-Headers-Info: https://example.invalid/info' -H 'Tailscale-Some-Future-Header: 1' -H 'X-Not-Tailscale-Prefix: keep-me')
+for p in /api/v1/anything /health; do
+  got="$(curl -s "${ts[@]}" "http://127.0.0.1:$eport$p")"
+  check "echo upstream saw no Tailscale-* header on $p" 0 "$(printf '%s' "$got" | grep -oi '"tailscale-[a-z-]*"' | wc -l | tr -d ' ')"
+  check "unrelated header still forwarded on $p" '"keep-me"' "$(printf '%s' "$got" | "$python" -c 'import json,sys; print(json.dumps(json.load(sys.stdin).get("x-not-tailscale-prefix")))')"
+done
+sh_="$(curl -s -D - -o /dev/null "${ts[@]}" "http://127.0.0.1:$eport/")"
+check "static file request with Tailscale headers still served" 200 "$(code "${ts[@]}" "http://127.0.0.1:$eport/")"
+lacks "static response does not echo Tailscale headers" "^tailscale-" "$(printf '%s' "$sh_" | tr -d '\r')"
+if docker logs "$eweb" 2>&1 | grep -qi 'placeholder@example\|tailscale-user'; then bad "Caddy access/error log contains Tailscale identity content"; else ok "Caddy logs contain no Tailscale identity content"; fi
 
 echo
 if [ "$fail" -eq 0 ]; then echo "SMOKE TEST PASSED"; else echo "SMOKE TEST FAILED"; fi
