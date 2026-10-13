@@ -63,7 +63,8 @@ Resolved:
 - Client is a mobile-responsive web app instead of a native iOS app, to avoid the Apple Developer fee (confirmed 2026-10-11). The web stack is a React + Vite + TypeScript PWA (ADR-002, approved 2026-10-11), served same-origin through a reverse proxy container.
 - Cached data is readable without an app lock; the owner relies on the phone lock (confirmed 2026-10-11).
 - `gitleaks` and Playwright browser downloads are approved as free tools (confirmed 2026-10-11).
-- Phone-side checks for AC-6 and AC-7 are blocked until an HTTPS origin exists. They are reported as blocked, not passed.
+- Phone-side checks for AC-6 and AC-7 are blocked until the Tailscale HTTPS origin is set up (owner chose Tailscale on 2026-10-13, see ADR-003). They are reported as blocked, not passed.
+- Remote access: Tailscale, free Personal plan (owner decision 2026-10-13, ADR-003). Funnel stays off and nothing is exposed to the public internet (NFR-6). The repository is public, so the real tailnet name, hostnames, account email and device names must never appear in it; use placeholders.
 
 - The owner's market is Malaysia, not the UK, and the currency is MYR with the `currency` field kept and defaulting to MYR (confirmed 2026-10-11). The earlier UK research is void for the owner's market.
 
@@ -73,4 +74,4 @@ Resolved:
 
 Deferred:
 
-1. Remote access method (for example Tailscale or WireGuard). The owner chose to leave this for now. Nothing may be exposed to the public internet in the meantime (NFR-6).
+1. Remote access: decided, see above (Tailscale). The open sub-questions (where TLS terminates, tailnet naming, HSTS, key expiry, identity provider) are listed in ADR-003.
