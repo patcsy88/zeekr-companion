@@ -20,6 +20,7 @@ docker compose up --build
 - **`Cache-Control` on `/api/*`:** the API sets `no-store`; Caddy adds it only if the response lacks one, so it is never duplicated.
 - **Trusted proxies:** `FORWARDED_ALLOW_IPS` must be single addresses or networks no wider than IPv4 /24 or IPv6 /120; `0.0.0.0`, `0.0.0.0/0`, `::/0` and `*` stop the container at start (exit 64).
 - **Smoke test:** `infra/smoke.sh` (unique project name, throwaway env and secrets, removes everything it created; never touches `zeekr-companion_pgdata`).
+- **macOS/Docker Desktop note:** `docker compose build` (and therefore `infra/smoke.sh`) can fail with `docker-credential-desktop: executable file not found in $PATH` unless `/Applications/Docker.app/Contents/Resources/bin` is on `PATH`. This is specific to macOS with Docker Desktop, not a universal requirement.
 
 ## Owner runbook: private HTTPS with Tailscale Serve on the Unraid host
 
@@ -44,7 +45,7 @@ Paste each value into `infra/.env`. Leave `WEB_BIND_ADDRESS=127.0.0.1`, `WEB_POR
 
 ```
 cd apps/web && npm ci && npm run build && cd ../..
-infra/check-dist.sh apps/web/dist
+infra/check-dist.sh ../apps/web/dist
 echo 'WEB_DIST_DIR=../apps/web/dist' >> infra/.env     # path is relative to infra/
 ```
 

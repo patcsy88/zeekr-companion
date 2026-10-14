@@ -1,6 +1,6 @@
 # Test Strategy
 
-Status: **proposed**, updated 2026-10-11 for the web client (ADR-002). Commands are the intended gates. Backend gates are being run by QA after the backend build; web gates have not been run because `apps/web` does not exist yet.
+Status: **proposed**, updated 2026-10-11 for the web client (ADR-002). Commands are the gates. All backend, web, shared-types, infra smoke and secret-scan gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The AC-6 and AC-7 iPhone checks and the ADR-003 remote-access checks are blocked until the owner sets up the Tailscale HTTPS origin.
 
 ## Test layers
 
