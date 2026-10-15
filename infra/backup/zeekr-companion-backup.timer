@@ -1,0 +1,20 @@
+# Zeekr Companion: daily schedule for zeekr-companion-backup.service (ADR-004).
+#
+# This is a TEMPLATE. Copy it to /etc/systemd/system/ alongside the matching .service file; see
+# the comment at the top of zeekr-companion-backup.service for the install commands.
+[Unit]
+Description=Daily PostgreSQL backup for Zeekr Companion
+
+[Timer]
+# Runs once a day at 03:15 local time (low-traffic hour; adjust to taste). Change freely; there is
+# nothing special about this time beyond "quiet period, not midnight exactly" to avoid clashing
+# with other midnight cron/timer jobs on the host.
+OnCalendar=*-*-* 03:15:00
+# If the host was off/asleep at the scheduled time, run the missed backup as soon as it's back,
+# instead of silently skipping a day.
+Persistent=true
+# Spread start time slightly to avoid every systemd timer on the host firing at exactly :15:00.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

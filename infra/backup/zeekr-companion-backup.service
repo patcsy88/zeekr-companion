@@ -1,0 +1,40 @@
+# Zeekr Companion: one-shot PostgreSQL backup via pg_dump (ADR-004).
+#
+# This is a TEMPLATE. It is not installed by this repo. Copy it to the real host and adjust the
+# paths before enabling:
+#
+#   sudo cp infra/backup/zeekr-companion-backup.service /etc/systemd/system/
+#   sudo cp infra/backup/zeekr-companion-backup.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now zeekr-companion-backup.timer
+#
+# Edit the two paths below (WorkingDirectory and ExecStart) to the real, absolute clone path of
+# this repo on the host. Never commit the real path back into this file; keep it a placeholder
+# here (<path-to-repo>) and only fill it in on the copy under /etc/systemd/system/.
+[Unit]
+Description=Zeekr Companion: PostgreSQL backup (pg_dump)
+# Requires the compose stack's "db" container to already be running; this unit never starts or
+# stops the stack itself.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Absolute path to the repo's infra/ directory on the host, e.g. /home/<user>/zeekr-companion/infra
+WorkingDirectory=<path-to-repo>/infra
+# BACKUP_DIR, RETENTION_DAYS and the compose/db names come from infra/.env, following the same
+# convention as the rest of this repo's environment configuration (infra/README.md, ADR-004).
+EnvironmentFile=<path-to-repo>/infra/.env
+ExecStart=<path-to-repo>/infra/backup/pg_dump.sh
+
+# Hardening: this unit only shells out to "docker compose exec ... pg_dump" and writes to
+# BACKUP_DIR; it does not need broad filesystem or network access. Adjust ReadWritePaths if
+# BACKUP_DIR differs from what ProtectSystem=strict would otherwise block.
+ProtectSystem=strict
+# Must match the real BACKUP_DIR value from infra/.env (placeholder shown; set the real one only
+# on the host copy, never in this repo).
+ReadWritePaths=/mnt/backup/zeekr-companion
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
