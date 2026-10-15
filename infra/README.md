@@ -74,6 +74,33 @@ tailscale funnel status
 - `--bg` keeps Serve across reboot and `tailscale down`/`up` (documented).
 - The interactive flow may offer to change the tailnet policy or enable HTTPS certificates: read the prompt, say yes only to certificates, and re-check the policy afterwards.
 
+### 4a. Host firewall (ufw)
+
+On a plain Ubuntu host nothing is pre-configured, so `ufw` is the explicit host firewall layer (ADR-004). The owner has decided: Ubuntu Server **24.04 LTS**, and SSH is reachable from the **LAN subnet only** (not from the tailnet, not from the public internet, not disabled). The architecture does not change: `web` still only publishes `127.0.0.1:${WEB_PORT:-8080}` (loopback only), and remote access is still exclusively through Tailscale Serve (step 4), which terminates HTTPS in `tailscaled` and proxies to that loopback port. None of the commands below were run or tested on a real host; everything in this step is **(unverified; owner must test on the real host)**.
+
+Replace `<lan-subnet>` with the real LAN subnet in CIDR form (e.g. `192.168.1.0/24`); never write the real subnet in this repo.
+
+```
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow from <lan-subnet> to any port 22 proto tcp
+```
+
+- **Do not** add a `ufw allow` rule for port 8080 or 443, to the LAN or to anywhere. The app is reached only through Tailscale Serve: Serve terminates HTTPS in `tailscaled` on the `tailscale0` interface and proxies to `127.0.0.1:8080` (ADR-003), a loopback address that is never reachable from another host's network interface, so no inbound `ufw` rule should be needed for it. **(unverified; owner must test on the real host)** — Tailscale's own setup guidance for some platforms recommends explicitly allowing the `tailscale0` interface when a default-deny firewall is enabled, in case the daemon itself (not just the loopback-bound proxy target) needs an inbound allow to accept tailnet traffic on `tailscale0`. If step 6 (header check) or the phone smoke test fails after `ufw enable`, check `sudo ufw status verbose` and `tailscale serve status` first, and only then consider adding an explicit allow for the `tailscale0` interface (e.g. `sudo ufw allow in on tailscale0`) **(unverified; not a default part of this ruleset, add only if Serve traffic is observed to be blocked)**.
+- Enable and confirm:
+
+  Before running this, keep a local console or KVM session open as a fallback in case a typo in `<lan-subnet>` locks out SSH access with no other way in.
+
+```
+sudo ufw enable
+sudo ufw status verbose
+```
+
+  Expected (**unverified; owner must test on the real host**): default incoming is `deny`, default outgoing is `allow`, and the only listed rule is SSH (`22/tcp`) allowed from `<lan-subnet>`. Nothing else should be listed — no rule for 8080, no rule for 443, no `0.0.0.0/0` entry.
+
+- Before relying on `ufw`, re-run step 6's header check (or at minimum `tailscale serve status` and a phone smoke test) with `ufw` enabled, to confirm Serve traffic still reaches the app.
+- Rollback if something breaks: `sudo ufw disable` removes the firewall entirely (SSH and everything else become reachable again as before `ufw` was enabled); re-enable only after fixing the rule that caused the problem.
+
 ### 5. Verify there is no public port
 
 1. `docker port zeekr-companion-web-1` shows `127.0.0.1:8080` only; `docker ps` shows no `0.0.0.0` binding for this stack; `api` and `db` publish nothing.
@@ -81,8 +108,7 @@ tailscale funnel status
 3. Router: no port forward to the server.
 4. From the phone on cellular **with Tailscale turned off**: `https://<host>.<tailnet>.ts.net` must not load, and the server's public IP must not answer.
 5. Tailnet policy: phone to server `tcp:443` only (ADR-003).
-
-Host firewall: on a plain Ubuntu host nothing is pre-configured, so `ufw` (or an equivalent) is the explicit host firewall layer: deny incoming by default, allow SSH from the LAN only if you use it, and rely on the tailnet policy above for remote app access (ADR-004). The exact ruleset is a separate infra task pending the owner's open questions in ADR-004 **(unverified; not written or tested here)**.
+6. Host firewall: `ufw status verbose` (step 4a) shows deny-incoming by default, SSH allowed from `<lan-subnet>` only, and nothing else — remote app access still comes only from the tailnet policy in point 5, not from any `ufw` rule.
 
 ### 6. Header check from a tailnet device
 
