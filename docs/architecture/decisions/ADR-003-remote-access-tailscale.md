@@ -13,7 +13,7 @@ Labels: **confirmed** (owner decision, repository fact, or stated in Tailscale d
 
 - **confirmed** The client is a PWA (ADR-002). Service workers need a secure context (HTTPS or `localhost`; MDN, unverified here). The iPhone has no HTTPS origin yet, so AC-6 and AC-7 phone checks are blocked.
 - **confirmed** NFR-6: the API must not be exposed to the public internet. `infra/docker-compose.yml` publishes only `web`, on `127.0.0.1:8080` by default. Caddy runs plain HTTP with `auto_https off` and HSTS off.
-- **confirmed** Single user, self-hosted on Unraid. `AGENTS.md` requires owner approval for any new external service. The owner approved Tailscale on 2026-10-13.
+- **confirmed** Single user, self-hosted on the Ubuntu host (ADR-004; originally Unraid under ADR-001, superseded). `AGENTS.md` requires owner approval for any new external service. The owner approved Tailscale on 2026-10-13.
 - Needs: reach the server from the iPhone away from home, with a certificate the iPhone trusts, for the lowest effort and no new public attack surface.
 
 ## Options considered
@@ -28,7 +28,7 @@ Why Tailscale: it is the only option that delivers real HTTPS for service worker
 
 ## Decision
 
-1. **Tailscale Personal (free) on the Unraid host and on the owner's iPhone.** The iPhone reaches `https://<host>.<tailnet>.ts.net` (port 443, so the origin has no port). The service is never exposed outside the tailnet.
+1. **Tailscale Personal (free) on the Ubuntu host and on the owner's iPhone.** The iPhone reaches `https://<host>.<tailnet>.ts.net` (port 443, so the origin has no port). The service is never exposed outside the tailnet.
 2. **TLS terminates in `tailscaled` on the host**, using `tailscale serve --bg` to proxy to the existing Caddy `web` port on `127.0.0.1`. See "Design".
 3. **Funnel stays off.** No `funnel` node attribute in the tailnet policy, no `tailscale funnel` command ever run for this service.
 4. **HSTS stays off** until the HTTPS verification passes, then the owner decides (recommendation: leave off). See "Design".
@@ -44,12 +44,12 @@ Documented (Serve page, validated Jan 2026): `tailscale serve` terminates HTTPS 
 |---|---|---|
 | Compose change | None. `WEB_BIND_ADDRESS` stays `127.0.0.1`, `web` keeps its single published port | New service, extra volume for state, `TS_SERVE_CONFIG`/auth-key handling, shared or separate network namespace; `web` may then not need a published port at all |
 | Secrets | None in the repo or `.env`: login is interactive in the Tailscale app/CLI | An auth key must be created and held as a compose secret or env var (a new secret to protect, rotate and keep out of git) |
-| Unraid fit | Tailscale is installed once on the host. An Unraid Tailscale plugin may exist; **unverified**, check what the owner's Unraid version offers. Plain `tailscale` CLI on the host is the fallback | Container is portable and self-contained, but Unraid compose handling and TUN device access are extra things to get right (**unverified**) |
+| Host fit | Tailscale is installed once on the host via the official Tailscale apt repository and run as a systemd service (plain CLI/systemd; resolved by ADR-004, no plugin ecosystem on a plain Ubuntu host) | Container is portable and self-contained, but compose handling and TUN device access on the host are extra things to get right (**unverified**) |
 | Blast radius | The host joins the tailnet, so everything on the host that listens on a non-loopback address is potentially reachable by tailnet peers unless the policy restricts it. Mitigated by ACLs (below) | Only the sidecar joins the tailnet. Narrower, and the policy can target a tag |
 | Client address seen by Caddy | Source of the connection to `127.0.0.1:8080` as seen from inside the container (see below) | The sidecar proxies to `web` over a compose network, so Caddy sees the sidecar's address |
 | Moving parts and docs drift | One command, state kept by `tailscaled` | One more image to pin and update |
 
-**Recommendation (proposed): A, host `tailscale serve`**, because it changes no compose or Caddy file, adds no secret to manage, keeps the published port on loopback exactly as NFR-6 tests already assert, and is the smallest thing that can work on Unraid. The cost is that the whole host is on the tailnet; the ACL step below is therefore mandatory, not optional. Choose B later only if the owner does not want the Unraid host itself on the tailnet.
+**Recommendation (proposed): A, host `tailscale serve`**, because it changes no compose or Caddy file, adds no secret to manage, keeps the published port on loopback exactly as NFR-6 tests already assert, and is the smallest thing that can work on the Ubuntu host. The cost is that the whole host is on the tailnet; the ACL step below is therefore mandatory, not optional. Choose B later only if the owner does not want the Ubuntu host itself on the tailnet.
 
 Command shape (placeholders; **unverified** on the owner's Tailscale version, check `tailscale serve --help`): `tailscale serve --bg --https=443 http://127.0.0.1:8080`.
 
@@ -80,7 +80,7 @@ Current design: Caddy has no `trusted_proxies`, so it replaces any client-suppli
 
 Behind Tailscale Serve plus Caddy the chain is: iPhone (tailnet address) → `tailscaled` on host → `127.0.0.1:8080` published port → Docker NAT → Caddy → API.
 
-What the API will see (**unverified; must be tested**, depends on Docker and Unraid networking):
+What the API will see (**unverified; must be tested**, depends on Docker and host networking):
 
 - Caddy sees the peer of the connection that reached its container port. With a loopback-published port, Docker typically presents the source as the bridge gateway address of the `edge` network (or `127.0.0.1`), not the iPhone's `100.x` tailnet address. Expect **one constant address for every request**.
 - Caddy puts that address into `X-Forwarded-For` (replacing anything Serve sent). The API trusts only the Caddy container, so it reads that value. Result: every client is the same bucket.
@@ -90,7 +90,7 @@ Decisions (proposed):
 
 1. **`FORWARDED_ALLOW_IPS` and the trusted-proxy check do not change.** The API must keep trusting only Caddy. Do not widen it and do not trust Serve's address; the entrypoint's refusal of wildcards and wide ranges stays.
 2. **Accept one effective bucket for now.** Only the owner's own tailnet devices can reach the service, so per-client separation has little value, and the existing global limit (4x) is never reached before the per-client limit. Practical effect: five failed logins lock login for everyone, including the owner, for the window (hard lockout is an existing owner decision; reachability limits are the main protection).
-3. **Do not key the limiter on identity headers.** They contain the account email, are only trustworthy if nothing but Serve can reach `127.0.0.1:8080` (other processes or host-network containers on the Unraid host can), and would put an email address into logs and possibly the repo. **Caddy should drop these headers before proxying to the API** (engineer step; a small `request_header -Tailscale-*` change) and the API must never log them.
+3. **Do not key the limiter on identity headers.** They contain the account email, are only trustworthy if nothing but Serve can reach `127.0.0.1:8080` (other processes or host-network containers on the Ubuntu host can), and would put an email address into logs and possibly the repo. **Caddy should drop these headers before proxying to the API** (engineer step; a small `request_header -Tailscale-*` change) and the API must never log them.
 4. **Restoring true per-client buckets is optional and only safe if tested:** configure Caddy `trusted_proxies` for the gateway address only and read the tailnet client address from `X-Forwarded-For` if Serve provides it. This trusts any local process that can connect to loopback `8080` to choose its own bucket, so it is a trade-off, not a free improvement. Not recommended unless the owner wants per-device buckets.
 
 What must be tested (engineer + QA, on the real stack):
@@ -107,7 +107,7 @@ No change to `api-contracts.md` is needed.
 
 - **Certificate Transparency.** Tailscale documents that all TLS certificates are recorded in public CT logs, including the machine name; the tailnet name hides the account owner, but "machine names are still published". Anyone can see `<host>.<tailnet>.ts.net` exists. It is not reachable by them (the name resolves only inside the tailnet; **unverified** what public DNS returns for it) and access is still gated by Tailscale. Consequences: **do not use `zeekr`, the owner's name, the registration, the car model or the city in the machine name.** Use a neutral name such as `app-1`. Use a generated randomized tailnet DNS name (documented option) or the default `tail<digits>` form, not a name that contains the owner's name. Rename the machine before running `tailscale serve` for the first time, because a name already issued stays in the logs. Only devices that obtain a certificate (here, just the server) are listed.
 - **Funnel off.** Docs conflict on defaults: the Serve page says Funnel is "enabled by default" for the device, the Funnel page says it is disabled by default and needs a `funnel` node attribute in the tailnet policy (**unverified which is current**). Do not rely on either. Check: the policy file has no `funnel` node attribute (or it targets nobody); `tailscale funnel status` shows nothing; `tailscale serve status` shows "Available within your tailnet", not "Available on the internet". Also check the owner's tailnet policy after the interactive `tailscale serve` flow, which may offer to change the policy. Docs note Serve and Funnel cannot share a port and the most recent command wins, so never run `tailscale funnel 443` by accident.
-- **Tailnet policy (ACL).** Default policy in a new tailnet is typically allow-all between the owner's devices (**unverified**). Write an explicit policy: the owner's phone (and any other owner device that needs it) may reach the server on `tcp:443` only; nothing else is allowed to the server; the server may initiate nothing. Keep Unraid's own admin UI, SSH and shares off the tailnet path (they listen on host addresses and would otherwise be reachable by any permitted peer). Exact policy syntax is for the engineer to draft from the current policy-file documentation; it is not written here to avoid an unchecked config.
+- **Tailnet policy (ACL).** Default policy in a new tailnet is typically allow-all between the owner's devices (**unverified**). Write an explicit policy: the owner's phone (and any other owner device that needs it) may reach the server on `tcp:443` only; nothing else is allowed to the server; the server may initiate nothing. SSH and any other host admin surface must not be reachable from the tailnet policy, same principle as before, just phrased for a plain Linux host (ADR-004): such surfaces listen on host addresses and would otherwise be reachable by any permitted peer. Exact policy syntax is for the engineer to draft from the current policy-file documentation; it is not written here to avoid an unchecked config.
 - **No sharing, no other users.** Do not use device sharing or invite anyone. Serve identity headers are also populated for shared-in users, per docs.
 - **Key expiry.** Documented default is 180 days (configurable 1 to 180 days); an expired key stops all connections for that device. Recommendation: leave expiry **on** for the phone, **disable** it for the server (a headless server that silently drops off the tailnet is the likelier failure; documented as supported on all plans) and put a calendar reminder on the phone's expiry. Treat the server as a trusted host that is physically at home.
 - **Lost or stolen phone.**
@@ -118,14 +118,14 @@ No change to `api-contracts.md` is needed.
   5. Sign the old device out of the Tailscale account and review the machine list.
 - **The Tailscale account is now a critical asset.** Whoever controls it can add a device to the tailnet and reach the app login page (still behind the app password and the lockout). Use an identity provider account with MFA/passkey, enable MFA there, keep recovery methods current, and do not use a throwaway or shared account. The account email must never appear in the repo. Review the machine list and policy file after any unexpected sign-in. Optionally consider Tailscale's device approval or tailnet lock features (**unverified** availability on the free plan).
 - **Trust in Tailscale.** Tailscale's coordination server sees metadata (devices, addresses, ACLs); traffic between devices is end-to-end encrypted and TLS keys are generated and stored locally on the server (documented). The app still has its own password; the tailnet is a network control, not a replacement for login.
-- **Residual risk:** another service on the Unraid host listening on a non-loopback address could be reachable by tailnet peers if the policy is too broad. The policy step above addresses it.
+- **Residual risk:** another service on the Ubuntu host listening on a non-loopback address could be reachable by tailnet peers if the policy is too broad. The policy step above, plus `ufw` as the host firewall layer (ADR-004), addresses it.
 
 ## Steps
 
 ### Owner steps (cannot be done by an agent)
 
 1. Create or reuse a Tailscale account via an identity provider that has MFA enabled. Record nothing about it in the repo.
-2. Install Tailscale on the Unraid host (plugin or CLI, owner chooses) and on the iPhone; sign in with the same account.
+2. Install Tailscale on the Ubuntu host (official apt repository, run as a systemd service, per ADR-004) and on the iPhone; sign in with the same account.
 3. In the admin console: enable MagicDNS; choose the neutral tailnet DNS name (randomized option) **before** enabling HTTPS; rename the server to a neutral machine name; under DNS, enable HTTPS Certificates and acknowledge the public ledger notice.
 4. Disable key expiry on the server; keep it on for the phone.
 5. Set the tailnet policy per "Privacy and security" (phone to server `tcp:443` only; no `funnel` attribute); confirm no shared devices or invited users.
@@ -160,14 +160,14 @@ No change to `api-contracts.md` is needed.
 - AC-6 and AC-7 phone checks become possible once the owner steps are done. They stay **blocked until set up** in `requirements.md`; the owner holds the phone, so the architect or engineer cannot mark them passed.
 - The hostname and tailnet name are permanent for practical purposes (origin stability). The machine name will be visible in public CT logs.
 - A third-party service (Tailscale coordination and account) is now a dependency for remote access only. The app is still fully usable on the LAN via loopback and offline from cache; if Tailscale is down, remote use fails but data is safe.
-- The Unraid host joins the tailnet (option A), so the tailnet policy is a security control that must be maintained.
+- The Ubuntu host joins the tailnet (option A), so the tailnet policy is a security control that must be maintained.
 - HSTS stays off, so there is no lock-in to the `ts.net` name yet.
 - Rate limiting collapses to one bucket until option 4 is adopted.
 - Minimal infra change expected (strip identity headers in Caddy; docs). No API contract change.
 
 ## Open questions for the owner
 
-1. **Decided 2026-10-13 (owner): option A, host `tailscale serve`**, not the sidecar container. The Unraid host itself joins the tailnet, so a restrictive tailnet policy is mandatory. Still open: Unraid Tailscale plugin or the plain CLI.
+1. **Decided 2026-10-13 (owner): option A, host `tailscale serve`**, not the sidecar container. The Ubuntu host itself joins the tailnet, so a restrictive tailnet policy is mandatory. **Resolved by ADR-004 (2026-10-15):** plain CLI/systemd, always — there is no Unraid plugin ecosystem on a standalone Ubuntu host, so this question no longer applies.
 2. **Machine name and tailnet DNS name:** approve a neutral machine name (suggest `app-1` or similar) and the randomized tailnet DNS name. These become permanent once the PWA is installed. The values should be kept out of the public repo.
 3. **Decided 2026-10-13 (owner): HSTS stays off** (`WEB_HSTS=off`).
 4. **Decided 2026-10-13 (owner): accept a single shared login bucket.** No per-device buckets, and no trusting a header from a local hop.
@@ -177,8 +177,8 @@ No change to `api-contracts.md` is needed.
 8. **Decided 2026-10-13 (owner): the no-app-lock decision stands.** Lost-phone protection is the phone lock plus removing the device from the tailnet.
 9. **Decided 2026-10-13 (owner): free plan limits are acceptable** for one user. Tailscale's own pages disagree on the current user limit (3 or 6), which does not matter here. The architect did not verify it.
 
-Still open: question 2 (machine and tailnet names, chosen by the owner and kept out of the repo), question 6 (identity provider and MFA, answer stays out of the repo), and the plugin versus plain CLI part of question 1.
+Still open: question 2 (machine and tailnet names, chosen by the owner and kept out of the repo) and question 6 (identity provider and MFA, answer stays out of the repo). The plugin versus plain CLI part of question 1 is resolved by ADR-004 (plain CLI/systemd).
 
 ## Verification of claims (Tailscale documentation read 2026-10-13)
 
-Read from Tailscale's documentation pages (Serve, `serve` command, Enabling HTTPS, Funnel, Key expiry): Serve terminates HTTPS in the daemon and requires HTTPS certificates; proxy target is `http://127.0.0.1` only; Serve adds Tailscale identity headers and strips spoofed ones; `--bg` persists across reboot; certificates are Let's Encrypt with 90-day expiry; machine names appear in public CT logs; Funnel needs a policy attribute and can be turned off; key expiry default is 180 days and can be disabled per device on all plans; Serve and Funnel cannot share a port. Not verified: everything marked **unverified** above, including `X-Forwarded-*` headers from Serve, Docker source addressing, Unraid plugin availability, free plan limits, default policy contents, public DNS for the `ts.net` name, automatic renewal under Serve, iOS Safari behaviour on the final origin.
+Read from Tailscale's documentation pages (Serve, `serve` command, Enabling HTTPS, Funnel, Key expiry): Serve terminates HTTPS in the daemon and requires HTTPS certificates; proxy target is `http://127.0.0.1` only; Serve adds Tailscale identity headers and strips spoofed ones; `--bg` persists across reboot; certificates are Let's Encrypt with 90-day expiry; machine names appear in public CT logs; Funnel needs a policy attribute and can be turned off; key expiry default is 180 days and can be disabled per device on all plans; Serve and Funnel cannot share a port. Not verified: everything marked **unverified** above, including `X-Forwarded-*` headers from Serve, Docker source addressing, free plan limits, default policy contents, public DNS for the `ts.net` name, automatic renewal under Serve, iOS Safari behaviour on the final origin.

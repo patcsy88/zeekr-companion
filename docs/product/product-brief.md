@@ -15,7 +15,7 @@ Managing information about the car is not the same as controlling it. The app mu
 | Area | Decision |
 |---|---|
 | Platform | iOS first, Android later |
-| Hosting | Self-hosted on homelab/Unraid |
+| Hosting | Self-hosted on homelab hardware, standalone Ubuntu Server (ADR-004) |
 | Vehicle data | Manual records first. Official integrations researched in parallel |
 | First release focus | Maintenance, expenses and ownership records |
 
