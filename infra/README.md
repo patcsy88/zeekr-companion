@@ -20,6 +20,7 @@ docker compose up --build
 - **`Cache-Control` on `/api/*`:** the API sets `no-store`; Caddy adds it only if the response lacks one, so it is never duplicated.
 - **Trusted proxies:** `FORWARDED_ALLOW_IPS` must be single addresses or networks no wider than IPv4 /24 or IPv6 /120; `0.0.0.0`, `0.0.0.0/0`, `::/0` and `*` stop the container at start (exit 64).
 - **Smoke test:** `infra/smoke.sh` (unique project name, throwaway env and secrets, removes everything it created; never touches `zeekr-companion_pgdata`).
+- **Backups:** `infra/backup/` has the `pg_dump` script, systemd timer/service templates and the restore procedure (ADR-004: a second local disk or external USB drive mounted at a fixed path on the Ubuntu host, no cloud/paid service). See `infra/backup/RESTORE.md` for the restore walkthrough, which is explicitly marked unverified end-to-end pending a real-host test.
 - **macOS/Docker Desktop note:** `docker compose build` (and therefore `infra/smoke.sh`) can fail with `docker-credential-desktop: executable file not found in $PATH` unless `/Applications/Docker.app/Contents/Resources/bin` is on `PATH`. This is specific to macOS with Docker Desktop, not a universal requirement.
 
 ## Owner runbook: private HTTPS with Tailscale Serve on the Ubuntu host
