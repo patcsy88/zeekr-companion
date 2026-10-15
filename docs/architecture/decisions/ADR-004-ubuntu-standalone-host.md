@@ -18,11 +18,17 @@ Nothing about the application architecture, the product requirements or the prev
 
 ## Decision
 
-1. **Host OS: Ubuntu Server LTS**, self-hosted on hardware or a VM the owner owns and controls (homelab principle unchanged from ADR-001: no cloud provider, no paid VPS, no new external paid service).
+1. **Host OS: Ubuntu Server 24.04 LTS** (confirmed by the owner, 2026-10-15), self-hosted on hardware or a VM the owner owns and controls (homelab principle unchanged from ADR-001: no cloud provider, no paid VPS, no new external paid service).
 2. **Docker Engine + the Docker Compose plugin**, installed from the official Docker apt repository (`docs.docker.com` instructions for Ubuntu), not a NAS vendor's bundled Docker build. The existing `infra/docker-compose.yml` stack (`db`, `api`, `web`) runs unchanged.
 3. **Tailscale installed from the official Tailscale apt repository** and run as a systemd service (`tailscaled`, enabled and started via `systemctl`). `tailscale serve` is invoked exactly as designed in ADR-003, now always through the plain CLI, because there is no Unraid plugin ecosystem to choose between. This resolves ADR-003's previously open item: "Unraid Tailscale plugin or the plain CLI" is retired as plain CLI/systemd, unconditionally.
 4. **Backups via `pg_dump`** to a location off the host: an external disk, a NAS share mounted over the network, or an offsite destination. The owner chooses the specific target; this ADR does not mandate one, because Ubuntu has no built-in "array" concept to default to.
-5. **Firewall: `ufw` (or an equivalent host firewall) is the explicit perimeter**, configured to allow only what is needed locally (e.g. SSH from the LAN, if used) and to rely on Tailscale's tailnet policy (ADR-003) for remote access. There is no Unraid web UI providing an implicit management layer any more, so the firewall step is now an explicit, required part of setup rather than something the NAS vendor pre-configured.
+5. **Firewall: `ufw` (or an equivalent host firewall) is the explicit perimeter**, with the following posture (SSH exposure confirmed by the owner, 2026-10-15: LAN-only):
+   - Deny incoming by default (`ufw default deny incoming`).
+   - Allow SSH (`tcp:22`) from the LAN subnet only (a placeholder CIDR in docs, e.g. `<LAN-SUBNET>/24`, not the real address range). SSH is **not** reachable from the Tailscale tailnet and **not** reachable from the public internet, and it is **not** disabled.
+   - Allow whatever ports/interfaces the Tailscale/Caddy stack needs for the app path per ADR-003 (i.e. the app is reached over the tailnet via `tailscale serve`, not via a LAN-exposed port).
+   - Nothing else inbound.
+
+   There is no Unraid web UI providing an implicit management layer any more, so the firewall step is now an explicit, required part of setup rather than something the NAS vendor pre-configured.
 
 ## Options considered
 
@@ -40,9 +46,15 @@ Nothing about the application architecture, the product requirements or the prev
 - `infra/docker-compose.yml`, the API, the web client and the database schema are unaffected. This is purely a host/OS change.
 - `AGENTS.md` and `docs/product/product-brief.md` both contain "homelab/Unraid" wording that should be updated to reflect the new host (see the Engineering Lead's note accompanying this change; out of this ADR's write scope).
 - `infra/README.md` contains Unraid-specific operational wording (e.g. "Owner runbook: private HTTPS with Tailscale Serve on the Unraid host", `ss -ltnp` check "on the Unraid host") that a backend engineer should update to plain Ubuntu/systemd/apt/ufw wording in a follow-up task (out of this ADR's write scope; infra is not edited by the architect).
+- With the Ubuntu version (24.04 LTS) and SSH posture (LAN-only) now confirmed, `infra/README.md` and any firewall ruleset script (`ufw` rules) can be written immediately against those two decisions. The PostgreSQL data path and `pg_dump` backup target remain unresolved (see Open questions, item 3): no backup script should be written, and no data-volume path should be hardcoded, until the owner picks one of the listed options.
 
 ## Open questions for the owner
 
-1. Which filesystem path or mounted volume will hold the PostgreSQL data volume and the `pg_dump` backup target? (Answer stays out of the public repo if it reveals home-network specifics; use a placeholder in docs, same convention as ADR-003.)
-2. Does the owner want SSH exposed on the LAN only, or disabled entirely in favour of a console/KVM for admin access? This affects the exact `ufw` ruleset, which is an infra engineer task, not decided here.
-3. Confirm the Ubuntu LTS version to standardize on (not specified by the owner at the time of writing).
+1. ~~Confirm the Ubuntu LTS version to standardize on.~~ **Resolved (owner, 2026-10-15): Ubuntu Server 24.04 LTS.**
+2. ~~Does the owner want SSH exposed on the LAN only, or disabled entirely?~~ **Resolved (owner, 2026-10-15): LAN-only** — SSH is reachable from the LAN, not from the tailnet, not from the public internet, and not disabled. See Decision item 5 for the resulting `ufw` posture.
+3. **PostgreSQL data path and `pg_dump` backup target — still open.** The owner has not yet picked a location (stated "no idea" as of 2026-10-15). This ADR does not default to one; instead it lays out low-effort options for the owner to choose between:
+   - **(a) A second local disk or external USB drive**, mounted at a fixed path on the Ubuntu host, with `pg_dump` writing there on a cron job or systemd timer. Lowest effort to set up (no network dependency); but it shares the same physical machine as the primary data, so it gives no protection if the host itself fails, is stolen, or the disk enclosure fails along with it. No ongoing cost beyond the drive itself (one-time, already-owned hardware assumed).
+   - **(b) An existing NAS or network share**, mounted over NFS or SMB at a fixed path, same `pg_dump`-on-a-timer approach. Slightly more setup effort (network mount, credentials/permissions) but protects against the Ubuntu host's local disk failing, since the backup lives on separate hardware. No new cost if the NAS already exists on the owner's LAN.
+   - **(c) An offsite destination**, e.g. a low-cost object-storage bucket (S3-compatible) or another always-on device outside the home network. Best protection (survives total loss of the home network/premises), but introduces a new external service and likely a recurring cost — **this option requires explicit owner approval before implementation**, per the human approval gate for new external services/paid dependencies.
+
+   Trade-offs in short: (a) cheapest/fastest but no protection from host/site loss; (b) modest effort, protects against local disk failure, no extra cost if NAS exists; (c) best protection but needs owner sign-off due to cost/new-service implications. The final pick is explicitly left to the owner; no default is assumed, and no backup script should be written until a target is chosen.
