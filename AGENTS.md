@@ -7,7 +7,7 @@ Build a reliable, secure and maintainable mobile-friendly web application for ma
 ## Confirmed decisions
 
 - Client: mobile-responsive React + Vite + TypeScript PWA (ADR-002), installable from iOS Safari, served same-origin through a reverse proxy container. No native app, so no Apple Developer enrolment.
-- Backend: Python + FastAPI + PostgreSQL, self-hosted on homelab/Unraid with Docker Compose.
+- Backend: Python + FastAPI + PostgreSQL, self-hosted on a standalone Ubuntu Server (homelab hardware, ADR-004) with Docker Compose.
 - Vehicle data: manual records first. Official Zeekr integrations are researched in parallel and never block the MVP.
 - First release: maintenance, expenses and ownership records.
 

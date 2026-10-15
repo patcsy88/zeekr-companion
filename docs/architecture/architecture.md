@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **proposed**, pending owner approval. Technology choices are recorded in ADR-001 (backend, database, deployment), ADR-002 (web client) and ADR-003 (remote access and HTTPS through Tailscale, accepted by the owner 2026-10-13). Where ADR-002 is approved it supersedes the mobile choice in ADR-001.
+Status: **proposed**, pending owner approval. Technology choices are recorded in ADR-001 (backend, database, deployment), ADR-002 (web client), ADR-003 (remote access and HTTPS through Tailscale, accepted by the owner 2026-10-13) and ADR-004 (standalone Ubuntu Server host, replacing Unraid, accepted by the owner 2026-10-15). Where ADR-002 is approved it supersedes the mobile choice in ADR-001. ADR-004 supersedes the "Unraid" deployment target in ADR-001.
 
 ## Overview
 
@@ -75,14 +75,14 @@ The slice implements `vehicle` and `service_record` first. Other tables are adde
 
 ## Deployment (proposed)
 
-- Docker Compose on Unraid with three services: `db`, `api`, `web` (reverse proxy plus static client). Only `web` publishes a port. `api` and `db` are on the internal network.
+- Docker Compose on a standalone Ubuntu Server (self-hosted homelab hardware, ADR-004) with three services: `db`, `api`, `web` (reverse proxy plus static client). Only `web` publishes a port. `api` and `db` are on the internal network.
 - Same-origin serving: no CORS configuration. No wildcard origins.
 - The proxy sets CSP, `X-Content-Type-Options`, `Referrer-Policy`, `no-store` for `/api/*`, `no-cache` for `index.html` and `sw.js`, and HSTS once HTTPS exists. The API reads the client address from forwarded headers, trusted only from the proxy, so the auth rate limit still works.
 - **HTTPS is required for service workers and offline use on the phone** (service workers need a secure context, unverified here). No HTTPS origin exists yet, because remote access is undecided and no public exposure is allowed (NFR-6). Development and automated tests use `localhost`, which is a secure context.
 - Remote access (decided 2026-10-13, ADR-003): Tailscale. `tailscale serve` on the host terminates HTTPS and proxies to the Caddy `web` port, which stays bound to `127.0.0.1` (proposed; sidecar is the alternative). No public port, Funnel off, HSTS off until verified. The real tailnet and host names are never written in this public repo. Until the owner steps are done the phone has no HTTPS origin.
 - Client address behind Serve and Caddy is expected to be one constant address, so the login limiter effectively has a single bucket (unverified, to be tested). `FORWARDED_ALLOW_IPS` is unchanged.
 - Hostname stability: browser storage and the installed PWA are per origin. Choose the hostname once.
-- Scheduled `pg_dump` to a location off the array, with a restore test.
+- Scheduled `pg_dump` to a location off the host (external volume, network share, or offsite), with a restore test.
 
 ## Integration boundary
 
@@ -92,7 +92,7 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 
 | Risk | Mitigation |
 |---|---|
-| Homelab downtime leaves the app without a backend | Offline cache and queue |
+| Homelab downtime (standalone Ubuntu Server, ADR-004) leaves the app without a backend | Offline cache and queue |
 | No HTTPS origin until Tailscale is set up (chosen 2026-10-13, ADR-003), so offline cannot be proven on the phone | Test on `localhost` in Playwright; owner completes the Tailscale steps; phone checks stay blocked and are reported as such until run |
 | Tailscale machine name is public in certificate-transparency logs; Tailnet policy mistakes could expose host services | Neutral names, restrictive policy, Funnel off, checks in ADR-003 |
 | iOS Safari may evict browser storage (unverified) | Server is source of truth; show unsynced items; flush promptly |

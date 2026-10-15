@@ -22,7 +22,7 @@ docker compose up --build
 - **Smoke test:** `infra/smoke.sh` (unique project name, throwaway env and secrets, removes everything it created; never touches `zeekr-companion_pgdata`).
 - **macOS/Docker Desktop note:** `docker compose build` (and therefore `infra/smoke.sh`) can fail with `docker-credential-desktop: executable file not found in $PATH` unless `/Applications/Docker.app/Contents/Resources/bin` is on `PATH`. This is specific to macOS with Docker Desktop, not a universal requirement.
 
-## Owner runbook: private HTTPS with Tailscale Serve on the Unraid host
+## Owner runbook: private HTTPS with Tailscale Serve on the Ubuntu host
 
 Placeholders only. Never write the real tailnet name, machine name, account email or device names in this repo. Design and decisions: `docs/architecture/decisions/ADR-003-remote-access-tailscale.md`. Items marked **(unverified)** were not run by the engineer; check them with `tailscale serve --help` on your version. Source for `serve` syntax: Tailscale "tailscale serve command" page, last validated Jan 2026.
 
@@ -60,6 +60,8 @@ SMOKE_WEB_DIST_DIR=../apps/web/dist ./smoke.sh   # optional; uses its own throwa
 
 ### 4. Publish to the tailnet only
 
+Tailscale on the host is installed from the official Tailscale apt repository (follow Tailscale's Ubuntu install instructions) and runs as a systemd service: `sudo systemctl enable --now tailscaled`, then `sudo tailscale up` to sign in (ADR-004; plain CLI/systemd, no plugin) **(unverified on the owner's host)**.
+
 ```
 tailscale serve --bg --https=443 http://127.0.0.1:8080     # (unverified on your version)
 tailscale serve status
@@ -75,10 +77,12 @@ tailscale funnel status
 ### 5. Verify there is no public port
 
 1. `docker port zeekr-companion-web-1` shows `127.0.0.1:8080` only; `docker ps` shows no `0.0.0.0` binding for this stack; `api` and `db` publish nothing.
-2. On the Unraid host: `ss -ltnp | grep 8080` shows `127.0.0.1:8080`, not `0.0.0.0` or `[::]`.
+2. On the Ubuntu host: `ss -ltnp | grep 8080` shows `127.0.0.1:8080`, not `0.0.0.0` or `[::]`.
 3. Router: no port forward to the server.
 4. From the phone on cellular **with Tailscale turned off**: `https://<host>.<tailnet>.ts.net` must not load, and the server's public IP must not answer.
 5. Tailnet policy: phone to server `tcp:443` only (ADR-003).
+
+Host firewall: on a plain Ubuntu host nothing is pre-configured, so `ufw` (or an equivalent) is the explicit host firewall layer: deny incoming by default, allow SSH from the LAN only if you use it, and rely on the tailnet policy above for remote app access (ADR-004). The exact ruleset is a separate infra task pending the owner's open questions in ADR-004 **(unverified; not written or tested here)**.
 
 ### 6. Header check from a tailnet device
 
