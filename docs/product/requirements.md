@@ -17,6 +17,7 @@ Status: **confirmed**, **proposed** or **unverified**. Each requirement has an I
 | FR-9 | Record tyre changes and rotations | proposed |
 | FR-10 | Attach a photo or document to a service record or expense | proposed |
 | FR-11 | Authenticate before any data is accessible | proposed |
+| FR-12 | Offer the official AWD Performance service schedule (every 20,000 km or 1 year, whichever comes first; research M12) as a suggested reminder template. The owner reviews, edits and explicitly accepts it before any reminder is created. It is never applied silently. Not part of the initial vertical slice. | proposed |
 
 ## Non-functional requirements
 
@@ -59,6 +60,7 @@ Resolved:
 - Distance unit is kilometres (confirmed 2026-10-11).
 - ADR-001 and the API contract are approved (2026-10-11).
 
+- Service schedule is offered as a suggested template that the owner can accept or edit (owner decision 2026-10-22, FR-12). Reason: Zeekr's PDF says requirements vary by build date, conditions and local rules. Source: research M12, `verified` against the official Malaysia PDF.
 - Authentication is a single owner password for now (confirmed 2026-10-11). A full account model is deferred.
 - Client is a mobile-responsive web app instead of a native iOS app, to avoid the Apple Developer fee (confirmed 2026-10-11). The web stack is a React + Vite + TypeScript PWA (ADR-002, approved 2026-10-11), served same-origin through a reverse proxy container.
 - Cached data is readable without an app lock; the owner relies on the phone lock (confirmed 2026-10-11).
