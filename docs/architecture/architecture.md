@@ -14,7 +14,7 @@ iPhone browser / installed PWA ──HTTPS (origin not yet available)──▶ R
 
 | Component | Location | Responsibility |
 |---|---|---|
-| Web client (PWA) | `apps/web` (replaces `apps/mobile`, proposed) | UI, routing, IndexedDB cache, offline write queue, in-memory token, service worker for the app shell |
+| Web client (PWA) | `apps/web` (replaces `apps/mobile`, per ADR-002) | UI, routing, IndexedDB cache, offline write queue, in-memory token, service worker for the app shell |
 | Reverse proxy | `infra` (Compose service `web`) | Serves the static client, forwards `/api/*` and `/health` to the API, sets security headers, terminates TLS once available |
 | API | `services/api` | HTTP interface, validation, business rules, authentication |
 | Persistence | PostgreSQL | Vehicle, service, expense, reminder, warranty and tyre records |
