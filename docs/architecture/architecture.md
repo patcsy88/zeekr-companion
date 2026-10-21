@@ -54,6 +54,24 @@ Routers never query the database directly. Services never import HTTP types.
 
 The slice implements `vehicle` and `service_record` first. Other tables are added in later increments, each with a migration.
 
+### Reminders data model (proposed, pending owner approval)
+
+Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8, FR-12). Contract: "Reminders (DRAFT)" in `api-contracts.md`.
+
+| Table | Fields |
+|---|---|
+| `reminder` | `id` uuid PK (client generated), `kind` varchar(30), `title` varchar(200), `due_date` date null, `due_odometer` integer null (km), `notes` text null, `completed_on` date null, `template_ref` varchar(100) null, `created_at`, `updated_at` timestamptz |
+
+- The placeholder `vehicle_id` and `completed_at` are dropped: there is one vehicle (singleton) and the service-record table has no `vehicle_id` either, so the table follows that pattern. Completion is a date, `completed_on`, not a timestamp, for consistency with the other date fields.
+- Check constraints (named, per `NAMING_CONVENTION`): `kind IN ('service','insurance_renewal','road_tax_renewal')`; `due_date IS NOT NULL OR due_odometer IS NOT NULL`; `due_odometer IS NULL OR (due_odometer >= 0 AND due_odometer <= 10000000)`; `due_odometer IS NULL OR kind = 'service'` (proposal, Q4); `char_length(title) BETWEEN 1 AND 200`.
+- Index on `(completed_on, due_date, due_odometer)` for the list order. At most 500 rows, so a plain scan is fine.
+- `status` and `overdue_by` are computed on read, never stored, because they depend on today's date and the latest service record.
+- Current odometer is read from `service_record` (latest `date`, `created_at`, `id`) with no new column (proposal, Q1). It is a read through the service layer: the reminders service calls the service-record repository, and routers never query across tables.
+- The template is static, versioned data in code. It has no table.
+- One migration (`0002`) adds the table, with a downgrade.
+- Web: the IndexedDB `cache` store gains a reminders key, and the `queue` gains reminder create, edit and delete kinds. This needs no new object store, but `QueueKind` and `applySuccess` change. Overdue is computed on the device by a pure function that shares test vectors with the backend. The service worker is unchanged and still never caches `/api/*`.
+- Staleness risk: the offline status uses the device date and the cached latest service record, so it can differ from the server until the next sync. The UI says so.
+
 ## Offline and sync (proposed, see ADR-002)
 
 - The service worker caches the app shell only. Data lives in IndexedDB, not Cache Storage.
