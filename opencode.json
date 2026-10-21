@@ -13,7 +13,12 @@
     { "action": "shell", "resource": "docker volume prune*", "effect": "deny" },
     { "action": "read", "resource": "*.env", "effect": "deny" },
     { "action": "read", "resource": "*.env.*", "effect": "deny" },
-    { "action": "read", "resource": "*.env.example", "effect": "allow" }
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+    { "action": "skill", "resource": "firecrawl-*", "effect": "deny" },
+    { "action": "skill", "resource": "firecrawl", "effect": "allow" },
+    { "action": "skill", "resource": "firecrawl-search", "effect": "allow" },
+    { "action": "skill", "resource": "firecrawl-scrape", "effect": "allow" },
+    { "action": "skill", "resource": "firecrawl-parse", "effect": "allow" }
   ],
   "formatter": true
 }
