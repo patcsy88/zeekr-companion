@@ -121,6 +121,161 @@ Validation: `date` required and not in the future, `odometer >= 0`, `cost_minor 
 
 List response: `{ "items": [ ... ], "next_cursor": "string|null" }`
 
+## Reminders (DRAFT, pending owner approval)
+
+**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Reminders slice (FR-7, FR-8, FR-12; AC-10 to AC-29 in `docs/product/requirements.md`). This section is additive. Nothing above it is changed, and no code starts until the owner approves it. Items marked (proposal) depend on the open questions Q1 to Q9 in `docs/product/requirements.md`.
+
+Reuses all Conventions above: `/api/v1`, `snake_case`, client-generated UUIDs, Bearer token on every endpoint, `no-store`, the 64 KiB body limit, the error shape and codes. No new status code or error code is introduced.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/reminders` | Idempotent on `id`. `201` on first create, `200` with the existing reminder on an identical replay, `409 conflict` if the same `id` has different content |
+| `GET` | `/api/v1/reminders` | All reminders with computed status. Query: `today`, `include_completed` |
+| `GET` | `/api/v1/reminders/{id}` | Query: `today` |
+| `PATCH` | `/api/v1/reminders/{id}` | Partial update, including completing and reopening |
+| `DELETE` | `/api/v1/reminders/{id}` | `204` |
+| `GET` | `/api/v1/reminder-templates` | Read-only suggested templates (FR-12). Creates nothing |
+
+There is no "apply template" endpoint. Accepting a template means the client sends ordinary `POST /reminders` calls with values the owner reviewed, so a template can never create a reminder by itself.
+
+### Reminder object
+
+```json
+{
+  "id": "uuid",
+  "kind": "service | insurance_renewal | road_tax_renewal",
+  "title": "string",
+  "due_date": "YYYY-MM-DD|null",
+  "due_odometer": 0,
+  "notes": "string|null",
+  "completed_on": "YYYY-MM-DD|null",
+  "template_ref": "string|null",
+  "status": "upcoming | overdue | completed",
+  "overdue_by": ["date", "odometer"],
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+```
+
+`due_odometer` is an integer in kilometres, or `null`. `status` and `overdue_by` are computed by the server on read and are never stored or accepted in a request. `overdue_by` is empty unless `status` is `overdue`.
+
+### Create and update
+
+`POST` body: `id`, `kind`, `title`, `due_date`, `due_odometer`, `notes`, `template_ref`. `completed_on` is not accepted on create. Unknown fields are rejected (`extra=forbid`, as for service records).
+
+`PATCH` body: any of `kind`, `title`, `due_date`, `due_odometer`, `notes`, `completed_on`. Omitted fields are unchanged. `due_date`, `due_odometer`, `notes` and `completed_on` may be set to `null`. `kind` and `title` may not be null. `template_ref` cannot be changed after create.
+
+Validation (violations return `400 validation_error` with field details):
+
+- `kind` is one of the three values.
+- `title` is 1 to 200 characters after trimming.
+- At least one of `due_date` and `due_odometer` is non-null, on create and after any `PATCH` is applied. The detail names both fields.
+- `due_odometer` is a strict integer, `>= 0` and `<= 10,000,000` (the existing odometer bound).
+- `due_odometer` must be null unless `kind` is `service` (proposal, Q4). Changing `kind` away from `service` with a due odometer still set is rejected.
+- `due_date` is a valid date. Past dates are accepted (proposal, Q8). No upper bound other than a valid date from 2000-01-01 to 2200-12-31.
+- `completed_on` is not in the future, judged against the UTC date as for service-record dates.
+- `notes` is at most 5,000 characters. `template_ref` is at most 100 characters.
+- No NUL characters in any string (existing rule).
+- At most 500 reminders in total; a create beyond that returns `400 validation_error` on field `body` (proposed bound, keeps the list unpaginated).
+
+Idempotent replay compares the content fields `kind`, `title`, `due_date`, `due_odometer`, `notes` and `template_ref`.
+
+### List and status
+
+`GET /api/v1/reminders` query:
+
+- `today` (optional, `YYYY-MM-DD`): the owner's local date used to compute status (proposal, Q3). Defaults to the UTC date. A malformed value returns `400 validation_error`.
+- `include_completed` (optional boolean, default `false`).
+
+Response `200`:
+
+```json
+{
+  "items": [ { "...reminder": "..." } ],
+  "current_odometer": {
+    "km": 0,
+    "source": "latest_service_record",
+    "service_record_id": "uuid",
+    "date": "YYYY-MM-DD"
+  }
+}
+```
+
+`current_odometer` is `null` when there is no service record (proposal, Q1). It is the `odometer` of the first service record in history order (latest `date`, then `created_at`, then `id`).
+
+Status rules, used by both the server and the offline client:
+
+- `completed_on` set: `completed`.
+- Else `overdue` if `today > due_date` (`overdue_by` includes `date`), or if `current_odometer` is not null and `current_odometer.km > due_odometer` (includes `odometer`). Equality is not overdue.
+- Else `upcoming`.
+
+Order: overdue first, then upcoming, then completed. Within a group: `due_date` ascending with nulls last, then `due_odometer` ascending with nulls last, then `id`. There is no cursor, because the set is bounded.
+
+### Template object
+
+`GET /api/v1/reminder-templates` returns `200 { "items": [ template ] }` with one template, `awd-performance-service`:
+
+```json
+{
+  "id": "awd-performance-service",
+  "version": 1,
+  "name": "AWD Performance service schedule",
+  "kind": "service",
+  "source": {
+    "title": "Zeekr Malaysia Service Maintenance Schedule and Pricing (PDF)",
+    "url": "https://assets.zeekrlife.com/assets/my/Service_Maintenance_Schedule_And_Pricing.pdf",
+    "research_ref": "M12",
+    "status": "verified",
+    "retrieved": "2026-10-22"
+  },
+  "caveat": "Requirements vary by model, build date, operating conditions and local rules. Confirm against your own booklet or service centre.",
+  "interval": { "km": 20000, "months": 12, "rule": "whichever comes first" },
+  "baseline_required": true,
+  "checkpoints": [
+    {
+      "number": 1,
+      "km": 20000,
+      "months": 12,
+      "work_items": [],
+      "work_items_stated": false
+    },
+    {
+      "number": 2,
+      "km": 40000,
+      "months": 24,
+      "work_items": ["Maintenance inspection", "Cabin air filter replacement", "Brake fluid replacement", "Front and rear reducer lubricant replacement"],
+      "work_items_stated": true
+    }
+  ]
+}
+```
+
+The full list has checkpoints 1 to 8 (20,000 km / 12 months to 160,000 km / 96 months). Odd checkpoints have empty `work_items` and `work_items_stated: false`. Coolant replacement is added at checkpoints 4 and 8. All content is taken from research M12 and nothing else. The data is static, versioned and served from code, with no table. Due dates are not computed by the server: the owner supplies the baseline date on the client, which proposes `due_date = baseline + months` and `due_odometer = km` as editable values (proposal, Q5). The template is data, not a rule: no endpoint or job applies it.
+
+### Errors
+
+| Case | Status and code |
+|---|---|
+| Body fails validation, malformed `today`, bad UUID in path | `400 validation_error` |
+| No or invalid token | `401 unauthenticated` |
+| `PATCH` or `DELETE` of an unknown id, or `GET` of an unknown id | `404 not_found` |
+| `POST` with an existing id and different content | `409 conflict` |
+| Wrong method on a path | `405 method_not_allowed` |
+| Unexpected failure | `500 internal_error` |
+
+### Offline writes and idempotency
+
+Matches the existing service-record pattern (ADR-002). The client generates the reminder UUID, so a `POST` retry is safe: `201` first, then `200` on identical replay. Queue entry kinds are added for create, edit and delete of a reminder, with `record_id` set to the reminder id so create-then-edit coalesces, an edit after create is folded into the pending create, and a delete after an unsent create cancels both. A replayed `DELETE` returning `404` counts as success. `PATCH` is naturally repeatable. Completing is a `PATCH` of `completed_on`, and an offline reminder shows status computed on the device from the shared test vectors; the server value replaces it on the next sync. `400` and `409` mark the queue item failed and visible; `5xx`, `429` and network errors retry with backoff; `401` pauses the queue. Template accept offline queues one create per selected item.
+
+### Changes to approved parts
+
+None to any endpoint, field, validation rule or error code above this section. Two points for the owner:
+
+1. The line "Not yet specified" below was edited only to remove "reminders" from its list.
+2. If the owner picks the alternative in Q1 (an owner-entered current odometer), that would add a field to `Vehicle` or a new resource, which does change the approved vehicle contract and needs a separate amendment. The proposal avoids this.
+
 ## Not yet specified
 
-Expenses, reminders, warranty, tyres and attachments. They are specified when their increment starts.
+Expenses, warranty, tyres and attachments. They are specified when their increment starts. Reminders are drafted above and are not approved yet.
