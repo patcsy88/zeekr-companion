@@ -11,6 +11,8 @@ coverage/
 *.log
 .DS_Store
 
+.firecrawl/
+
 # Tool caches and build artefacts
 .mypy_cache/
 .pytest_cache/
@@ -34,3 +36,5 @@ backups/
 *.pdf
 .coverage
 htmlcov/
+
+.firecrawl/
