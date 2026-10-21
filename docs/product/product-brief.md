@@ -4,7 +4,7 @@ Status legend: **confirmed** (owner decision), **proposed** (recommended, awaiti
 
 ## Objective (confirmed)
 
-A personal mobile application for managing a Zeekr 7X AWD, right-hand-drive, for a single owner. iOS first, with a path to Android.
+A personal mobile-responsive web app (PWA, ADR-002) for managing a Zeekr 7X AWD, right-hand-drive, for a single owner. iPhone first.
 
 ## Principle (confirmed)
 
@@ -14,7 +14,7 @@ Managing information about the car is not the same as controlling it. The app mu
 
 | Area | Decision |
 |---|---|
-| Platform | iOS first, Android later |
+| Platform | Web app (PWA), installed from iOS Safari; Android browsers later |
 | Hosting | Self-hosted on homelab hardware, standalone Ubuntu Server (ADR-004) |
 | Vehicle data | Manual records first. Official integrations researched in parallel |
 | First release focus | Maintenance, expenses and ownership records |
@@ -66,4 +66,4 @@ Charging logs, equipment register, any Zeekr integration, AI features, remote ve
 | A2 | Currency is MYR (market is Malaysia) | confirmed 2026-10-11 |
 | A3 | Distance unit is kilometres | confirmed (2026-10-11) |
 | A4 | Owner has a means of reaching the home server remotely | unverified |
-| A5 | Running on a personal iPhone needs a development build or TestFlight, which needs an Apple Developer account | unverified, owner approval needed |
+| A5 | ~~Running on a personal iPhone needs a development build or TestFlight, which needs an Apple Developer account~~ | void: superseded by ADR-002 (PWA, no Apple Developer account), 2026-10-22 |

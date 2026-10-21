@@ -5,7 +5,7 @@
 
 ## Context
 
-A single owner wants a personal iOS-first app for a Zeekr 7X, backed by a server on their own homelab. Vehicle connectivity is unverified, so the product must work from manual records. The code is written with AI-agent assistance in OpenCode.
+A single owner wants a personal iOS-first app for a Zeekr 7X (now a mobile web app, see ADR-002), backed by a server on their own homelab. Vehicle connectivity is unverified, so the product must work from manual records. The code is written with AI-agent assistance in OpenCode.
 
 ## Decision
 
@@ -36,4 +36,4 @@ A single owner wants a personal iOS-first app for a Zeekr 7X, backed by a server
 ## Open items
 
 - Remote access method (pending owner approval).
-- Apple Developer account for device builds (pending owner approval).
+- ~~Apple Developer account for device builds.~~ Resolved 2026-10-22: not needed. ADR-002 replaced the native client with a PWA.
