@@ -62,12 +62,12 @@ Resolved:
 
 - Service schedule is offered as a suggested template that the owner can accept or edit (owner decision 2026-10-22, FR-12). Reason: Zeekr's PDF says requirements vary by build date, conditions and local rules. Source: research M12, `verified` against the official Malaysia PDF.
 - Authentication is a single owner password for now (confirmed 2026-10-11). The owner chose a full account model on 2026-10-22, but it is sequenced after the remaining MVP items (expenses, warranty, reminders). The single-password mode stays until then. Owner answers of 2026-10-22, which feed a future ADR-006 and API contract amendment (not yet written, no code until the contract is re-approved):
-  - Users: one, the admin. Other users are not planned yet. **Needs confirmation:** "one" user plus a shared car, admin role and per-account lockout may be inconsistent.
+  - Users: one, the owner (confirmed 2026-10-22, option B: username plus password instead of a password alone). No second user is planned. The scope is therefore small: no roles table, no per-user data and no cache scoping are needed. The admin role and shared-car answers below apply only if a second user is ever added, which would need a new ADR and an ADR-003 amendment.
   - Accounts are created by the admin; login identifier is a username.
   - Password reset is a server command run by the admin. No email service.
   - Data model: one shared car (no per-user data), with an admin role.
   - Sessions: keep the one-hour memory-only Bearer token, no refresh.
-  - Lockout: both per account and per client address.
+  - Lockout: both per account and per client address (owner answer). With one user, the per-account limit mostly duplicates the existing limiter; the Security Engineer should confirm whether it is worth building.
   - Existing data is owned by the admin account.
   - Order: expenses, warranty and reminders come before accounts.
   - Tailscale (ADR-003) is unchanged while there is a single user.
