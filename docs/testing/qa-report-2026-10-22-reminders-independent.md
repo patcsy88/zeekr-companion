@@ -1,6 +1,6 @@
 # QA report: Reminders slice, second pass (2026-10-22)
 
-Commit under test: `adb55a5` plus `608c1fc` (certifi pin). Written after two QA-agent runs timed out; the agent's test file was kept, and the gates were re-run by the Engineering Lead's assistant. **Limits of this pass:** the web QA tests (`reminders-qa.test.tsx`) were never written, the Playwright e2e suite was not re-run, and the contract-versus-code line-by-line review was not completed. Backend edge cases were probed; the web side relies on the Lead's tests (162 passing).
+Commit under test: `adb55a5` plus `608c1fc` (certifi pin). Written after two QA-agent runs timed out; the agent's test file was kept, and the gates were re-run by the Engineering Lead's assistant. **Limits of this pass:** the contract-versus-code line-by-line review was not completed. The web QA tests, e2e run and migration check were added afterwards (see "Follow-up pass").
 
 ## Gates run in this pass
 
@@ -35,3 +35,15 @@ AC-10 to AC-26, AC-28, AC-29: verified by the Lead's tests plus this pass on the
 ## Fixes
 
 QA-D1 and QA-D2 were fixed afterwards. The reminder count check and insert now share one transaction under a Postgres advisory lock, and dates must match `YYYY-MM-DD` exactly (body and the `today` query parameter). The three expected-failure marks were removed, and the suite passes: 473 passed, plus ruff, format, mypy and the shared-types drift check. Web unit tests still 162 passed.
+
+## Follow-up pass: web QA, e2e and migrations
+
+| Check | Result |
+|---|---|
+| New web QA tests `apps/web/test/reminders-qa.test.tsx` | 15 passed. Cover the Kuala Lumpur day rollover at 16:00 UTC and a year end, status edges (due today, exact odometer, one day or km past, unknown odometer, completed), `daysBetween` leap days, "due soon" limits, queue edge cases (duplicate create, create-edit-delete-create), form refusals (whitespace title, negative, fractional and over-limit odometer) and template accept with nothing selected |
+| Test sensitivity | Changing `>` to `>=` in `reminderStatus.ts` made 4 tests fail (new and old); the file was restored and `git diff` showed no source change |
+| Lint, prettier, tsc on the new file | Pass |
+| `npm run e2e` (Playwright, production build, real API, throwaway Postgres) | 28 passed, exit 0, no leftover containers |
+| `alembic upgrade head` twice, then downgrade to 0001 and upgrade again | Pass: head `0002` each time (throwaway Postgres, removed) |
+
+Still not done: the line-by-line contract review, and any check on a real iPhone (deferred by the owner).
