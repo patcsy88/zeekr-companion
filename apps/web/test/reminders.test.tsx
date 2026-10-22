@@ -149,7 +149,11 @@ describe('AC-10 / AC-13 / AC-14 / AC-19: create, edit, complete, reopen, delete'
   it('creates a reminder with one POST, then edits, completes, reopens and deletes it', async () => {
     const user = open('/reminders/new');
     render(<App />);
-    await user.type(await screen.findByLabelText('Title'), 'Oil change');
+    await screen.findByLabelText('Title');
+    await waitFor(() => {
+      expect(fake.templateGets).toBeGreaterThan(0); // app-start sync has finished
+    });
+    await user.type(screen.getByLabelText('Title'), 'Oil change');
     await user.type(screen.getByLabelText('Due date'), '2027-03-01');
     await user.type(screen.getByLabelText('Due odometer (km)'), '30000');
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -160,7 +164,7 @@ describe('AC-10 / AC-13 / AC-14 / AC-19: create, edit, complete, reopen, delete'
     const id = [...fake.reminders.keys()][0] ?? '';
     await user.click(await screen.findByText('Oil change'));
     await user.click(await screen.findByRole('link', { name: 'Edit' }));
-    const title = screen.getByLabelText('Title');
+    const title = await screen.findByLabelText('Title');
     await user.clear(title);
     await user.type(title, 'Oil change v2');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -279,6 +283,9 @@ describe('AC-24 / AC-25: offline', () => {
     const user = open();
     render(<App />);
     await screen.findByText('Two actions');
+    await waitFor(() => {
+      expect(fake.templateGets).toBeGreaterThan(0); // app-start sync has finished
+    });
     reportReachable(false);
     await user.click(screen.getByText('Two actions'));
     await user.click(await screen.findByRole('button', { name: 'Mark complete' }));
