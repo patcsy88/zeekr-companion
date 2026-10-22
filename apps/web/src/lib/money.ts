@@ -7,13 +7,14 @@ export type MoneyParse = { ok: true; minor: number } | { ok: false; error: strin
 export function parseMyrToSen(input: string): MoneyParse {
   const s = input.trim().replace(/^RM\s*/i, '');
   if (s === '') return { ok: false, error: 'Enter an amount in MYR, for example 120.50.' };
-  const m = /^(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(s);
+  // Grouped form: 1-3 digits without a leading zero, then ,ddd groups. Otherwise plain digits.
+  const m = /^([1-9]\d{0,2}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(s);
   if (!m)
     return {
       ok: false,
       error: 'Enter an amount in MYR with at most 2 decimals, for example 120.50.',
     };
-  const whole = (m[1] ?? '').replace(/,/g, '');
+  const whole = (m[1] ?? '').replace(/,/g, '').replace(/^0+(?=\d)/, '');
   const frac = (m[2] ?? '').padEnd(2, '0');
   if (whole.length > 13) return { ok: false, error: 'That amount is too large.' };
   const minor = Number(whole) * 100 + Number(frac);

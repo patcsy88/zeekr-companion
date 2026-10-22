@@ -19,9 +19,15 @@ import { formatMyr, MAX_MINOR, parseMyrToSen, senToInput } from '../src/lib/mone
 import { getCache, setCache } from '../src/storage/cache';
 import { getDb } from '../src/storage/db';
 import {
+  enqueueCreate,
+  enqueueDelete,
+  enqueueEdit,
   enqueueExpenseCreate,
   enqueueExpenseDelete,
   enqueueExpenseEdit,
+  enqueueReminderCreate,
+  enqueueReminderDelete,
+  enqueueReminderEdit,
   listQueue,
 } from '../src/storage/queue';
 import { flush } from '../src/sync/engine';
@@ -133,13 +139,13 @@ describe('QA money parsing', () => {
     }
   });
 
-  // QA-W1 (Low): leading zeros are counted against the 13-digit "too large" guard.
-  test.fails('QA-W1 accepts 0000000000000001 as RM 1.00', () => {
+  // QA-W1 (fixed): leading zeros are counted against the 13-digit "too large" guard.
+  it('QA-W1 accepts 0000000000000001 as RM 1.00', () => {
     expect(parseMyrToSen('0000000000000001')).toEqual({ ok: true, minor: 100 });
   });
 
-  // QA-W2 (Low): a leading "0," thousands group is accepted and silently becomes RM 100.
-  test.fails('QA-W2 rejects the malformed grouping 0,100', () => {
+  // QA-W2 (fixed): a leading "0," thousands group is accepted and silently becomes RM 100.
+  it('QA-W2 rejects the malformed grouping 0,100', () => {
     expect(parseMyrToSen('0,100').ok).toBe(false);
   });
 });
@@ -281,10 +287,9 @@ describe('QA queue coalescing', () => {
     expect((await listQueue()).map((x) => x.kind)).toEqual(['create-expense', 'delete-expense']);
   });
 
-  // QA-W8 (Medium): editing an already-attempted create (response may have been lost) coalesces
-  // into it and resets attempts to 0, so a following delete cancels both. If the first POST did
-  // reach the server, the expense is left behind there and reappears on the next refresh.
-  test.fails('QA-W8 edit then delete of an attempted create still sends a DELETE', async () => {
+  // QA-W8 (fixed): editing an already-attempted create (response may have been lost) used to reset
+  // attempts to 0, so a following delete cancelled both and left the expense on the server.
+  it('QA-W8 edit then delete of an attempted create still sends a DELETE', async () => {
     await enqueueExpenseCreate(body(1));
     const db = await getDb();
     const [e] = await listQueue();
@@ -430,12 +435,12 @@ describe('QA list, filters and totals in the UI', () => {
     open();
     render(<App />);
     expect(await screen.findByTestId('partial-warning')).toHaveTextContent(
-      'Partial: 1 expenses loaded',
+      'Partial: 1 expense loaded',
     );
   });
 
-  // QA-W5 (Low): the warning says "1 expenses" (no singular).
-  test.fails('QA-W5 partial warning uses the singular for one expense', async () => {
+  // QA-W5 (fixed): the warning says "1 expenses" (no singular).
+  it('QA-W5 partial warning uses the singular for one expense', async () => {
     await setCache('expenses', { items: [exp(1)], next_cursor: 'abc' });
     apiDown();
     reportReachable(false);
@@ -648,11 +653,54 @@ describe('QA offline and local data', () => {
     expect(screen.queryByText(/queued-note/)).not.toBeInTheDocument();
   });
 
-  // QA-W7 (Low): the clear-data dialog only mentions "service records and vehicle", not expenses.
-  test.fails('QA-W7 the clear-data dialog mentions expenses', async () => {
+  // QA-W7 (fixed): the clear-data dialog only mentions "service records and vehicle", not expenses.
+  it('QA-W7 the clear-data dialog mentions expenses', async () => {
     const user = open();
     render(<App />);
     await user.click(await screen.findByRole('button', { name: 'Sign out and clear local data' }));
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(/expenses/i);
+  });
+});
+
+describe('QA-W8 (fixed) also for service records and reminders', () => {
+  const RID = '44444444-4444-4444-8444-444444444444';
+
+  async function markAttempted() {
+    const db = await getDb();
+    const [e] = await listQueue();
+    await db.put('queue', { ...e!, attempts: 1, status: 'pending' });
+  }
+
+  it('service record: edit then delete of an attempted create still sends a DELETE', async () => {
+    await enqueueCreate({
+      id: RID,
+      date: '2026-01-01',
+      odometer: 100,
+      provider: null,
+      description: 'x',
+      cost_minor: null,
+      currency: 'MYR',
+      notes: null,
+    } as never);
+    await markAttempted();
+    await enqueueEdit(RID, { description: 'y' } as never);
+    await enqueueDelete(RID);
+    expect((await listQueue()).map((x) => x.kind)).toContain('delete-record');
+  });
+
+  it('reminder: edit then delete of an attempted create still sends a DELETE', async () => {
+    await enqueueReminderCreate({
+      id: RID,
+      kind: 'service',
+      title: 'x',
+      due_date: '2027-01-01',
+      due_odometer: null,
+      notes: null,
+      template_ref: null,
+    });
+    await markAttempted();
+    await enqueueReminderEdit(RID, { title: 'y' });
+    await enqueueReminderDelete(RID);
+    expect((await listQueue()).map((x) => x.kind)).toContain('delete-reminder');
   });
 });

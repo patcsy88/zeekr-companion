@@ -62,8 +62,8 @@ export function AccountMenu() {
         >
           <h2 id="clear-title">Clear local data and sign out?</h2>
           <p id="clear-desc">
-            This removes the service records and vehicle saved on this device. They stay on the
-            server.
+            This removes the vehicle, service records, reminders and expenses saved on this device.
+            They stay on the server.
           </p>
           {unsent > 0 ? (
             <p>

@@ -67,3 +67,15 @@ No blocker. The contract is implemented faithfully for every happy path and for 
 - `.venv/bin/ruff format --check .`: 64 files already formatted
 - `.venv/bin/mypy app`: no issues in 39 source files
 - `.venv/bin/pytest -q`: 796 passed, 10 xfailed (the 10 are QA-E1 x5, QA-E2 x2, QA-E3, QA-E4, QA-E5)
+
+## Fixes (2026-10-23)
+
+| Id | Status | Change |
+|---|---|---|
+| QA-E1 | **Fixed** | `decode_cursor` now also catches `AttributeError`, so a cursor with a non-string id returns 400. The decoder is shared, so service records had the same 500; a test now covers that route too (5 cases, verified to fail without the fix). |
+| QA-E3 | **Fixed** | Notes that are empty after trimming are stored as `null` (create and patch). `""` and `null` are now one state, and a replay with either is a 200. |
+| QA-E4 | **Fixed** | `limit` on `GET /expenses` accepts digits only (no `1.0`, no padding), then range 1 to 100. Service records still use FastAPI's lax parsing; not changed (not part of this slice). |
+| QA-E2 | Open (Low) | Extra SELECT per row on lists and a possible 500 on a read racing a delete. Accepted as a known limit for a single-user app. |
+| QA-E5 | Open (Info) | OpenAPI shows null for non-nullable patch fields. Accepted. |
+
+After the fixes: 803 passed, 3 expected failures (E2 twice, E5), ruff, format, mypy and the shared-types drift check clean.

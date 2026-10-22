@@ -40,6 +40,14 @@ function reset(entry: QueueEntry, body: unknown): QueueEntry {
   return { ...entry, body, status: 'pending', attempts: 0, last_error: null, next_attempt_at: 0 };
 }
 
+/**
+ * Like reset, but for a create: keeps `attempts`. A create that was sent once may have reached the
+ * server (lost response), so a later delete must still send a DELETE rather than cancel it.
+ */
+function resetCreate(entry: QueueEntry, body: unknown): QueueEntry {
+  return { ...reset(entry, body), attempts: entry.attempts };
+}
+
 export async function listQueue(): Promise<QueueEntry[]> {
   const rows = await (await getDb()).getAll('queue');
   return rows.sort((a, b) => a.seq - b.seq);
@@ -63,7 +71,7 @@ export async function enqueueCreate(body: ServiceRecordCreate): Promise<void> {
   const existing = (await tx.store.index('by_record').getAll(body.id)).find(
     (e) => e.kind === 'create-record' && e.status !== 'sending',
   );
-  if (existing) await tx.store.put(reset(existing, body));
+  if (existing) await tx.store.put(resetCreate(existing, body));
   else
     await tx.store.add(
       base('create-record', 'POST', '/service-records', body, body.id, body.id) as QueueEntry,
@@ -85,7 +93,7 @@ export async function enqueueEdit(recordId: string, patch: ServiceRecordPatch): 
   const create = entries.find((e) => e.kind === 'create-record' && e.status !== 'sending');
   const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-record');
   if (create) {
-    await tx.store.put(reset(create, { ...(create.body as ServiceRecordCreate), ...patch }));
+    await tx.store.put(resetCreate(create, { ...(create.body as ServiceRecordCreate), ...patch }));
   } else if (lastEdit && lastEdit.status !== 'sending') {
     await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ServiceRecordPatch), ...patch }));
   } else {
@@ -155,7 +163,7 @@ export async function enqueueReminderCreate(body: ReminderCreate): Promise<void>
   const existing = (await tx.store.index('by_record').getAll(body.id)).find(
     (e) => e.kind === 'create-reminder' && e.status !== 'sending',
   );
-  if (existing) await tx.store.put(reset(existing, body));
+  if (existing) await tx.store.put(resetCreate(existing, body));
   else
     await tx.store.add(
       base('create-reminder', 'POST', '/reminders', body, body.id, body.id) as QueueEntry,
@@ -179,7 +187,7 @@ export async function enqueueReminderEdit(id: string, patch: ReminderEdit): Prom
   if (lastEdit && lastEdit.status !== 'sending') {
     await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ReminderEdit), ...patch }));
   } else if (create && !('completed_on' in patch)) {
-    await tx.store.put(reset(create, { ...(create.body as ReminderCreate), ...patch }));
+    await tx.store.put(resetCreate(create, { ...(create.body as ReminderCreate), ...patch }));
   } else {
     await tx.store.add(
       base(
@@ -230,7 +238,7 @@ export async function enqueueExpenseCreate(body: ExpenseCreate): Promise<void> {
   const existing = (await tx.store.index('by_record').getAll(body.id)).find(
     (e) => e.kind === 'create-expense' && e.status !== 'sending',
   );
-  if (existing) await tx.store.put(reset(existing, body));
+  if (existing) await tx.store.put(resetCreate(existing, body));
   else
     await tx.store.add(
       base('create-expense', 'POST', '/expenses', body, body.id, body.id) as QueueEntry,
@@ -247,7 +255,7 @@ export async function enqueueExpenseEdit(id: string, patch: ExpenseEdit): Promis
   const create = entries.find((e) => e.kind === 'create-expense' && e.status !== 'sending');
   const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-expense');
   if (create) {
-    await tx.store.put(reset(create, { ...(create.body as ExpenseCreate), ...patch }));
+    await tx.store.put(resetCreate(create, { ...(create.body as ExpenseCreate), ...patch }));
   } else if (lastEdit && lastEdit.status !== 'sending') {
     await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ExpenseEdit), ...patch }));
   } else {
