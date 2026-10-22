@@ -189,6 +189,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warranty-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Claims */
+        get: operations["list_claims_api_v1_warranty_claims_get"];
+        put?: never;
+        /** Create Claim */
+        post: operations["create_claim_api_v1_warranty_claims_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warranty-claims/{claim_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Claim */
+        get: operations["get_claim_api_v1_warranty_claims__claim_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Claim */
+        delete: operations["delete_claim_api_v1_warranty_claims__claim_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Claim */
+        patch: operations["patch_claim_api_v1_warranty_claims__claim_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/warranty-coverages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Coverages */
+        get: operations["list_coverages_api_v1_warranty_coverages_get"];
+        put?: never;
+        /** Create Coverage */
+        post: operations["create_coverage_api_v1_warranty_coverages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warranty-coverages/{coverage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Coverage */
+        get: operations["get_coverage_api_v1_warranty_coverages__coverage_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Coverage */
+        delete: operations["delete_coverage_api_v1_warranty_coverages__coverage_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Coverage */
+        patch: operations["patch_coverage_api_v1_warranty_coverages__coverage_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/warranty-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Warranty Templates
+         * @description Read-only suggestions. Creates nothing; accepting means ordinary POST calls.
+         */
+        get: operations["list_warranty_templates_api_v1_warranty_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -708,6 +802,304 @@ export interface components {
             variant: string;
             /** Vin */
             vin: string | null;
+        };
+        /** WarrantyClaimCreate */
+        WarrantyClaimCreate: {
+            /** Cost Covered Minor */
+            cost_covered_minor?: number | null;
+            /**
+             * Coverage Id
+             * Format: uuid
+             */
+            coverage_id: string;
+            /**
+             * Currency
+             * @default MYR
+             * @constant
+             */
+            currency?: "MYR";
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes?: string | null;
+            /** Odometer */
+            odometer: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "submitted" | "approved" | "rejected" | "completed";
+        };
+        /** WarrantyClaimList */
+        WarrantyClaimList: {
+            /** Items */
+            items: components["schemas"]["WarrantyClaimOut"][];
+        };
+        /** WarrantyClaimOut */
+        WarrantyClaimOut: {
+            /** Cost Covered Minor */
+            cost_covered_minor: number | null;
+            /**
+             * Coverage Id
+             * Format: uuid
+             */
+            coverage_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes: string | null;
+            /** Odometer */
+            odometer: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "submitted" | "approved" | "rejected" | "completed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * WarrantyClaimPatch
+         * @description Partial update. Only `cost_covered_minor` and `notes` may be set to null.
+         *
+         *     `coverage_id` cannot be changed (extra=forbid).
+         */
+        WarrantyClaimPatch: {
+            /** Cost Covered Minor */
+            cost_covered_minor?: number | null;
+            /** Currency */
+            currency?: "MYR" | null;
+            /** Date */
+            date?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Odometer */
+            odometer?: number | null;
+            /** Status */
+            status?: ("submitted" | "approved" | "rejected" | "completed") | null;
+        };
+        /** WarrantyCoverageCreate */
+        WarrantyCoverageCreate: {
+            /** End Date */
+            end_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Km Limit */
+            km_limit?: number | null;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Provider Type
+             * @enum {string}
+             */
+            provider_type: "factory" | "extended";
+            /**
+             * Source Kind
+             * @default owner_entered
+             * @enum {string}
+             */
+            source_kind?: "owner_entered" | "template";
+            /** Source Note */
+            source_note?: string | null;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Template Ref */
+            template_ref?: string | null;
+            /**
+             * Verification Status
+             * @default unverified
+             * @enum {string}
+             */
+            verification_status?: "confirmed" | "proposed" | "unverified";
+        };
+        /** WarrantyCoverageList */
+        WarrantyCoverageList: {
+            current_odometer: components["schemas"]["CurrentOdometer"] | null;
+            /** Items */
+            items: components["schemas"]["WarrantyCoverageOut"][];
+        };
+        /** WarrantyCoverageOut */
+        WarrantyCoverageOut: {
+            /** Claim Count */
+            claim_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** End Date */
+            end_date: string | null;
+            /** Expired By */
+            expired_by: ("date" | "odometer")[];
+            /** Expiring Soon By */
+            expiring_soon_by: ("date" | "odometer")[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Km Limit */
+            km_limit: number | null;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Provider Type
+             * @enum {string}
+             */
+            provider_type: "factory" | "extended";
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "owner_entered" | "template";
+            /** Source Note */
+            source_note: string | null;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "active" | "expiring_soon" | "expired";
+            /** Template Ref */
+            template_ref: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Verification Status
+             * @enum {string}
+             */
+            verification_status: "confirmed" | "proposed" | "unverified";
+        };
+        /**
+         * WarrantyCoveragePatch
+         * @description Partial update. `end_date`, `km_limit`, `notes` and `source_note` may be set to null.
+         *
+         *     `source_kind`, `template_ref` and the computed fields are not accepted (extra=forbid).
+         */
+        WarrantyCoveragePatch: {
+            /** End Date */
+            end_date?: string | null;
+            /** Km Limit */
+            km_limit?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Provider Type */
+            provider_type?: ("factory" | "extended") | null;
+            /** Source Note */
+            source_note?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** Verification Status */
+            verification_status?: ("confirmed" | "proposed" | "unverified") | null;
+        };
+        /** WarrantyTemplate */
+        WarrantyTemplate: {
+            /** Baseline Required */
+            baseline_required: boolean;
+            /** Caveat */
+            caveat: string;
+            /** Id */
+            id: string;
+            /** Items */
+            items: components["schemas"]["WarrantyTemplateItem"][];
+            /** Name */
+            name: string;
+            source: components["schemas"]["WarrantyTemplateSource"];
+            /** Version */
+            version: number;
+        };
+        /** WarrantyTemplateItem */
+        WarrantyTemplateItem: {
+            /**
+             * Enter Manually
+             * @default false
+             */
+            enter_manually?: boolean;
+            /** Key */
+            key: string;
+            /** Km */
+            km: number | null;
+            /** Months */
+            months: number | null;
+            /** Name */
+            name: string;
+            /** Research Ref */
+            research_ref: string;
+        };
+        /** WarrantyTemplateList */
+        WarrantyTemplateList: {
+            /** Items */
+            items: components["schemas"]["WarrantyTemplate"][];
+        };
+        /** WarrantyTemplateSource */
+        WarrantyTemplateSource: {
+            /** Research Ref */
+            research_ref: string;
+            /**
+             * Retrieved
+             * Format: date
+             */
+            retrieved: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "verified";
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
     };
     responses: never;
@@ -1843,6 +2235,636 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_claims_api_v1_warranty_claims_get: {
+        parameters: {
+            query?: {
+                coverage_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimList"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_claim_api_v1_warranty_claims_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarrantyClaimCreate"];
+            };
+        };
+        responses: {
+            /** @description Identical replay of an existing claim */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_claim_api_v1_warranty_claims__claim_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_claim_api_v1_warranty_claims__claim_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_claim_api_v1_warranty_claims__claim_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarrantyClaimPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyClaimOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_coverages_api_v1_warranty_coverages_get: {
+        parameters: {
+            query?: {
+                /** @description Date (YYYY-MM-DD) used for status; defaults to KL today */
+                today?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyCoverageList"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_coverage_api_v1_warranty_coverages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarrantyCoverageCreate"];
+            };
+        };
+        responses: {
+            /** @description Identical replay of an existing one */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyCoverageOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyCoverageOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_coverage_api_v1_warranty_coverages__coverage_id__get: {
+        parameters: {
+            query?: {
+                /** @description Date (YYYY-MM-DD) used for status; defaults to KL today */
+                today?: string | null;
+            };
+            header?: never;
+            path: {
+                coverage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyCoverageOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_coverage_api_v1_warranty_coverages__coverage_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coverage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_coverage_api_v1_warranty_coverages__coverage_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coverage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarrantyCoveragePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyCoverageOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_warranty_templates_api_v1_warranty_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarrantyTemplateList"];
                 };
             };
             /** @description unauthenticated: missing or invalid token */

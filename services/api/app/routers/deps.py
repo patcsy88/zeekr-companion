@@ -11,11 +11,13 @@ from app.repositories.expenses import ExpenseRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.repositories.vehicle import VehicleRepository
+from app.repositories.warranty import WarrantyClaimRepository, WarrantyCoverageRepository
 from app.services.auth import AuthService
 from app.services.expenses import ExpenseService
 from app.services.reminders import ReminderService
 from app.services.service_records import ServiceRecordService
 from app.services.vehicle import VehicleService
+from app.services.warranty import WarrantyClaimService, WarrantyCoverageService
 
 
 def get_session(request: Request) -> Iterator[Session]:
@@ -57,7 +59,21 @@ def get_expense_service(session: SessionDep) -> ExpenseService:
     return ExpenseService(ExpenseRepository(session))
 
 
+def get_warranty_coverage_service(session: SessionDep) -> WarrantyCoverageService:
+    return WarrantyCoverageService(
+        WarrantyCoverageRepository(session), ServiceRecordRepository(session)
+    )
+
+
+def get_warranty_claim_service(session: SessionDep) -> WarrantyClaimService:
+    return WarrantyClaimService(WarrantyClaimRepository(session))
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
 ExpenseServiceDep = Annotated[ExpenseService, Depends(get_expense_service)]
+WarrantyCoverageServiceDep = Annotated[
+    WarrantyCoverageService, Depends(get_warranty_coverage_service)
+]
+WarrantyClaimServiceDep = Annotated[WarrantyClaimService, Depends(get_warranty_claim_service)]

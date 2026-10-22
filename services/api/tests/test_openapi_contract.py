@@ -127,3 +127,51 @@ def test_expense_input_models_forbid_extra_fields(schema: dict[str, Any]) -> Non
     for name in ("ExpenseCreate", "ExpensePatch"):
         assert schema["components"]["schemas"][name]["additionalProperties"] is False
     assert "created_at" not in schema["components"]["schemas"]["ExpenseCreate"]["properties"]
+
+
+WARRANTY_ROUTES = {
+    ("post", "/api/v1/warranty-coverages"),
+    ("get", "/api/v1/warranty-coverages"),
+    ("get", "/api/v1/warranty-coverages/{coverage_id}"),
+    ("patch", "/api/v1/warranty-coverages/{coverage_id}"),
+    ("delete", "/api/v1/warranty-coverages/{coverage_id}"),
+    ("post", "/api/v1/warranty-claims"),
+    ("get", "/api/v1/warranty-claims"),
+    ("get", "/api/v1/warranty-claims/{claim_id}"),
+    ("patch", "/api/v1/warranty-claims/{claim_id}"),
+    ("delete", "/api/v1/warranty-claims/{claim_id}"),
+    ("get", "/api/v1/warranty-templates"),
+}
+
+
+def test_warranty_routes_exist_need_auth_and_document_errors(schema: dict[str, Any]) -> None:
+    found = {
+        (method, path)
+        for path, item in schema["paths"].items()
+        for method in item
+        if "warranty" in path
+    }
+    assert found == WARRANTY_ROUTES
+    for method, path in WARRANTY_ROUTES:
+        op = schema["paths"][path][method]
+        assert op["security"] == [{"bearerAuth": []}]
+        assert "401" in op["responses"]
+        assert "422" not in op["responses"]
+    for path in ("/api/v1/warranty-coverages", "/api/v1/warranty-claims"):
+        assert {"200", "201", "400", "409"} <= set(schema["paths"][path]["post"]["responses"])
+
+
+def test_warranty_input_models_forbid_extra_fields(schema: dict[str, Any]) -> None:
+    for name in (
+        "WarrantyCoverageCreate",
+        "WarrantyCoveragePatch",
+        "WarrantyClaimCreate",
+        "WarrantyClaimPatch",
+    ):
+        assert schema["components"]["schemas"][name]["additionalProperties"] is False
+    props = schema["components"]["schemas"]["WarrantyCoverageCreate"]["properties"]
+    assert not {"status", "expired_by", "expiring_soon_by", "claim_count"} & set(props)
+    assert "coverage_id" not in schema["components"]["schemas"]["WarrantyClaimPatch"]["properties"]
+    assert (
+        "template_ref" not in schema["components"]["schemas"]["WarrantyCoveragePatch"]["properties"]
+    )

@@ -110,7 +110,12 @@ def make_settings(database_url: str, password_hash: str, **overrides: object) ->
 def client(database_url: str, password_hash: str) -> Iterator[TestClient]:
     app = create_app(make_settings(database_url, password_hash))
     with app.state.engine.begin() as conn:
-        conn.execute(text("TRUNCATE service_record, vehicle, reminder, expense"))
+        conn.execute(
+            text(
+                "TRUNCATE service_record, vehicle, reminder, expense, "
+                "warranty_claim, warranty_coverage"
+            )
+        )
     with TestClient(app) as test_client:
         yield test_client
     app.state.engine.dispose()
