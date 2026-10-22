@@ -14,6 +14,8 @@ import {
 } from './repository';
 import type { RecordView } from './overlay';
 import type { ReminderView } from './reminderOverlay';
+import type { ExpenseView } from './expenseOverlay';
+import { readExpense, readExpenses, type ExpensesSnapshot } from './expenses';
 import {
   readReminder,
   readReminders,
@@ -66,6 +68,13 @@ export function useQueueCounts(): { pending: number; failed: number } {
 }
 export function useLastSynced(): string | null {
   return useLocal(async () => (await getMeta<string>('last_synced_at')) ?? null, 'last') ?? null;
+}
+
+export function useExpenses(): ExpensesSnapshot | undefined {
+  return useLocal(readExpenses, 'expenses');
+}
+export function useExpense(id: string): { view: ExpenseView | null } | undefined {
+  return useLocal(() => readExpense(id), `expense:${id}`);
 }
 
 export function useReminders(): RemindersSnapshot | undefined {

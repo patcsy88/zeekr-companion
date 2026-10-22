@@ -1,5 +1,9 @@
 import { assertUuid, request } from './client';
 import type {
+  Expense,
+  ExpenseCreate,
+  ExpenseEdit,
+  ExpensePage,
   Reminder,
   ReminderCreate,
   ReminderList,
@@ -82,6 +86,26 @@ export async function patchReminder(id: string, body: ReminderEdit): Promise<Rem
 
 export async function deleteReminder(id: string): Promise<void> {
   await request({ method: 'DELETE', path: reminderPath(id) });
+}
+
+export async function listExpenses(limit: number, cursor: string | null): Promise<ExpensePage> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor !== null) q.set('cursor', cursor);
+  return (await request<ExpensePage>({ method: 'GET', path: `/expenses?${q.toString()}` })).data;
+}
+
+export async function createExpense(body: ExpenseCreate): Promise<Expense> {
+  return (await request<Expense>({ method: 'POST', path: '/expenses', body })).data;
+}
+
+const expensePath = (id: string) => `/expenses/${encodeURIComponent(assertUuid(id))}`;
+
+export async function patchExpense(id: string, body: ExpenseEdit): Promise<Expense> {
+  return (await request<Expense>({ method: 'PATCH', path: expensePath(id), body })).data;
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  await request({ method: 'DELETE', path: expensePath(id) });
 }
 
 export async function getReminderTemplates(): Promise<ReminderTemplateList> {

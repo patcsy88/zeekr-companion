@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import type { Reminder, ReminderTemplate, ServiceRecord, Vehicle } from '../src/api/types';
+import type { Expense, Reminder, ReminderTemplate, ServiceRecord, Vehicle } from '../src/api/types';
 import { klToday } from '../src/lib/dates';
 
 /** In-memory fake of the contract. Disposable data only. */
@@ -23,6 +23,15 @@ export interface FakeApi {
   reminderGets: number;
   templateGets: number;
   templates: ReminderTemplate[];
+  expenses: Map<string, Expense>;
+  expensePosts: unknown[];
+  expensePatches: unknown[];
+  expenseDeletes: string[];
+  /** Status codes to answer the next expense POSTs with, one per call (0 = succeed). */
+  expensePostFailures: number[];
+  /** Page size the fake list uses regardless of `limit` (to force several pages). */
+  expensePageCap: number | null;
+  expenseGets: number;
 }
 
 export const TEMPLATE: ReminderTemplate = {
@@ -67,6 +76,13 @@ export const fake: FakeApi = {
   reminderGets: 0,
   templateGets: 0,
   templates: [TEMPLATE],
+  expenses: new Map(),
+  expensePosts: [],
+  expensePatches: [],
+  expenseDeletes: [],
+  expensePostFailures: [],
+  expensePageCap: null,
+  expenseGets: 0,
 };
 
 export function resetFake(): void {
@@ -86,6 +102,13 @@ export function resetFake(): void {
   fake.reminderGets = 0;
   fake.templateGets = 0;
   fake.templates = [TEMPLATE];
+  fake.expenses.clear();
+  fake.expensePosts = [];
+  fake.expensePatches = [];
+  fake.expenseDeletes = [];
+  fake.expensePostFailures = [];
+  fake.expensePageCap = null;
+  fake.expenseGets = 0;
 }
 
 export const err = (
@@ -233,4 +256,114 @@ export const reminderHandlers = [
   }),
 ];
 
-export const server = setupServer(...handlers, ...reminderHandlers);
+const CATEGORIES = [
+  'charging',
+  'insurance',
+  'road_tax',
+  'parking',
+  'tolls',
+  'tyres',
+  'accessories',
+  'cleaning',
+  'fines',
+  'warranty',
+  'other',
+];
+
+function expenseIssues(
+  body: Partial<Expense>,
+  partial: boolean,
+): { field: string; issue: string }[] {
+  const out: { field: string; issue: string }[] = [];
+  if (!partial || body.date !== undefined) {
+    if (typeof body.date !== 'string' || body.date > klToday())
+      out.push({ field: 'date', issue: 'must not be in the future' });
+  }
+  if (!partial || body.category !== undefined) {
+    if (!CATEGORIES.includes(String(body.category)))
+      out.push({ field: 'category', issue: 'unknown category' });
+  }
+  if (!partial || body.amount_minor !== undefined) {
+    if (!Number.isInteger(body.amount_minor) || (body.amount_minor ?? 0) < 1)
+      out.push({ field: 'amount_minor', issue: 'must be an integer of at least 1' });
+  }
+  return out;
+}
+
+const sameContent = (a: Expense, b: Expense) =>
+  a.date === b.date &&
+  a.category === b.category &&
+  a.amount_minor === b.amount_minor &&
+  (a.notes ?? null) === (b.notes ?? null);
+
+/** Fake of /expenses following the contract: newest first, cursor paging, filters AND-ed. */
+export const expenseHandlers = [
+  http.get('*/api/v1/expenses', ({ request }) => {
+    fake.expenseGets += 1;
+    if (fake.down) return err(500, 'internal_error', 'Internal server error.');
+    const url = new URL(request.url);
+    const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), fake.expensePageCap ?? 100);
+    const cat = url.searchParams.get('category');
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const all = [...fake.expenses.values()]
+      .filter(
+        (x) => (!cat || x.category === cat) && (!from || x.date >= from) && (!to || x.date <= to),
+      )
+      .sort((a, b) =>
+        a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.id < b.id ? 1 : a.id > b.id ? -1 : 0,
+      );
+    const start = Number(url.searchParams.get('cursor') ?? 0);
+    const next = start + limit < all.length ? String(start + limit) : null;
+    return HttpResponse.json({ items: all.slice(start, start + limit), next_cursor: next });
+  }),
+  http.post('*/api/v1/expenses', async ({ request }) => {
+    const body = (await request.json()) as Expense;
+    fake.expensePosts.push(body);
+    const fail = fake.expensePostFailures.shift();
+    if (fail === 400)
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'amount_minor', issue: 'rejected by test' },
+      ]);
+    if (fail === 409) return err(409, 'conflict', 'An expense with this id already exists.');
+    if (fail !== undefined && fail !== 0)
+      return err(fail, 'internal_error', 'Internal server error.');
+    const existing = fake.expenses.get(body.id);
+    if (existing) {
+      if (!sameContent(existing, body)) return err(409, 'conflict', 'Different content.');
+      return HttpResponse.json(existing, { status: 200 });
+    }
+    const issues = expenseIssues(body, false);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    const x: Expense = {
+      ...body,
+      currency: body.currency || 'MYR',
+      notes: body.notes ?? null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    };
+    fake.expenses.set(x.id, x);
+    return HttpResponse.json(x, { status: 201 });
+  }),
+  http.patch('*/api/v1/expenses/:id', async ({ request, params }) => {
+    const x = fake.expenses.get(String(params.id));
+    if (!x) return err(404, 'not_found', 'Expense not found.');
+    const patch = (await request.json()) as Partial<Expense>;
+    fake.expensePatches.push(patch);
+    const issues = expenseIssues(patch, true);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    const updated = { ...x, ...patch };
+    fake.expenses.set(x.id, updated);
+    return HttpResponse.json(updated);
+  }),
+  http.delete('*/api/v1/expenses/:id', ({ params }) => {
+    const id = String(params.id);
+    fake.expenseDeletes.push(id);
+    if (!fake.expenses.delete(id)) return err(404, 'not_found', 'Expense not found.');
+    return new HttpResponse(null, { status: 204 });
+  }),
+];
+
+export const server = setupServer(...handlers, ...reminderHandlers, ...expenseHandlers);

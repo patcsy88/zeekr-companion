@@ -134,3 +134,46 @@ class Reminder(Base):
             "template_ref IS NULL OR char_length(template_ref) <= 100", name="template_ref_length"
         ),
     )
+
+
+EXPENSE_CATEGORIES = (
+    "charging",
+    "insurance",
+    "road_tax",
+    "parking",
+    "tolls",
+    "tyres",
+    "accessories",
+    "cleaning",
+    "fines",
+    "warranty",
+    "other",
+)
+
+
+class Expense(Base):
+    __tablename__ = "expense"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="MYR")
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "category IN (" + ", ".join(f"'{c}'" for c in EXPENSE_CATEGORIES) + ")",
+            name="category_valid",
+        ),
+        CheckConstraint("amount_minor BETWEEN 1 AND 1000000000000", name="amount_range"),
+        CheckConstraint("currency = 'MYR'", name="currency_myr"),
+        CheckConstraint("date >= DATE '2000-01-01'", name="date_min"),
+        Index("ix_expense_history", desc("date"), desc("created_at"), desc("id")),
+    )

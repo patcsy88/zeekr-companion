@@ -89,3 +89,41 @@ def test_reminder_input_models_forbid_extra_fields(schema: dict[str, Any]) -> No
     props = schema["components"]["schemas"]["ReminderCreate"]["properties"]
     assert "status" not in props
     assert "completed_on" not in props
+
+
+EXPENSE_ROUTES = {
+    ("post", "/api/v1/expenses"),
+    ("get", "/api/v1/expenses"),
+    ("get", "/api/v1/expenses/summary"),
+    ("get", "/api/v1/expenses/{expense_id}"),
+    ("patch", "/api/v1/expenses/{expense_id}"),
+    ("delete", "/api/v1/expenses/{expense_id}"),
+}
+
+
+def test_expense_routes_exist_need_auth_and_document_errors(schema: dict[str, Any]) -> None:
+    found = {
+        (method, path)
+        for path, item in schema["paths"].items()
+        for method in item
+        if "expenses" in path
+    }
+    assert found == EXPENSE_ROUTES
+    for method, path in EXPENSE_ROUTES:
+        op = schema["paths"][path][method]
+        assert op["security"] == [{"bearerAuth": []}]
+        assert "401" in op["responses"]
+        assert "422" not in op["responses"]
+    post = schema["paths"]["/api/v1/expenses"]["post"]["responses"]
+    assert {"200", "201", "400", "409"} <= set(post)
+    assert "204" in schema["paths"]["/api/v1/expenses/{expense_id}"]["delete"]["responses"]
+    params = {p["name"] for p in schema["paths"]["/api/v1/expenses"]["get"]["parameters"]}
+    assert params == {"limit", "cursor", "category", "from", "to"}
+    sparams = {p["name"] for p in schema["paths"]["/api/v1/expenses/summary"]["get"]["parameters"]}
+    assert sparams == {"category", "from", "to"}
+
+
+def test_expense_input_models_forbid_extra_fields(schema: dict[str, Any]) -> None:
+    for name in ("ExpenseCreate", "ExpensePatch"):
+        assert schema["components"]["schemas"][name]["additionalProperties"] is False
+    assert "created_at" not in schema["components"]["schemas"]["ExpenseCreate"]["properties"]

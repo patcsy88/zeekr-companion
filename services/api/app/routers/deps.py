@@ -7,10 +7,12 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.errors import Unauthenticated
+from app.repositories.expenses import ExpenseRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.repositories.vehicle import VehicleRepository
 from app.services.auth import AuthService
+from app.services.expenses import ExpenseService
 from app.services.reminders import ReminderService
 from app.services.service_records import ServiceRecordService
 from app.services.vehicle import VehicleService
@@ -51,6 +53,11 @@ def get_reminder_service(session: SessionDep) -> ReminderService:
     return ReminderService(ReminderRepository(session), ServiceRecordRepository(session))
 
 
+def get_expense_service(session: SessionDep) -> ExpenseService:
+    return ExpenseService(ExpenseRepository(session))
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
+ExpenseServiceDep = Annotated[ExpenseService, Depends(get_expense_service)]

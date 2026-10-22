@@ -29,6 +29,15 @@ export type ReminderTemplate = Schemas["ReminderTemplate"];
 export type ReminderTemplateList = Schemas["ReminderTemplateList"];
 export type TemplateCheckpoint = Schemas["TemplateCheckpoint"];
 
+export type Expense = Schemas["ExpenseOut"];
+export type ExpenseCreate = Schemas["ExpenseCreate"];
+export type ExpensePatch = Schemas["ExpensePatch"];
+export type ExpensePage = Schemas["ExpensePage"];
+export type ExpenseSummary = Schemas["ExpenseSummary"];
+export type ExpenseCategoryTotal = Schemas["ExpenseCategoryTotal"];
+export type ExpenseMonthTotal = Schemas["ExpenseMonthTotal"];
+export type ExpenseCategory = Expense["category"];
+
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];
 export type ApiError = Schemas["ErrorBody"];
