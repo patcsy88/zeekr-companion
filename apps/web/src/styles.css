@@ -130,6 +130,11 @@ h2 {
   padding: 1rem;
   margin-bottom: 1rem;
 }
+.plain {
+  list-style: none;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0;
+}
 .list {
   list-style: none;
   margin: 0.75rem 0;

@@ -314,3 +314,95 @@ class ReminderTemplate(BaseModel):
 
 class ReminderTemplateList(BaseModel):
     items: list[ReminderTemplate]
+
+
+# --- Expenses -------------------------------------------------------------------------------
+
+ExpenseCategory = Literal[
+    "charging",
+    "insurance",
+    "road_tax",
+    "parking",
+    "tolls",
+    "tyres",
+    "accessories",
+    "cleaning",
+    "fines",
+    "warranty",
+    "other",
+]
+MIN_EXPENSE_DATE = dt.date(2000, 1, 1)
+MAX_EXPENSES = 5000
+ExpenseAmount = Annotated[int, Field(strict=True, ge=1, le=MAX_MONEY_MINOR)]
+
+
+def _expense_date(value: dt.date | None) -> dt.date | None:
+    if value is not None and value < MIN_EXPENSE_DATE:
+        raise ValueError("must be on or after 2000-01-01")
+    return _not_in_future(value)
+
+
+class ExpenseCreate(_Input):
+    id: uuid.UUID
+    date: StrictDate
+    category: ExpenseCategory
+    amount_minor: ExpenseAmount
+    currency: Currency = "MYR"
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+
+
+class ExpensePatch(_Input):
+    """Partial update. Omitted fields are unchanged; only `notes` may be set to null."""
+
+    date: StrictDate | None = None
+    category: ExpenseCategory | None = None
+    amount_minor: ExpenseAmount | None = None
+    currency: Currency | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+
+    @field_validator("date", "category", "amount_minor", "currency", mode="before")
+    @classmethod
+    def _not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("must not be null")
+        return value
+
+
+class ExpenseOut(_Output):
+    id: uuid.UUID
+    date: dt.date
+    category: ExpenseCategory
+    amount_minor: int
+    currency: str
+    notes: str | None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class ExpensePage(BaseModel):
+    items: list[ExpenseOut]
+    next_cursor: str | None
+
+
+class ExpenseCategoryTotal(BaseModel):
+    category: ExpenseCategory
+    total_minor: int
+    count: int
+
+
+class ExpenseMonthTotal(BaseModel):
+    month: str
+    total_minor: int
+    count: int
+
+
+class ExpenseSummary(BaseModel):
+    currency: Literal["MYR"]
+    total_minor: int
+    count: int
+    by_category: list[ExpenseCategoryTotal]
+    by_month: list[ExpenseMonthTotal]

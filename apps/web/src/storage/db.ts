@@ -9,7 +9,10 @@ export type QueueKind =
   | 'put-vehicle'
   | 'create-reminder'
   | 'edit-reminder'
-  | 'delete-reminder';
+  | 'delete-reminder'
+  | 'create-expense'
+  | 'edit-expense'
+  | 'delete-expense';
 
 export interface QueueError {
   /** HTTP status, or null for a network failure. */

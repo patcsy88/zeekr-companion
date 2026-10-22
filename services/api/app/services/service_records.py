@@ -5,9 +5,9 @@ import binascii
 import datetime as dt
 import json
 import uuid
+from typing import Protocol
 
 from app.errors import Conflict, FieldIssue, InvalidInput, NotFound
-from app.models import ServiceRecord
 from app.repositories.service_records import HistoryKey, ServiceRecordRepository
 from app.schemas import (
     ServiceRecordCreate,
@@ -27,7 +27,16 @@ _CONTENT_FIELDS = (
 )
 
 
-def encode_cursor(record: ServiceRecord) -> str:
+class HasHistoryKey(Protocol):
+    @property
+    def date(self) -> dt.date: ...
+    @property
+    def created_at(self) -> dt.datetime: ...
+    @property
+    def id(self) -> uuid.UUID: ...
+
+
+def encode_cursor(record: HasHistoryKey) -> str:
     payload = json.dumps(
         {
             "d": record.date.isoformat(),

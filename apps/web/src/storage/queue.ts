@@ -1,4 +1,6 @@
 import type {
+  ExpenseCreate,
+  ExpenseEdit,
   ReminderCreate,
   ReminderEdit,
   ServiceRecordCreate,
@@ -211,6 +213,70 @@ export async function enqueueReminderDelete(id: string): Promise<void> {
           'delete-reminder',
           'DELETE',
           `/reminders/${encodeURIComponent(id)}`,
+          undefined,
+          id,
+        ) as QueueEntry,
+      );
+    }
+  }
+  await tx.done;
+  notifyData();
+}
+
+/** Queue an expense creation. As for records, the expense id is the entry id (idempotent POST). */
+export async function enqueueExpenseCreate(body: ExpenseCreate): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const existing = (await tx.store.index('by_record').getAll(body.id)).find(
+    (e) => e.kind === 'create-expense' && e.status !== 'sending',
+  );
+  if (existing) await tx.store.put(reset(existing, body));
+  else
+    await tx.store.add(
+      base('create-expense', 'POST', '/expenses', body, body.id, body.id) as QueueEntry,
+    );
+  await tx.done;
+  notifyData();
+}
+
+/** Same coalescing as service records: an edit of an unsent create is folded into that create. */
+export async function enqueueExpenseEdit(id: string, patch: ExpenseEdit): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
+  const create = entries.find((e) => e.kind === 'create-expense' && e.status !== 'sending');
+  const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-expense');
+  if (create) {
+    await tx.store.put(reset(create, { ...(create.body as ExpenseCreate), ...patch }));
+  } else if (lastEdit && lastEdit.status !== 'sending') {
+    await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ExpenseEdit), ...patch }));
+  } else {
+    await tx.store.add(
+      base('edit-expense', 'PATCH', `/expenses/${encodeURIComponent(id)}`, patch, id) as QueueEntry,
+    );
+  }
+  await tx.done;
+  notifyData();
+}
+
+/** Same rule as enqueueDelete: an unattempted create is cancelled together with its edits. */
+export async function enqueueExpenseDelete(id: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = await tx.store.index('by_record').getAll(id);
+  const create = entries.find((e) => e.kind === 'create-expense');
+  if (create && create.attempts === 0 && create.status !== 'sending') {
+    for (const e of entries) await tx.store.delete(e.seq);
+  } else {
+    for (const e of entries) {
+      if (e.kind === 'edit-expense' && e.status !== 'sending') await tx.store.delete(e.seq);
+    }
+    if (!entries.some((e) => e.kind === 'delete-expense')) {
+      await tx.store.add(
+        base(
+          'delete-expense',
+          'DELETE',
+          `/expenses/${encodeURIComponent(id)}`,
           undefined,
           id,
         ) as QueueEntry,

@@ -14,7 +14,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
     engine = create_engine(fresh_database_url)
     try:
         inspector = inspect(engine)
-        assert {"vehicle", "service_record", "reminder", "alembic_version"} <= set(
+        assert {"vehicle", "service_record", "reminder", "expense", "alembic_version"} <= set(
             inspector.get_table_names()
         )
         columns = {c["name"] for c in inspector.get_columns("service_record")}
@@ -22,7 +22,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0002"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0003"
             )
     finally:
         engine.dispose()
@@ -67,4 +67,38 @@ def test_ac29_reminder_migration_downgrades_and_reapplies(fresh_database_url: st
     run_migrations(fresh_database_url)
     engine = create_engine(fresh_database_url)
     assert "reminder" in inspect(engine).get_table_names()
+    engine.dispose()
+
+
+def test_ac47_expense_migration_downgrades_and_reapplies(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0002")
+        engine = create_engine(fresh_database_url)
+        tables = set(inspect(engine).get_table_names())
+        assert "expense" not in tables
+        assert "reminder" in tables
+        with engine.connect() as conn:
+            assert (
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0002"
+            )
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    insp = inspect(engine)
+    assert "expense" in insp.get_table_names()
+    assert "ix_expense_history" in {i["name"] for i in insp.get_indexes("expense")}
     engine.dispose()

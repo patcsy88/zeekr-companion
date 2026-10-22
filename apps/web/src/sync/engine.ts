@@ -1,6 +1,6 @@
 import { ApiError, NetworkError, request } from '../api/client';
 import { getVehicle } from '../api/endpoints';
-import type { Reminder, ServiceRecord, Vehicle } from '../api/types';
+import type { Expense, Reminder, ServiceRecord, Vehicle } from '../api/types';
 import { getSession, requestLogin, subscribeSession } from '../auth/session';
 import {
   refreshRecords,
@@ -9,6 +9,7 @@ import {
   setVehicleInCache,
   upsertRecordInCache,
 } from '../data/repository';
+import { refreshExpenses, removeExpenseFromCache, upsertExpenseInCache } from '../data/expenses';
 import {
   refreshReminders,
   refreshTemplates,
@@ -118,6 +119,13 @@ async function applySuccess(entry: QueueEntry, data: unknown): Promise<void> {
     case 'delete-reminder':
       await removeReminderFromCache(entry.record_id);
       break;
+    case 'create-expense':
+    case 'edit-expense':
+      await upsertExpenseInCache(data as Expense);
+      break;
+    case 'delete-expense':
+      await removeExpenseFromCache(entry.record_id);
+      break;
     case 'put-vehicle':
       await setVehicleInCache(data as Vehicle);
       if ((await getMeta<string>(IDENTITY_KEY)) === undefined)
@@ -147,6 +155,7 @@ async function send(entry: QueueEntry): Promise<Outcome> {
       if (entry.method === 'DELETE' && e.status === 404) {
         // Already gone (for example a replayed DELETE): the goal is met.
         if (entry.kind === 'delete-reminder') await removeReminderFromCache(entry.record_id);
+        else if (entry.kind === 'delete-expense') await removeExpenseFromCache(entry.record_id);
         else await removeRecordFromCache(entry.record_id);
         await removeEntry(entry.seq);
         return 'done';
@@ -291,6 +300,7 @@ export async function syncAll(force = false): Promise<void> {
     await refreshVehicle();
     await refreshRecords();
     await refreshReminders();
+//     await refreshExpenses();
     // The template is static: one fetch per sync is enough, and a failure here is not fatal.
     await refreshTemplates().catch(() => undefined);
     setStatus({ lastError: null });

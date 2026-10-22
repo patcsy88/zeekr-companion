@@ -8,6 +8,13 @@ import type {
   ApiErrorDetail,
   ApiErrorResponse,
   CurrentOdometer,
+  Expense,
+  ExpenseCategory,
+  ExpenseCategoryTotal,
+  ExpenseCreate,
+  ExpenseMonthTotal,
+  ExpensePage,
+  ExpenseSummary,
   Reminder,
   ReminderCreate,
   ReminderKind,
@@ -25,6 +32,13 @@ import type {
 } from '@zeekr-companion/shared-types';
 
 export type {
+  Expense,
+  ExpenseCategory,
+  ExpenseCategoryTotal,
+  ExpenseCreate,
+  ExpenseMonthTotal,
+  ExpensePage,
+  ExpenseSummary,
   CurrentOdometer,
   Reminder,
   ReminderCreate,
@@ -55,6 +69,14 @@ export interface RecordEdit {
   description?: string;
   cost_minor?: number;
   provider?: string | null;
+  notes?: string | null;
+}
+
+/** What the expense forms edit and the queue sends. Only notes may be null. */
+export interface ExpenseEdit {
+  date?: string;
+  category?: ExpenseCategory;
+  amount_minor?: number;
   notes?: string | null;
 }
 

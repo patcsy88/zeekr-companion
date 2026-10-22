@@ -1,0 +1,164 @@
+{
+  "description": "Shared test vectors for expense totals (AC-37, AC-41). Used by Vitest (apps/web) and intended for pytest. Each case applies the optional filter (category, from, to; from and to inclusive, YYYY-MM-DD) to the expenses, then computes totals. Integer sen only. by_category is ordered by total_minor descending then category ascending; by_month by month descending; month is the first 7 characters of date with no time zone conversion. Categories or months with no rows are omitted.",
+  "cases": [
+    {
+      "name": "empty selection is zeros and empty arrays",
+      "expenses": [],
+      "filter": {},
+      "expected": { "total_minor": 0, "count": 0, "by_category": [], "by_month": [] }
+    },
+    {
+      "name": "one expense",
+      "expenses": [{ "date": "2026-10-05", "category": "charging", "amount_minor": 1250 }],
+      "filter": {},
+      "expected": {
+        "total_minor": 1250,
+        "count": 1,
+        "by_category": [{ "category": "charging", "total_minor": 1250, "count": 1 }],
+        "by_month": [{ "month": "2026-10", "total_minor": 1250, "count": 1 }]
+      }
+    },
+    {
+      "name": "several months and categories, ordered by total then month descending",
+      "expenses": [
+        { "date": "2026-10-05", "category": "charging", "amount_minor": 3000 },
+        { "date": "2026-10-20", "category": "parking", "amount_minor": 500 },
+        { "date": "2026-09-30", "category": "charging", "amount_minor": 2000 },
+        { "date": "2026-08-01", "category": "insurance", "amount_minor": 150000 },
+        { "date": "2026-08-15", "category": "tolls", "amount_minor": 99 }
+      ],
+      "filter": {},
+      "expected": {
+        "total_minor": 155599,
+        "count": 5,
+        "by_category": [
+          { "category": "insurance", "total_minor": 150000, "count": 1 },
+          { "category": "charging", "total_minor": 5000, "count": 2 },
+          { "category": "parking", "total_minor": 500, "count": 1 },
+          { "category": "tolls", "total_minor": 99, "count": 1 }
+        ],
+        "by_month": [
+          { "month": "2026-10", "total_minor": 3500, "count": 2 },
+          { "month": "2026-09", "total_minor": 2000, "count": 1 },
+          { "month": "2026-08", "total_minor": 150099, "count": 2 }
+        ]
+      }
+    },
+    {
+      "name": "equal category totals are ordered by category name",
+      "expenses": [
+        { "date": "2026-03-01", "category": "tyres", "amount_minor": 100 },
+        { "date": "2026-03-02", "category": "cleaning", "amount_minor": 100 },
+        { "date": "2026-03-03", "category": "other", "amount_minor": 100 }
+      ],
+      "filter": {},
+      "expected": {
+        "total_minor": 300,
+        "count": 3,
+        "by_category": [
+          { "category": "cleaning", "total_minor": 100, "count": 1 },
+          { "category": "other", "total_minor": 100, "count": 1 },
+          { "category": "tyres", "total_minor": 100, "count": 1 }
+        ],
+        "by_month": [{ "month": "2026-03", "total_minor": 300, "count": 3 }]
+      }
+    },
+    {
+      "name": "month boundary: 31 Jan and 1 Feb fall in different months",
+      "expenses": [
+        { "date": "2026-01-31", "category": "parking", "amount_minor": 200 },
+        { "date": "2026-02-01", "category": "parking", "amount_minor": 300 }
+      ],
+      "filter": {},
+      "expected": {
+        "total_minor": 500,
+        "count": 2,
+        "by_category": [{ "category": "parking", "total_minor": 500, "count": 2 }],
+        "by_month": [
+          { "month": "2026-02", "total_minor": 300, "count": 1 },
+          { "month": "2026-01", "total_minor": 200, "count": 1 }
+        ]
+      }
+    },
+    {
+      "name": "amounts at the 10^12 bound add up with integer arithmetic",
+      "expenses": [
+        { "date": "2026-06-01", "category": "other", "amount_minor": 1000000000000 },
+        { "date": "2026-06-02", "category": "other", "amount_minor": 1000000000000 },
+        { "date": "2026-05-31", "category": "warranty", "amount_minor": 1 }
+      ],
+      "filter": {},
+      "expected": {
+        "total_minor": 2000000000001,
+        "count": 3,
+        "by_category": [
+          { "category": "other", "total_minor": 2000000000000, "count": 2 },
+          { "category": "warranty", "total_minor": 1, "count": 1 }
+        ],
+        "by_month": [
+          { "month": "2026-06", "total_minor": 2000000000000, "count": 2 },
+          { "month": "2026-05", "total_minor": 1, "count": 1 }
+        ]
+      }
+    },
+    {
+      "name": "category filter",
+      "expenses": [
+        { "date": "2026-10-05", "category": "charging", "amount_minor": 3000 },
+        { "date": "2026-10-06", "category": "parking", "amount_minor": 500 },
+        { "date": "2026-09-06", "category": "charging", "amount_minor": 700 }
+      ],
+      "filter": { "category": "charging" },
+      "expected": {
+        "total_minor": 3700,
+        "count": 2,
+        "by_category": [{ "category": "charging", "total_minor": 3700, "count": 2 }],
+        "by_month": [
+          { "month": "2026-10", "total_minor": 3000, "count": 1 },
+          { "month": "2026-09", "total_minor": 700, "count": 1 }
+        ]
+      }
+    },
+    {
+      "name": "from and to are inclusive",
+      "expenses": [
+        { "date": "2026-09-30", "category": "tolls", "amount_minor": 10 },
+        { "date": "2026-10-01", "category": "tolls", "amount_minor": 20 },
+        { "date": "2026-10-15", "category": "tolls", "amount_minor": 30 },
+        { "date": "2026-10-31", "category": "tolls", "amount_minor": 40 },
+        { "date": "2026-11-01", "category": "tolls", "amount_minor": 50 }
+      ],
+      "filter": { "from": "2026-10-01", "to": "2026-10-31" },
+      "expected": {
+        "total_minor": 90,
+        "count": 3,
+        "by_category": [{ "category": "tolls", "total_minor": 90, "count": 3 }],
+        "by_month": [{ "month": "2026-10", "total_minor": 90, "count": 3 }]
+      }
+    },
+    {
+      "name": "from only, and a filter that matches nothing",
+      "expenses": [
+        { "date": "2026-10-01", "category": "fines", "amount_minor": 20000 },
+        { "date": "2026-10-02", "category": "fines", "amount_minor": 30000 }
+      ],
+      "filter": { "category": "charging", "from": "2026-10-02" },
+      "expected": { "total_minor": 0, "count": 0, "by_category": [], "by_month": [] }
+    },
+    {
+      "name": "category and date range combine with AND",
+      "expenses": [
+        { "date": "2026-10-01", "category": "accessories", "amount_minor": 1000 },
+        { "date": "2026-10-10", "category": "accessories", "amount_minor": 2000 },
+        { "date": "2026-10-10", "category": "cleaning", "amount_minor": 4000 }
+      ],
+      "filter": { "category": "accessories", "from": "2026-10-05", "to": "2026-10-10" },
+      "expected": {
+        "total_minor": 2000,
+        "count": 1,
+        "by_category": [{ "category": "accessories", "total_minor": 2000, "count": 1 }],
+        "by_month": [{ "month": "2026-10", "total_minor": 2000, "count": 1 }]
+      }
+    }
+  ]
+}

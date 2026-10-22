@@ -1,4 +1,6 @@
 import type {
+  ExpenseCreate,
+  ExpenseEdit,
   ReminderCreate,
   ReminderEdit,
   ServiceRecordCreate,
@@ -13,6 +15,9 @@ import {
   enqueueDelete,
   enqueueEdit,
   enqueuePutVehicle,
+  enqueueExpenseCreate,
+  enqueueExpenseDelete,
+  enqueueExpenseEdit,
   enqueueReminderCreate,
   enqueueReminderDelete,
   enqueueReminderEdit,
@@ -58,6 +63,21 @@ export async function saveReminderEdit(id: string, patch: ReminderEdit): Promise
 
 export async function removeReminder(id: string): Promise<void> {
   await enqueueReminderDelete(id);
+  await afterEnqueue();
+}
+
+export async function saveNewExpense(body: ExpenseCreate): Promise<void> {
+  await enqueueExpenseCreate(body);
+  await afterEnqueue();
+}
+
+export async function saveExpenseEdit(id: string, patch: ExpenseEdit): Promise<void> {
+  await enqueueExpenseEdit(id, patch);
+  await afterEnqueue();
+}
+
+export async function removeExpense(id: string): Promise<void> {
+  await enqueueExpenseDelete(id);
   await afterEnqueue();
 }
 
