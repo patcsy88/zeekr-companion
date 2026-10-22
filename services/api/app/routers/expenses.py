@@ -21,6 +21,7 @@ from app.schemas import (
     ExpensePage,
     ExpensePatch,
     ExpenseSummary,
+    PageLimit,
     StrictDate,
 )
 
@@ -56,7 +57,7 @@ def create_expense(
 )
 def list_expenses(
     service: ExpenseServiceDep,
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[PageLimit, Query(json_schema_extra={"minimum": 1, "maximum": 100})] = 50,
     cursor: Annotated[str | None, Query(max_length=512)] = None,
     category: CategoryFilter = None,
     date_from: FromDate = None,
