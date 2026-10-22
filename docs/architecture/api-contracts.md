@@ -175,7 +175,7 @@ Validation (violations return `400 validation_error` with field details):
 - `due_odometer` is a strict integer, `>= 0` and `<= 10,000,000` (the existing odometer bound).
 - `due_odometer` must be null unless `kind` is `service` (proposal, Q4). Changing `kind` away from `service` with a due odometer still set is rejected.
 - `due_date` is a valid date. Past dates are accepted (proposal, Q8). No upper bound other than a valid date from 2000-01-01 to 2200-12-31.
-- `completed_on` is not in the future, judged against the UTC date as for service-record dates.
+- `completed_on` is not in the future, judged against the current date in Asia/Kuala_Lumpur (UTC+8), the same rule as service-record dates after the owner decision of 2026-10-22 (DRAFT: this changes the approved service-record rule, see "Changes to approved parts").
 - `notes` is at most 5,000 characters. `template_ref` is at most 100 characters.
 - No NUL characters in any string (existing rule).
 - At most 500 reminders in total; a create beyond that returns `400 validation_error` on field `body` (proposed bound, keeps the list unpaginated).
@@ -186,7 +186,7 @@ Idempotent replay compares the content fields `kind`, `title`, `due_date`, `due_
 
 `GET /api/v1/reminders` query:
 
-- `today` (optional, `YYYY-MM-DD`): the owner's local date used to compute status (proposal, Q3). Defaults to the UTC date. A malformed value returns `400 validation_error`.
+- `today` (optional, `YYYY-MM-DD`): the date used to compute status. Defaults to the current date in Asia/Kuala_Lumpur (UTC+8, owner decision 2026-10-22), so the client does not need to send it. A malformed value returns `400 validation_error`.
 - `include_completed` (optional boolean, default `false`).
 
 Response `200`:
@@ -271,7 +271,7 @@ Matches the existing service-record pattern (ADR-002). The client generates the 
 
 ### Changes to approved parts
 
-None to any endpoint, field, validation rule or error code above this section. Two points for the owner:
+One change to an approved part, by owner decision 2026-10-22: the service-record rule "date not in the future" is now judged against the current date in Asia/Kuala_Lumpur (UTC+8), not the UTC date. This removes the 00:00 to 08:00 rejection window. It needs the existing backend check (`services/api/app/schemas.py`), the web default date and hint, and their tests updated, and re-approval of this amendment. Timestamps (`created_at`, `updated_at`) stay UTC. No other endpoint, field or error code changes. Two further points for the owner:
 
 1. The line "Not yet specified" below was edited only to remove "reminders" from its list.
 2. If the owner picks the alternative in Q1 (an owner-entered current odometer), that would add a field to `Vehicle` or a new resource, which does change the approved vehicle contract and needs a separate amendment. The proposal avoids this.
