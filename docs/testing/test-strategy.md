@@ -1,6 +1,6 @@
 # Test Strategy
 
-Status: **proposed**, updated 2026-10-22 for the Reminders slice. Commands are the gates. The initial-slice gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The Reminders slice gates were run by the Engineering Lead on 2026-10-22 (see `docs/testing/qa-report-2026-10-22-reminders.md`); an independent QA pass is still to do. The AC-6, AC-7 and AC-27 iPhone checks and the ADR-003 remote-access checks are deferred and optional (owner decision 2026-10-22): they no longer gate a slice, but they are not passed and are reported as deferred.
+Status: **proposed**, updated 2026-10-23 for the Expenses slice (accepted by the owner), previously 2026-10-22 for the Reminders slice. Commands are the gates. The initial-slice gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The Reminders slice gates were run by the Engineering Lead on 2026-10-22 (see `docs/testing/qa-report-2026-10-22-reminders.md`); an independent QA pass is still to do. The AC-6, AC-7 and AC-27 iPhone checks and the ADR-003 remote-access checks are deferred and optional (owner decision 2026-10-22): they no longer gate a slice, but they are not passed and are reported as deferred.
 
 ## Test layers
 
@@ -67,6 +67,21 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-27 | Playwright (second profile reads from the API, reload). Manual iPhone check: **blocked on HTTPS** |
 | AC-28 | `reminders.test.tsx` and Playwright with the title `<img src=x onerror=alert(1)>` |
 | AC-29 | `test_migrations.py` (apply, re-run, downgrade) and all gates |
+| AC-30, AC-31, AC-32, AC-33 | `services/api/tests/test_expenses.py` and `test_expenses_qa.py` (create, replay 200, conflict 409, validation cases, patch, delete). Web: `apps/web/test/expenses.test.tsx`, `expenses-qa.test.tsx` |
+| AC-34 | `expenses.test.tsx` (all categories selectable, readable labels, "Road tax (JPJ)") and `test_expenses.py` (enum) |
+| AC-35, AC-36 | `test_expenses.py`, `test_expenses_qa.py` (ordering, cursor paging, filters, invalid cursor and limit, `from` later than `to`). Web filters in `expenses.test.tsx` |
+| AC-37 | `test_expenses.py` (summary) and shared vectors `packages/shared-types/test-vectors/expense-totals.json` |
+| AC-38 | `expenses.test.tsx` (KL default date, MYR to sen parser, field errors) and `expenses-qa.test.tsx` (parser edge cases) |
+| AC-39, AC-40 | `expenses.test.tsx`, `expense-queue.test.ts` (coalescing, delete of an unsent create, exactly once, per-item failure) and Playwright `e2e/expenses.spec.ts` offline flow |
+| AC-41 | `expense-totals.test.ts` (same vectors as the server) and `expenses.test.tsx` (partial warning) |
+| AC-42 | `test_expenses.py` 401 test for every expense route |
+| AC-43 | Playwright `e2e/expenses.spec.ts` (second profile reads from the API, reload). Manual iPhone check: **deferred, not run** |
+| AC-44 | `expenses.test.tsx`, `expenses-qa.test.tsx` and Playwright with a script-like note |
+| AC-45 | `test_expenses.py` (cap of 5,000, replay accepted at the cap) |
+| AC-46 | `test_expenses.py` (no link to service records, service costs not in totals) |
+| AC-47 | `test_migrations.py` (migration `0003`) and all gates |
+
+Expenses independent QA: `docs/testing/qa-report-2026-10-22-expenses-backend.md` and `qa-report-2026-10-22-expenses-web.md`. Open limits: E2, E5, W3, W4, W6 (all Low or Info, accepted by the owner on 2026-10-23).
 
 Remote-access checks from ADR-003 (manual, owner holds the iPhone; reports use placeholder names only): HTTPS smoke from the iPhone on cellular; headers present exactly once; rate-limit keying behind Tailscale Serve and Caddy; Tailscale identity headers never reach the API; no public port and Funnel off.
 
