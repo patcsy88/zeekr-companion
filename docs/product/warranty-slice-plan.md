@@ -1,6 +1,6 @@
 # Warranty slice plan
 
-Status: **proposed, pending owner approval**, drafted 2026-10-22 by the Engineering Lead. Covers FR-6. Acceptance criteria AC-48 to AC-68 in `docs/product/requirements.md`. Contract: "Warranty (DRAFT)" in `docs/architecture/api-contracts.md`. Data model: "Warranty data model" in `docs/architecture/architecture.md`. Starts after the Expenses slice (`expenses-slice-plan.md`) is accepted. Attachments (FR-10) are out of scope.
+Status: **approved by the owner 2026-10-22**, drafted 2026-10-22 by the Engineering Lead. Covers FR-6. Acceptance criteria AC-48 to AC-68 in `docs/product/requirements.md`. Contract: "Warranty" in `docs/architecture/api-contracts.md`. Data model: "Warranty data model" in `docs/architecture/architecture.md`. Starts after the Expenses slice (`expenses-slice-plan.md`) is accepted. Attachments (FR-10) are out of scope.
 
 Privacy rule for this slice: no personal identifier, certificate number, provider name, VIN or plate goes into code, fixtures, tests or docs. Tests use fictional names and dates. The owner's extended warranty is entered by the owner in the running app as ordinary data; the repository only knows its plan type, price and dates already recorded in research O4.
 
