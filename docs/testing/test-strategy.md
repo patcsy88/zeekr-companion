@@ -1,6 +1,6 @@
 # Test Strategy
 
-Status: **proposed**, updated 2026-10-22 for the Reminders slice. Commands are the gates. The initial-slice gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The Reminders slice gates were run by the Engineering Lead on 2026-10-22 (see `docs/testing/qa-report-2026-10-22-reminders.md`); an independent QA pass is still to do. The AC-6, AC-7 and AC-27 iPhone checks and the ADR-003 remote-access checks are blocked until the owner sets up the Tailscale HTTPS origin.
+Status: **proposed**, updated 2026-10-22 for the Reminders slice. Commands are the gates. The initial-slice gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The Reminders slice gates were run by the Engineering Lead on 2026-10-22 (see `docs/testing/qa-report-2026-10-22-reminders.md`); an independent QA pass is still to do. The AC-6, AC-7 and AC-27 iPhone checks and the ADR-003 remote-access checks are deferred and optional (owner decision 2026-10-22): they no longer gate a slice, but they are not passed and are reported as deferred.
 
 ## Test layers
 
@@ -11,7 +11,7 @@ Status: **proposed**, updated 2026-10-22 for the Reminders slice. Commands are t
 | Web unit and component | Vitest + Testing Library + `fake-indexeddb` + MSW | Components, hooks, cache, sync queue |
 | End to end | Playwright against the production build on `localhost` | Slice flows. Chromium for offline tests, WebKit as a rough smoke test only (not iOS Safari) |
 | Compose / proxy smoke | shell + curl | Stack starts, `/health` through the proxy, security headers |
-| Manual | Physical iPhone, installed PWA | Offline behaviour, install, storage. **Blocked until the Tailscale HTTPS origin is set up (ADR-003)** |
+| Manual | Physical iPhone, installed PWA | Offline behaviour, install, storage. **Deferred and optional until an HTTPS origin exists (ADR-003); not a gate** |
 
 ## Quality gates
 

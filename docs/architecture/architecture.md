@@ -112,7 +112,7 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 | Risk | Mitigation |
 |---|---|
 | Homelab downtime (standalone Ubuntu Server, ADR-004) leaves the app without a backend | Offline cache and queue |
-| No HTTPS origin until Tailscale is set up (chosen 2026-10-13, ADR-003), so offline cannot be proven on the phone | Test on `localhost` in Playwright; owner completes the Tailscale steps; phone checks stay blocked and are reported as such until run |
+| No HTTPS origin until Tailscale is set up (chosen 2026-10-13, ADR-003), so offline cannot be proven on the phone | Test on `localhost` in Playwright; owner completes the Tailscale steps; phone checks are deferred (owner decision 2026-10-22), not gating, and reported as not run |
 | Tailscale machine name is public in certificate-transparency logs; Tailnet policy mistakes could expose host services | Neutral names, restrictive policy, Funnel off, checks in ADR-003 |
 | iOS Safari may evict browser storage (unverified) | Server is source of truth; show unsynced items; flush promptly |
 | No background sync or push on iOS Safari for the MVP | Sync while open; reminders shown in-app only |

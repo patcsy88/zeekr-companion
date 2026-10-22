@@ -11,6 +11,7 @@ Labels: **confirmed** (owner decision, repository fact, or stated in Tailscale d
 
 ## Context
 
+- **confirmed** Owner decision 2026-10-22: Tailscale setup is no longer required to complete a slice. This ADR remains the intended design for phone access, and the phone checks are deferred, not passed. Nothing here is removed.
 - **confirmed** The client is a PWA (ADR-002). Service workers need a secure context (HTTPS or `localhost`; MDN, unverified here). The iPhone has no HTTPS origin yet, so AC-6 and AC-7 phone checks are blocked.
 - **confirmed** NFR-6: the API must not be exposed to the public internet. `infra/docker-compose.yml` publishes only `web`, on `127.0.0.1:8080` by default. Caddy runs plain HTTP with `auto_https off` and HSTS off.
 - **confirmed** Single user, self-hosted on the Ubuntu host (ADR-004; originally Unraid under ADR-001, superseded). `AGENTS.md` requires owner approval for any new external service. The owner approved Tailscale on 2026-10-13.
