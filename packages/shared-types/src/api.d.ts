@@ -645,7 +645,7 @@ export interface operations {
     list_reminders_api_v1_reminders_get: {
         parameters: {
             query?: {
-                /** @description Date used for status; defaults to KL today */
+                /** @description Date (YYYY-MM-DD) used for status; defaults to KL today */
                 today?: string | null;
                 include_completed?: boolean;
             };
@@ -765,7 +765,7 @@ export interface operations {
     get_reminder_api_v1_reminders__reminder_id__get: {
         parameters: {
             query?: {
-                /** @description Date used for status; defaults to KL today */
+                /** @description Date (YYYY-MM-DD) used for status; defaults to KL today */
                 today?: string | null;
             };
             header?: never;

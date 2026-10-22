@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime as dt
 import uuid
 from typing import Annotated
 
@@ -21,12 +20,16 @@ from app.schemas import (
     ReminderOut,
     ReminderPatch,
     ReminderTemplateList,
+    StrictDate,
 )
 from app.services.reminder_templates import get_templates
 
 router = APIRouter(tags=["reminders"], dependencies=[Depends(require_auth)])
 
-Today = Annotated[dt.date | None, Query(description="Date used for status; defaults to KL today")]
+Today = Annotated[
+    StrictDate | None,
+    Query(description="Date (YYYY-MM-DD) used for status; defaults to KL today"),
+]
 
 
 @router.post(

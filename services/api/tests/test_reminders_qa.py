@@ -284,7 +284,6 @@ def test_cap_500_exact(client: TestClient, auth_headers: dict[str, str]) -> None
     assert client.get(URL, headers=auth_headers).status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="QA-D1: 500-row cap is check-then-insert, not atomic")
 def test_cap_500_is_not_exceeded_by_concurrent_creates(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
@@ -477,7 +476,6 @@ def test_create_rejects(
         {"due_date": "20261021"},
         pytest.param(
             {"due_date": "2026-10-21T00:00:00"},
-            marks=pytest.mark.xfail(strict=True, reason="QA-D2: datetime string accepted as date"),
         ),
         {"due_date": "2026-W43-3"},
     ],
@@ -548,7 +546,6 @@ def test_path_id_garbage(
         "20261021",
         pytest.param(
             "2026-10-21T00:00:00",
-            marks=pytest.mark.xfail(strict=True, reason="QA-D2: datetime string accepted as date"),
         ),
         "%00",
     ],

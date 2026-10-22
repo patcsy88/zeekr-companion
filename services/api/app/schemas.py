@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import uuid
 from typing import Annotated, Any, Literal
 
@@ -193,6 +194,7 @@ ReminderKind = Literal["service", "insurance_renewal", "road_tax_renewal"]
 MIN_DUE_DATE = dt.date(2000, 1, 1)
 MAX_DUE_DATE = dt.date(2200, 12, 31)
 MAX_REMINDERS = 500
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def _due_date_in_range(value: dt.date | None) -> dt.date | None:
@@ -204,6 +206,8 @@ def _due_date_in_range(value: dt.date | None) -> dt.date | None:
 def _date_string_only(value: Any) -> Any:
     """A JSON number is not a date (pydantic would read an int as a Unix timestamp)."""
     if isinstance(value, bool | int | float):
+        raise ValueError("must be a date in YYYY-MM-DD format")
+    if isinstance(value, str) and not _DATE_RE.fullmatch(value):
         raise ValueError("must be a date in YYYY-MM-DD format")
     return value
 
