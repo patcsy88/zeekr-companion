@@ -24,6 +24,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "pip-audit>=2.7",
+    "certifi>=2026.10.19",  # PYSEC-2026-4320; transitive via httpx and pip-audit
 ]
 
 [tool.setuptools.packages.find]
