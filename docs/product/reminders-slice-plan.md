@@ -1,6 +1,6 @@
 # Reminders slice plan
 
-Status: **proposed**, drafted 2026-10-22 by the Engineering Lead. Covers FR-7, FR-8 and FR-12. The owner approved doing this slice next (2026-10-22). Nothing below starts until the owner answers the blocking questions Q1 to Q6 and approves the contract draft ("Reminders (DRAFT)" in `docs/architecture/api-contracts.md`) and AC-10 to AC-29 in `docs/product/requirements.md`.
+Status: **approved 2026-10-22**, drafted by the Engineering Lead. Covers FR-7, FR-8 and FR-12. The owner answered Q1 to Q9 and approved the contract ("Reminders" in `docs/architecture/api-contracts.md`) and AC-10 to AC-29 in `docs/product/requirements.md`, including the Asia/Kuala_Lumpur date rule. Implementation may start.
 
 ## Task breakdown
 

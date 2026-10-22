@@ -53,9 +53,9 @@ The slice covers FR-1, FR-2, FR-3 and FR-11.
 | AC-8 | Lint, type checks and tests pass for both the web client and the backend |
 | AC-9 | A service record created while offline is shown as pending, and is sent exactly once, with no duplicate, when the API becomes reachable again (covers NFR-2). Added by the owner 2026-10-11. |
 
-## Acceptance criteria: Reminders slice (proposed, pending owner approval)
+## Acceptance criteria: Reminders slice (approved 2026-10-22)
 
-Status: **proposed**, drafted 2026-10-22 after the owner approved doing this slice next. It covers FR-7, FR-8 and FR-12. The contract is a DRAFT in `docs/architecture/api-contracts.md` ("Reminders (DRAFT)"); no code starts until the owner approves both. Items marked "(proposal)" depend on an open question below. Field names: `due_date`, `due_odometer` (km), `completed_on`, as in the draft contract.
+Status: **approved by the owner 2026-10-22**. It covers FR-7, FR-8 and FR-12. The contract is "Reminders" in `docs/architecture/api-contracts.md`. Items marked "(proposal)" were settled by the owner's answers to the questions below. Field names: `due_date`, `due_odometer` (km), `completed_on`, as in the draft contract.
 
 | ID | Criterion |
 |---|---|
@@ -82,7 +82,7 @@ Status: **proposed**, drafted 2026-10-22 after the owner approved doing this sli
 
 ### Open questions for the owner: Reminders slice (block approval)
 
-Owner answers 2026-10-22: **Q1 accepted** (odometer derived from the latest service record), **Q2 yes** (complete and reopen in scope, no auto-repeat), **Q3 local date** (the reminder rule uses the owner's local date, accepting the difference from the UTC service-date rule), **Q4 yes** (only `service` reminders may have a due odometer). **Q5 to Q9 accepted as proposed** (owner, 2026-10-22): the template baseline date is entered by the owner and prefilled from the purchase date, only the next checkpoint is preselected, the API serves the template as static data, the vehicle-researcher re-reads the PDF for odd-checkpoint work items, FR-12 is in this slice, "due soon" is 30 days or 1,000 km, past due dates are accepted on create, and JPJ and insurance reminders carry labels only. The contract and AC-10 to AC-29 still need the owner's explicit approval before any code.
+Owner answers 2026-10-22: **Q1 accepted** (odometer derived from the latest service record), **Q2 yes** (complete and reopen in scope, no auto-repeat), **Q3 local date** (the reminder rule uses the owner's local date, accepting the difference from the UTC service-date rule), **Q4 yes** (only `service` reminders may have a due odometer). **Q5 to Q9 accepted as proposed** (owner, 2026-10-22): the template baseline date is entered by the owner and prefilled from the purchase date, only the next checkpoint is preselected, the API serves the template as static data, the vehicle-researcher re-reads the PDF for odd-checkpoint work items, FR-12 is in this slice, "due soon" is 30 days or 1,000 km, past due dates are accepted on create, and JPJ and insurance reminders carry labels only. The owner approved the reminders contract and AC-10 to AC-29 on 2026-10-22, including the Asia/Kuala_Lumpur date rule. Implementation may start.
 
 1. **Q1 Odometer source (decided: derive).** Proposal: derive it from the latest service record, which needs no change to the approved vehicle contract. Weakness: it goes stale if the owner has not logged a service for a while, so odometer reminders may be late or "unknown". Alternative: an owner-entered current odometer (a new optional field on the approved `PUT /vehicle` contract, or a separate reading), which changes an approved part. Which one?
 2. **Q2 Completion and repeat.** Is mark-complete and reopen in scope (FR-7 and FR-8 do not say so, but overdue needs a way to clear)? Proposal: yes, and no automatic repeat reminder, so after a service the owner creates or accepts the next one.
