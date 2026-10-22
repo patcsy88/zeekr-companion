@@ -168,8 +168,9 @@ export function ExpensesPage() {
             <h2 id="exp-totals-title">Totals</h2>
             {snap.partial ? (
               <p role="status" className="notice bad" data-testid="partial-warning">
-                Partial: {snap.views.length.toLocaleString()} expenses loaded. Older expenses are
-                not saved on this device, so these totals are not complete.
+                Partial: {snap.views.length.toLocaleString()}{' '}
+                {snap.views.length === 1 ? 'expense' : 'expenses'} loaded. Older expenses are not
+                saved on this device, so these totals are not complete.
               </p>
             ) : null}
             <p>

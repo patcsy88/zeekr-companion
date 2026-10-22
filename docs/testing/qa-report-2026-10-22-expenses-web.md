@@ -32,3 +32,16 @@ Date: 2026-10-22. Scope: `apps/web` only. Tests: `apps/web/test/expenses-qa.test
 - 5,000-expense volume and the 50-page fetch cap in the UI.
 - Backend behaviour (done separately); the fake API in `test/server.ts` was used, so server-side parity is unverified.
 - Concurrent tabs and Web Locks.
+
+## Fixes (2026-10-23)
+
+| Id | Status | Change |
+|---|---|---|
+| QA-W8 | **Fixed** | Folding an edit into an already-attempted create no longer resets `attempts`, so a later delete still sends a DELETE. The same pattern existed for service records and reminders; the fix covers all three queues and each has a test (verified to fail without the fix). |
+| QA-W1 | **Fixed** | Leading zeros are stripped before the size guard. |
+| QA-W2 | **Fixed** | A grouped amount must start with 1 to 9 (`0,100` is refused). |
+| QA-W5 | **Fixed** | The partial warning says "1 expense loaded". |
+| QA-W7 | **Fixed** | The clear-data dialog now names the vehicle, service records, reminders and expenses. |
+| QA-W3, W4, W6 | Open (Low) | NUL in notes is refused by the server only; notes length counts UTF-16 units; the two category selects share a label. Left as known limits. |
+
+After the fixes: 314 passed and 3 expected failures (W3, W4, W6) in 3 consecutive runs; lint, format, tsc clean; Playwright e2e 33 passed.
