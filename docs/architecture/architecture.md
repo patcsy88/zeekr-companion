@@ -54,9 +54,9 @@ Routers never query the database directly. Services never import HTTP types.
 
 The slice implements `vehicle` and `service_record` first. Other tables are added in later increments, each with a migration.
 
-### Reminders data model (proposed, pending owner approval)
+### Reminders data model (approved with the contract, 2026-10-22)
 
-Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8, FR-12). Contract: "Reminders (DRAFT)" in `api-contracts.md`.
+Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8, FR-12). Contract: "Reminders" in `api-contracts.md`.
 
 | Table | Fields |
 |---|---|

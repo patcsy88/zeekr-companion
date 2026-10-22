@@ -121,9 +121,9 @@ Validation: `date` required and not in the future, `odometer >= 0`, `cost_minor 
 
 List response: `{ "items": [ ... ], "next_cursor": "string|null" }`
 
-## Reminders (DRAFT, pending owner approval)
+## Reminders (APPROVED by the owner, 2026-10-22)
 
-**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Reminders slice (FR-7, FR-8, FR-12; AC-10 to AC-29 in `docs/product/requirements.md`). This section is additive. Nothing above it is changed, and no code starts until the owner approves it. Items marked (proposal) depend on the open questions Q1 to Q9 in `docs/product/requirements.md`.
+**Approved by the owner on 2026-10-22**, including the Asia/Kuala_Lumpur date rule for service records (see "Changes to approved parts"). Drafted the same day by the Engineering Lead for the Reminders slice (FR-7, FR-8, FR-12; AC-10 to AC-29 in `docs/product/requirements.md`). Changing it now needs the owner to be told first. Items marked (proposal) depend on the open questions Q1 to Q9 in `docs/product/requirements.md`.
 
 Reuses all Conventions above: `/api/v1`, `snake_case`, client-generated UUIDs, Bearer token on every endpoint, `no-store`, the 64 KiB body limit, the error shape and codes. No new status code or error code is introduced.
 
@@ -175,7 +175,7 @@ Validation (violations return `400 validation_error` with field details):
 - `due_odometer` is a strict integer, `>= 0` and `<= 10,000,000` (the existing odometer bound).
 - `due_odometer` must be null unless `kind` is `service` (proposal, Q4). Changing `kind` away from `service` with a due odometer still set is rejected.
 - `due_date` is a valid date. Past dates are accepted (proposal, Q8). No upper bound other than a valid date from 2000-01-01 to 2200-12-31.
-- `completed_on` is not in the future, judged against the current date in Asia/Kuala_Lumpur (UTC+8), the same rule as service-record dates after the owner decision of 2026-10-22 (DRAFT: this changes the approved service-record rule, see "Changes to approved parts").
+- `completed_on` is not in the future, judged against the current date in Asia/Kuala_Lumpur (UTC+8), the same rule as service-record dates after the owner decision of 2026-10-22 (this changes the earlier service-record rule, see "Changes to approved parts").
 - `notes` is at most 5,000 characters. `template_ref` is at most 100 characters.
 - No NUL characters in any string (existing rule).
 - At most 500 reminders in total; a create beyond that returns `400 validation_error` on field `body` (proposed bound, keeps the list unpaginated).
@@ -278,4 +278,4 @@ One change to an approved part, by owner decision 2026-10-22: the service-record
 
 ## Not yet specified
 
-Expenses, warranty, tyres and attachments. They are specified when their increment starts. Reminders are drafted above and are not approved yet.
+Expenses, warranty, tyres and attachments. They are specified when their increment starts. Reminders are specified above and approved.
