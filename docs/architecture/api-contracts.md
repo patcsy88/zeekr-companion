@@ -276,6 +276,234 @@ One change to an approved part, by owner decision 2026-10-22: the service-record
 1. The line "Not yet specified" below was edited only to remove "reminders" from its list.
 2. If the owner picks the alternative in Q1 (an owner-entered current odometer), that would add a field to `Vehicle` or a new resource, which does change the approved vehicle contract and needs a separate amendment. The proposal avoids this.
 
+## Expenses (DRAFT, pending owner approval)
+
+**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Expenses slice (FR-5; AC-30 to AC-47 in `docs/product/requirements.md`). Nothing here is implemented or approved. Items marked (proposal, Qn) depend on the open questions in `requirements.md`.
+
+Reuses all Conventions above (`/api/v1`, `snake_case`, client UUIDs, Bearer token, `no-store`, 64 KiB body limit, error shape and codes, `currency` MYR only, `extra=forbid`, trimmed strings, no NUL). No new status code or error code. No approved part changes.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/expenses` | Idempotent on `id`. `201` first, `200` with the existing expense on an identical replay, `409 conflict` if the same `id` has different content |
+| `GET` | `/api/v1/expenses` | Newest first (`date`, `created_at`, `id`, all descending). Query: `limit` (1 to 100, default 50), `cursor`, `category`, `from`, `to` |
+| `GET` | `/api/v1/expenses/summary` | Computed totals. Query: `category`, `from`, `to`. Registered before `/{id}` |
+| `GET` | `/api/v1/expenses/{id}` | |
+| `PATCH` | `/api/v1/expenses/{id}` | Partial update |
+| `DELETE` | `/api/v1/expenses/{id}` | `204` |
+
+### Expense object
+
+```json
+{
+  "id": "uuid",
+  "date": "YYYY-MM-DD",
+  "category": "charging | insurance | road_tax | parking | tolls | tyres | accessories | cleaning | fines | warranty | other",
+  "amount_minor": 1,
+  "currency": "MYR",
+  "notes": "string|null",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+```
+
+`category` is a fixed enum (proposal, Q11); adding a value later is a contract amendment. No link to a service record (proposal, Q10).
+
+### Create and update
+
+`POST` body: `id`, `date`, `category`, `amount_minor`, optional `currency` (default `MYR`), optional `notes`. `PATCH` body: any of `date`, `category`, `amount_minor`, `currency`, `notes`; omitted fields are unchanged, only `notes` may be null.
+
+Validation (violations return `400 validation_error` with field details):
+
+- `date` is a valid `YYYY-MM-DD` string (a JSON number is rejected), from 2000-01-01, and not after the current date in Asia/Kuala_Lumpur (same rule as service records).
+- `category` is one of the enum values.
+- `amount_minor` is a strict integer, `>= 1` (proposal, Q12) and `<= 10^12`.
+- `currency` is `MYR`. `notes` at most 5,000 characters.
+- At most 5,000 expenses in total (proposal, Q18); a create beyond that returns `400` on field `body`. An identical replay of an existing id is still accepted at the cap.
+
+Idempotent replay compares `date`, `category`, `amount_minor`, `currency`, `notes`.
+
+### List and filters
+
+`category` is one enum value; `from` and `to` are inclusive `YYYY-MM-DD` dates, either or both. Unknown category, malformed date, `from > to` and an invalid cursor return `400 validation_error`. Filters combine with AND and apply with `cursor`. Response: `{ "items": [ ... ], "next_cursor": "string|null" }`, the same cursor format as service records.
+
+### Summary
+
+`GET /api/v1/expenses/summary` returns `200`:
+
+```json
+{
+  "currency": "MYR",
+  "total_minor": 0,
+  "count": 0,
+  "by_category": [ { "category": "charging", "total_minor": 0, "count": 0 } ],
+  "by_month": [ { "month": "YYYY-MM", "total_minor": 0, "count": 0 } ]
+}
+```
+
+Computed on every request from the matching rows and never stored. Integer sums. `by_category` is ordered by `total_minor` descending then category; `by_month` by month descending. Categories or months with no rows are omitted. `month` is the first 7 characters of the expense `date` (no time zone conversion). Service record costs are not included (proposal, Q10). The same pure function runs on the device for offline totals (AC-41).
+
+### Offline writes and idempotency
+
+Same pattern as service records and reminders (ADR-002): the client generates the UUID, queue kinds are added for expense create, edit and delete with `record_id` = the expense id, create-then-edit coalesces, delete after an unsent create cancels both, a replayed `DELETE` returning `404` counts as success, `400` and `409` mark the item failed and visible, `5xx`, `429` and network errors retry with backoff, `401` pauses the queue.
+
+### Errors
+
+| Case | Status and code |
+|---|---|
+| Body or query fails validation, bad UUID in path, bad cursor | `400 validation_error` |
+| No or invalid token | `401 unauthenticated` |
+| `GET`, `PATCH` or `DELETE` of an unknown id | `404 not_found` |
+| `POST` with an existing id and different content | `409 conflict` |
+| Wrong method, unexpected failure | `405 method_not_allowed`, `500 internal_error` |
+
+### Changes to approved parts
+
+None proposed. Out of scope here: attachments (FR-10), CSV export (proposal, Q17), multi-currency.
+
+## Warranty (DRAFT, pending owner approval)
+
+**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Warranty slice (FR-6; AC-48 to AC-68). It starts after the Expenses slice. Nothing here is implemented or approved.
+
+Reuses all Conventions above. No new status code or error code. No approved part changes. The app records what the owner enters; it never states what a warranty covers.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/warranty-coverages` | Idempotent on `id` (`201`, `200` on identical replay, `409` on different content) |
+| `GET` | `/api/v1/warranty-coverages` | All coverages with computed status. Query: `today`. Unpaginated (at most 50) |
+| `GET` | `/api/v1/warranty-coverages/{id}` | Query: `today` |
+| `PATCH` | `/api/v1/warranty-coverages/{id}` | Partial update |
+| `DELETE` | `/api/v1/warranty-coverages/{id}` | `204`. Also deletes the coverage's claims (cascade, proposal Q14) |
+| `POST` | `/api/v1/warranty-claims` | Idempotent on `id`, same codes |
+| `GET` | `/api/v1/warranty-claims` | Query: `coverage_id` (optional). Newest first (`date`, `created_at`, `id` descending). Unpaginated (at most 500) |
+| `GET` | `/api/v1/warranty-claims/{id}` | |
+| `PATCH` | `/api/v1/warranty-claims/{id}` | Partial update, including `status`. `coverage_id` cannot be changed |
+| `DELETE` | `/api/v1/warranty-claims/{id}` | `204` |
+| `GET` | `/api/v1/warranty-templates` | Read-only suggested factory template. Creates nothing |
+
+There is no "apply template" endpoint: accepting means ordinary `POST /warranty-coverages` calls with values the owner reviewed.
+
+### Coverage object
+
+```json
+{
+  "id": "uuid",
+  "name": "string",
+  "provider_type": "factory | extended",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD|null",
+  "km_limit": 0,
+  "notes": "string|null",
+  "source_kind": "owner_entered | template",
+  "verification_status": "confirmed | proposed | unverified",
+  "source_note": "string|null",
+  "template_ref": "string|null",
+  "status": "not_started | active | expiring_soon | expired",
+  "expired_by": ["date", "odometer"],
+  "expiring_soon_by": ["date", "odometer"],
+  "claim_count": 0,
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+```
+
+`km_limit` is an integer in kilometres or `null`. `status`, `expired_by`, `expiring_soon_by` and `claim_count` are computed on read and never stored or accepted. `expired_by` is empty unless `status` is `expired`; `expiring_soon_by` is empty unless `status` is `expiring_soon`. There is no `provider` or certificate-number field, by design (AC-67).
+
+### Create and update (coverage)
+
+`POST` body: `id`, `name`, `provider_type`, `start_date`, `end_date`, `km_limit`, `notes`, `source_kind` (default `owner_entered`), `verification_status` (default `unverified`; the web form sends `proposed` for template items), `source_note`, `template_ref`. `PATCH` body: any of `name`, `provider_type`, `start_date`, `end_date`, `km_limit`, `notes`, `verification_status`, `source_note`. `end_date`, `km_limit`, `notes`, `source_note` may be null. `source_kind` and `template_ref` cannot be changed after create.
+
+Validation (`400 validation_error`):
+
+- `name` 1 to 200 characters after trimming. `provider_type`, `source_kind`, `verification_status` are enum values.
+- `start_date` required. `start_date` and `end_date` are `YYYY-MM-DD` strings between 2000-01-01 and 2200-12-31. Future start and past end are accepted.
+- At least one of `end_date` and `km_limit` is non-null, on create and after any `PATCH`; the detail names both fields.
+- `end_date >= start_date`.
+- `km_limit` is a strict integer, `>= 1` and `<= 10,000,000`.
+- `notes` at most 5,000 characters, `source_note` at most 200, `template_ref` at most 100. `template_ref` non-null requires `source_kind` `template`.
+- At most 50 coverages (field `body`).
+
+Idempotent replay compares all create content fields.
+
+### Status rules (server and offline client, shared vectors)
+
+`today` (optional query, `YYYY-MM-DD`) defaults to the current date in Asia/Kuala_Lumpur; malformed returns `400`. Current odometer is the same read as reminders (latest service record by `date`, `created_at`, `id`; `null` if none). Warranty claims never change it.
+
+1. `expired` if `end_date` is set and `today > end_date` (`expired_by` has `date`), or the odometer is known and `> km_limit` (has `odometer`). Equality is not expired.
+2. Else `not_started` if `today < start_date`.
+3. Else `expiring_soon` if `end_date` is set and `end_date - today <= 90` days (has `date`), or the odometer is known and `km_limit - odometer <= 5,000` (has `odometer`). Thresholds are display-only (proposal, Q19).
+4. Else `active`.
+
+If the odometer is unknown the km conditions are not evaluated. The UI wording is "active by the dates and km you entered", never "covered" (AC-53).
+
+List response `200`: `{ "items": [coverage], "current_odometer": { "km", "source": "latest_service_record", "service_record_id", "date" } | null }`. Order: `expiring_soon`, `active`, `not_started`, `expired`; within a status by `end_date` ascending (nulls last), then `name`, then `id`.
+
+### Claim object
+
+```json
+{
+  "id": "uuid",
+  "coverage_id": "uuid",
+  "date": "YYYY-MM-DD",
+  "odometer": 0,
+  "description": "string",
+  "status": "submitted | approved | rejected | completed",
+  "cost_covered_minor": 0,
+  "currency": "MYR",
+  "notes": "string|null",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+```
+
+Validation (`400 validation_error`): `coverage_id` references an existing coverage (else a `400` on field `coverage_id`); `date` valid, from 2000-01-01, not after today in Asia/Kuala_Lumpur; `odometer` strict integer 0 to 10,000,000; `description` 1 to 500 characters; `status` is an enum value (proposal, Q21); `cost_covered_minor` null or a strict integer 0 to 10^12; `currency` MYR; `notes` at most 5,000; at most 500 claims. A claim date outside the coverage dates is accepted. `cost_covered_minor` is a record only: no expense is created and no total changes.
+
+### Template object
+
+`GET /api/v1/warranty-templates` returns `200 { "items": [ template ] }` with one template, `my-factory-warranty`:
+
+```json
+{
+  "id": "my-factory-warranty",
+  "version": 1,
+  "name": "Zeekr Malaysia factory warranty terms",
+  "source": {
+    "title": "Zeekr Malaysia Warranty (PDF)",
+    "url": "https://assets.zeekrlife.com/assets/my/Warranty.pdf",
+    "research_ref": "M8, M9, M10",
+    "status": "verified",
+    "retrieved": "2026-10-22"
+  },
+  "caveat": "Terms, scope, exclusions and conditions vary by build date, usage and local rules. Confirm against your own warranty booklet or service centre.",
+  "baseline_required": true,
+  "items": [
+    { "key": "general", "name": "Vehicle warranty", "months": 60, "km": 150000, "research_ref": "M8" },
+    { "key": "paint_corrosion", "name": "Paint and surface corrosion warranty", "months": 60, "km": 150000, "research_ref": "M8" },
+    { "key": "powertrain", "name": "Electric powertrain warranty", "months": 96, "km": 160000, "research_ref": "M9" },
+    { "key": "wear_short", "name": "Wear-and-tear cover (short)", "months": 6, "km": 10000, "research_ref": "M10" },
+    { "key": "wear_long", "name": "Wear-and-tear cover (long)", "months": 12, "km": 20000, "research_ref": "M10" },
+    { "key": "genuine_parts", "name": "Genuine replacement parts", "months": null, "km": null, "research_ref": "M10", "enter_manually": true }
+  ]
+}
+```
+
+Static, versioned, served from code, no table. It holds durations and km only: no part lists, no price, no claim about what is covered. Defaults the client proposes are `end_date = baseline + months` and `km_limit = km`, all editable; the owner supplies the baseline start date (the vehicle `purchase_date` is a labelled guess). The client sets `template_ref = "my-factory-warranty:<key>"`, `provider_type` `factory`, `source_kind` `template`, `verification_status` `proposed`. The extended warranty is not in the template. The server does not compute dates.
+
+### Offline writes and idempotency
+
+Same pattern as reminders. Queue kinds are added for coverage and claim create, edit and delete, with `record_id` set to the entity id. Ordering: a coverage create is sent before the claim creates that reference it; if it fails, its dependent claim creates are shown as blocked and not sent. Deleting an unsent coverage cancels its unsent claims. Deleting a sent coverage while claim creates are pending: the pending claim creates are dropped locally with a visible notice. A replayed `DELETE` returning `404` counts as success. `400` and `409` mark the item failed and visible.
+
+### Errors
+
+As for Expenses. A claim `POST` or `PATCH` with an unknown `coverage_id` is `400 validation_error` on `coverage_id`; `GET`, `PATCH`, `DELETE` of an unknown id is `404 not_found`.
+
+### Changes to approved parts
+
+None proposed. The only shared code is the current-odometer read already used by Reminders, reused unchanged. If the owner prefers an owner-entered odometer (reminders Q1 alternative), that would affect Reminders and Warranty together and is not proposed.
+
 ## Not yet specified
 
-Expenses, warranty, tyres and attachments. They are specified when their increment starts. Reminders are specified above and approved.
+Tyres and attachments. They are specified when their increment starts. Reminders are specified above and approved. Expenses and Warranty are drafted above and not yet approved.
