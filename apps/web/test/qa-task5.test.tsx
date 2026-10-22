@@ -81,35 +81,12 @@ describe('429 in the sign-in UI', () => {
   });
 });
 
-describe('UTC future-date rule between 00:00 and 08:00 Malaysian time', () => {
-  it('local date is ahead of UTC: the server refuses it and the UI explains why', async () => {
+describe('Asia/Kuala_Lumpur future-date rule (owner decision 2026-10-22)', () => {
+  it('00:00-08:00 Malaysian time: the Malaysian date is accepted, no UTC window', async () => {
     // 2026-10-11 17:30 UTC is 2026-10-12 01:30 in Malaysia (UTC+8).
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-11T17:30:00Z'));
-    fake.utcDateRule = true;
-    setToken('tok-test', 3600);
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(await screen.findByRole('link', { name: 'Add service' }));
-    // The default is now the UTC date (owner decision 2026-10-12), so it is accepted. To keep
-    // covering the server's refusal, the owner picks the later LOCAL date by hand.
-    expect(screen.getByLabelText('Date')).toHaveValue('2026-10-11');
-    await fillAndSave(user, { date: '2026-10-12' });
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    const row = await firstRow();
-    await waitFor(() => {
-      expect(within(row).getByTestId('sync-failed')).toBeInTheDocument();
-    });
-    await user.click(within(row).getByRole('link'));
-    expect(await screen.findByText(/date: must not be in the future/)).toBeInTheDocument();
-    expect(screen.getByText(/Between 00:00 and 08:00 Malaysian time/)).toBeInTheDocument();
-    expect(fake.records.size).toBe(0);
-  });
-
-  it('the same date is accepted once UTC has caught up (after 08:00 Malaysian time)', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-12T00:30:00Z')); // 08:30 MYT
-    fake.utcDateRule = true;
+    fake.klDateRule = true;
     setToken('tok-test', 3600);
     const user = userEvent.setup();
     render(<App />);
@@ -120,9 +97,30 @@ describe('UTC future-date rule between 00:00 and 08:00 Malaysian time', () => {
     await waitFor(() => {
       expect(fake.records.size).toBe(1);
     });
+    expect([...fake.records.values()][0]?.date).toBe('2026-10-12');
   });
 
-  it('the edit form shows the server date issue and the explanation next to the field', () => {
+  it('a date after the Malaysian today is refused and shown as failed without a UTC explanation', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-11T17:30:00Z'));
+    fake.klDateRule = true;
+    setToken('tok-test', 3600);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('link', { name: 'Add service' }));
+    await fillAndSave(user, { date: '2026-10-13' });
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const row = await firstRow();
+    await waitFor(() => {
+      expect(within(row).getByTestId('sync-failed')).toBeInTheDocument();
+    });
+    await user.click(within(row).getByRole('link'));
+    expect(await screen.findByText(/date: must not be in the future/)).toBeInTheDocument();
+    expect(screen.queryByText(/UTC|Between 00:00/)).not.toBeInTheDocument();
+    expect(fake.records.size).toBe(0);
+  });
+
+  it('the edit form shows the server date issue next to the field', () => {
     render(
       <RecordForm
         submitLabel="Save"
@@ -132,7 +130,7 @@ describe('UTC future-date rule between 00:00 and 08:00 Malaysian time', () => {
       />,
     );
     expect(screen.getByLabelText('Date')).toHaveAccessibleDescription(/must not be in the future/);
-    expect(document.getElementById('date-explain')).toHaveTextContent(/Between 00:00 and 08:00/);
+    expect(document.getElementById('date-explain')).toBeNull();
   });
 });
 

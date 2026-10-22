@@ -63,8 +63,8 @@ export interface ApiResult<T> {
 const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
 
 /**
- * Only the contract's paths are allowed: /auth/token, /vehicle, /service-records and
- * /service-records/{uuid}, the list with a plain query string. Anything else (traversal, encoded
+ * Only the contract's paths are allowed: /auth/token, /vehicle, /service-records, /reminders,
+ * /reminder-templates and the {uuid} forms of the two collections, lists with a plain query string. Anything else (traversal, encoded
  * slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -74,14 +74,22 @@ export function assertContractPath(path: string): void {
     extra.length === 0 &&
     parts[0] === '' &&
     ((parts.length === 2 &&
-      (parts[1] === 'vehicle' || parts[1] === 'auth' || parts[1] === 'service-records')) ||
+      (parts[1] === 'vehicle' ||
+        parts[1] === 'auth' ||
+        parts[1] === 'service-records' ||
+        parts[1] === 'reminders' ||
+        parts[1] === 'reminder-templates')) ||
       (parts.length === 3 && parts[1] === 'auth' && parts[2] === 'token') ||
-      (parts.length === 3 && parts[1] === 'service-records' && isUuid(parts[2])));
+      (parts.length === 3 &&
+        (parts[1] === 'service-records' || parts[1] === 'reminders') &&
+        isUuid(parts[2])));
   const fullOk =
     ok &&
     (parts[1] !== 'auth' || parts[2] === 'token') &&
     (query === undefined ||
-      (parts[1] === 'service-records' && parts.length === 2 && QUERY_RE.test(query)));
+      ((parts[1] === 'service-records' || parts[1] === 'reminders') &&
+        parts.length === 2 &&
+        QUERY_RE.test(query)));
   if (!fullOk) throw new ClientError('Refused a request outside the API contract.');
 }
 

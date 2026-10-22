@@ -93,3 +93,44 @@ class ServiceRecord(Base):
         CheckConstraint("char_length(description) BETWEEN 1 AND 500", name="description_length"),
         Index("ix_service_record_history", desc("date"), desc("created_at"), desc("id")),
     )
+
+
+class Reminder(Base):
+    __tablename__ = "reminder"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    due_date: Mapped[dt.date | None] = mapped_column(Date)
+    due_odometer: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    completed_on: Mapped[dt.date | None] = mapped_column(Date)
+    template_ref: Mapped[str | None] = mapped_column(String(100))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('service', 'insurance_renewal', 'road_tax_renewal')", name="kind_valid"
+        ),
+        CheckConstraint("char_length(title) BETWEEN 1 AND 200", name="title_length"),
+        CheckConstraint("due_date IS NOT NULL OR due_odometer IS NOT NULL", name="has_due_field"),
+        CheckConstraint(
+            "due_odometer IS NULL OR due_odometer BETWEEN 0 AND 10000000",
+            name="due_odometer_range",
+        ),
+        CheckConstraint(
+            "due_odometer IS NULL OR kind = 'service'", name="due_odometer_service_only"
+        ),
+        CheckConstraint(
+            "due_date IS NULL OR due_date BETWEEN DATE '2000-01-01' AND DATE '2200-12-31'",
+            name="due_date_range",
+        ),
+        CheckConstraint(
+            "template_ref IS NULL OR char_length(template_ref) <= 100", name="template_ref_length"
+        ),
+    )

@@ -326,3 +326,22 @@ button.link {
     font-size: 1.7rem;
   }
 }
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+.check input {
+  width: auto;
+}
+select {
+  width: 100%;
+  min-height: 2.75rem;
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: #fff;
+}

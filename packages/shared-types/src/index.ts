@@ -18,6 +18,17 @@ export type ServiceRecordCreate = Schemas["ServiceRecordCreate"];
 export type ServiceRecordPatch = Schemas["ServiceRecordPatch"];
 export type ServiceRecordPage = Schemas["ServiceRecordPage"];
 
+export type Reminder = Schemas["ReminderOut"];
+export type ReminderCreate = Schemas["ReminderCreate"];
+export type ReminderPatch = Schemas["ReminderPatch"];
+export type ReminderList = Schemas["ReminderList"];
+export type ReminderKind = Reminder["kind"];
+export type ReminderStatus = Reminder["status"];
+export type CurrentOdometer = Schemas["CurrentOdometer"];
+export type ReminderTemplate = Schemas["ReminderTemplate"];
+export type ReminderTemplateList = Schemas["ReminderTemplateList"];
+export type TemplateCheckpoint = Schemas["TemplateCheckpoint"];
+
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];
 export type ApiError = Schemas["ErrorBody"];

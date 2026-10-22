@@ -3,13 +3,17 @@ import { expect, type Browser, type Page } from '@playwright/test';
 export const PASSWORD = process.env.E2E_PASSWORD ?? '';
 export const API_PORT = Number(process.env.E2E_API_PORT ?? 18765);
 
-/** A date that is valid on the server's UTC rule at any time of day. */
+/** A date that is valid on the server's Asia/Kuala_Lumpur rule at any time of day. */
 export function safePastDate(): string {
   const d = new Date(Date.now() - 2 * 86_400_000);
   return d.toISOString().slice(0, 10);
 }
-export function utcTomorrow(): string {
-  return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+/** The calendar date in Asia/Kuala_Lumpur (UTC+8), offset by whole days. */
+export function klDate(offsetDays = 0, now: number = Date.now()): string {
+  return new Date(now + 8 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+export function klTomorrow(): string {
+  return klDate(1);
 }
 
 export function unique(prefix: string): string {

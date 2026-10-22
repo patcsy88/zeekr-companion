@@ -1,6 +1,6 @@
 import { ApiError, NetworkError, request } from '../api/client';
 import { getVehicle } from '../api/endpoints';
-import type { ServiceRecord, Vehicle } from '../api/types';
+import type { Reminder, ServiceRecord, Vehicle } from '../api/types';
 import { getSession, requestLogin, subscribeSession } from '../auth/session';
 import {
   refreshRecords,
@@ -9,6 +9,12 @@ import {
   setVehicleInCache,
   upsertRecordInCache,
 } from '../data/repository';
+import {
+  refreshReminders,
+  refreshTemplates,
+  removeReminderFromCache,
+  upsertReminderInCache,
+} from '../data/reminders';
 import { isOnline } from '../lib/connectivity';
 import { notifyData } from '../lib/events';
 import { getMeta, setMeta } from '../storage/cache';
@@ -105,6 +111,13 @@ async function applySuccess(entry: QueueEntry, data: unknown): Promise<void> {
     case 'delete-record':
       await removeRecordFromCache(entry.record_id);
       break;
+    case 'create-reminder':
+    case 'edit-reminder':
+      await upsertReminderInCache(data as Reminder);
+      break;
+    case 'delete-reminder':
+      await removeReminderFromCache(entry.record_id);
+      break;
     case 'put-vehicle':
       await setVehicleInCache(data as Vehicle);
       if ((await getMeta<string>(IDENTITY_KEY)) === undefined)
@@ -133,7 +146,8 @@ async function send(entry: QueueEntry): Promise<Outcome> {
       }
       if (entry.method === 'DELETE' && e.status === 404) {
         // Already gone (for example a replayed DELETE): the goal is met.
-        await removeRecordFromCache(entry.record_id);
+        if (entry.kind === 'delete-reminder') await removeReminderFromCache(entry.record_id);
+        else await removeRecordFromCache(entry.record_id);
         await removeEntry(entry.seq);
         return 'done';
       }
@@ -272,7 +286,13 @@ export async function syncAll(force = false): Promise<void> {
   const hasUnsent = queue.some((e) => e.status !== 'failed');
   if (hasUnsent) return; // do not refresh while writes are still waiting
   try {
-    await Promise.all([refreshVehicle(), refreshRecords()]);
+    // One after the other: each guarded refresh moves the data epoch, and refreshes running side
+    // by side would keep invalidating each other until one gave up.
+    await refreshVehicle();
+    await refreshRecords();
+    await refreshReminders();
+    // The template is static: one fetch per sync is enough, and a failure here is not fatal.
+    await refreshTemplates().catch(() => undefined);
     setStatus({ lastError: null });
   } catch (e) {
     if (!(e instanceof NetworkError) && !(e instanceof ApiError && e.status === 401)) {

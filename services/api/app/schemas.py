@@ -9,10 +9,13 @@ from typing import Annotated, Any, Literal
 from pydantic import (
     AfterValidator,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     field_validator,
 )
+
+from app.clock import today_kl
 
 # Sanity bounds so out-of-range numbers are a 400 rather than a database error.
 MAX_MONEY_MINOR = 10**12
@@ -34,7 +37,7 @@ UtcDateTime = Annotated[dt.datetime, AfterValidator(_to_utc)]
 
 
 def _not_in_future(value: dt.date | None) -> dt.date | None:
-    if value is not None and value > dt.datetime.now(dt.UTC).date():
+    if value is not None and value > today_kl():
         raise ValueError("must not be in the future")
     return value
 
@@ -182,3 +185,128 @@ class ServiceRecordOut(_Output):
 class ServiceRecordPage(BaseModel):
     items: list[ServiceRecordOut]
     next_cursor: str | None
+
+
+# --- Reminders ------------------------------------------------------------------------------
+
+ReminderKind = Literal["service", "insurance_renewal", "road_tax_renewal"]
+MIN_DUE_DATE = dt.date(2000, 1, 1)
+MAX_DUE_DATE = dt.date(2200, 12, 31)
+MAX_REMINDERS = 500
+
+
+def _due_date_in_range(value: dt.date | None) -> dt.date | None:
+    if value is not None and not (MIN_DUE_DATE <= value <= MAX_DUE_DATE):
+        raise ValueError("must be between 2000-01-01 and 2200-12-31")
+    return value
+
+
+def _date_string_only(value: Any) -> Any:
+    """A JSON number is not a date (pydantic would read an int as a Unix timestamp)."""
+    if isinstance(value, bool | int | float):
+        raise ValueError("must be a date in YYYY-MM-DD format")
+    return value
+
+
+StrictDate = Annotated[dt.date, BeforeValidator(_date_string_only)]
+
+
+class ReminderCreate(_Input):
+    id: uuid.UUID
+    kind: ReminderKind
+    title: str = Field(min_length=1, max_length=200)
+    due_date: StrictDate | None = None
+    due_odometer: Distance | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+    template_ref: str | None = Field(default=None, max_length=100)
+
+    _check_due_date = field_validator("due_date")(_due_date_in_range)
+
+
+class ReminderPatch(_Input):
+    """Partial update. `kind` and `title` may not be null; the others may be set to null.
+
+    `status`, `overdue_by` and `template_ref` are not accepted (extra=forbid).
+    """
+
+    kind: ReminderKind | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    due_date: StrictDate | None = None
+    due_odometer: Distance | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+    completed_on: StrictDate | None = None
+
+    _check_due_date = field_validator("due_date")(_due_date_in_range)
+    _check_completed_on = field_validator("completed_on")(_not_in_future)
+
+    @field_validator("kind", "title", mode="before")
+    @classmethod
+    def _not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("must not be null")
+        return value
+
+
+class ReminderOut(BaseModel):
+    id: uuid.UUID
+    kind: ReminderKind
+    title: str
+    due_date: dt.date | None
+    due_odometer: int | None
+    notes: str | None
+    completed_on: dt.date | None
+    template_ref: str | None
+    status: Literal["upcoming", "overdue", "completed"]
+    overdue_by: list[Literal["date", "odometer"]]
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class CurrentOdometer(BaseModel):
+    km: int
+    source: Literal["latest_service_record"]
+    service_record_id: uuid.UUID
+    date: dt.date
+
+
+class ReminderList(BaseModel):
+    items: list[ReminderOut]
+    current_odometer: CurrentOdometer | None
+
+
+class TemplateSource(BaseModel):
+    title: str
+    url: str
+    research_ref: str
+    status: Literal["verified"]
+    retrieved: dt.date
+
+
+class TemplateInterval(BaseModel):
+    km: int
+    months: int
+    rule: str
+
+
+class TemplateCheckpoint(BaseModel):
+    number: int
+    km: int
+    months: int
+    work_items: list[str]
+    work_items_stated: bool
+
+
+class ReminderTemplate(BaseModel):
+    id: str
+    version: int
+    name: str
+    kind: ReminderKind
+    source: TemplateSource
+    caveat: str
+    interval: TemplateInterval
+    baseline_required: bool
+    checkpoints: list[TemplateCheckpoint]
+
+
+class ReminderTemplateList(BaseModel):
+    items: list[ReminderTemplate]

@@ -80,6 +80,16 @@ Status: **approved by the owner 2026-10-22**. It covers FR-7, FR-8 and FR-12. Th
 | AC-28 | Title, notes and template text are rendered as plain text. A title such as `<img src=x onerror=alert(1)>` appears literally and runs nothing. No third-party script or raw HTML injection is added. |
 | AC-29 | Migrations for the reminder table apply to an empty database and re-run without error (extends AC-2). Lint, type checks, tests, the OpenAPI drift check and the other gates in `docs/testing/test-strategy.md` pass for both the backend and the web client (extends AC-8). |
 
+### Reminders slice: verification status (2026-10-22)
+
+Implemented and verified by the Engineering Lead on disposable data. Details in `docs/testing/qa-report-2026-10-22-reminders.md`. This is not yet an independent QA pass.
+
+| AC | Status |
+|---|---|
+| AC-10 to AC-26, AC-28, AC-29 | Verified (backend pytest, Vitest, Playwright on `localhost`, gates) |
+| AC-27 | Server storage and second-profile read verified on `localhost`. **iPhone installed-app check: BLOCKED** until the Tailscale HTTPS origin exists |
+
+
 ### Open questions for the owner: Reminders slice (block approval)
 
 Owner answers 2026-10-22: **Q1 accepted** (odometer derived from the latest service record), **Q2 yes** (complete and reopen in scope, no auto-repeat), **Q3 local date** (the reminder rule uses the owner's local date, accepting the difference from the UTC service-date rule), **Q4 yes** (only `service` reminders may have a due odometer). **Q5 to Q9 accepted as proposed** (owner, 2026-10-22): the template baseline date is entered by the owner and prefilled from the purchase date, only the next checkpoint is preselected, the API serves the template as static data, the vehicle-researcher re-reads the PDF for odd-checkpoint work items, FR-12 is in this slice, "due soon" is 30 days or 1,000 km, past due dates are accepted on create, and JPJ and insurance reminders carry labels only. The owner approved the reminders contract and AC-10 to AC-29 on 2026-10-22, including the Asia/Kuala_Lumpur date rule. Implementation may start.

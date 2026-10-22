@@ -7,6 +7,8 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
+from app import schemas
+from app.clock import today_kl
 from tests.conftest import new_id, record_body
 
 URL = "/api/v1/service-records"
@@ -82,8 +84,29 @@ def test_ac5_missing_required_field_rejected(
 
 
 def test_today_is_accepted(client: TestClient, auth_headers: dict[str, str]) -> None:
-    today = dt.datetime.now(dt.UTC).date().isoformat()
+    today = today_kl().isoformat()
     assert client.post(URL, json=record_body(date=today), headers=auth_headers).status_code == 201
+
+
+def test_today_kl_is_ahead_of_utc_between_1600_and_2400_utc() -> None:
+    # 2026-10-11 19:00 UTC is 2026-10-12 03:00 in Kuala Lumpur (UTC+8, no DST).
+    instant = dt.datetime(2026, 10, 11, 19, 0, tzinfo=dt.UTC)
+    assert today_kl(instant) == dt.date(2026, 10, 12)
+    assert today_kl(dt.datetime(2026, 10, 11, 15, 59, tzinfo=dt.UTC)) == dt.date(2026, 10, 11)
+    assert today_kl(dt.datetime(2026, 10, 11, 16, 0, tzinfo=dt.UTC)) == dt.date(2026, 10, 12)
+
+
+def test_kl_date_rule_accepts_local_today_that_is_utc_tomorrow(
+    client: TestClient, auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Owner decision 2026-10-22: at 03:00 MYT the local date is accepted, the next day is not."""
+    fixed = dt.datetime(2026, 10, 11, 19, 0, tzinfo=dt.UTC)
+    monkeypatch.setattr(schemas, "today_kl", lambda: today_kl(fixed))
+    ok = client.post(URL, json=record_body(date="2026-10-12"), headers=auth_headers)
+    assert ok.status_code == 201
+    late = client.post(URL, json=record_body(date="2026-10-13"), headers=auth_headers)
+    assert late.status_code == 400
+    assert late.json()["error"]["details"][0]["issue"] == "must not be in the future"
 
 
 def test_idempotent_same_id_same_content(client: TestClient, auth_headers: dict[str, str]) -> None:

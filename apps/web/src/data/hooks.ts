@@ -13,6 +13,15 @@ import {
   type VehicleSnapshot,
 } from './repository';
 import type { RecordView } from './overlay';
+import type { ReminderView } from './reminderOverlay';
+import {
+  readReminder,
+  readReminders,
+  readTemplates,
+  type OdometerBasis,
+  type RemindersSnapshot,
+} from './reminders';
+import type { ReminderTemplate } from '../api/types';
 
 export const useSession = () => useSyncExternalStore(subscribeSession, getSession);
 export const useConnectivity = () => useSyncExternalStore(subscribeConnectivity, getConnectivity);
@@ -57,4 +66,16 @@ export function useQueueCounts(): { pending: number; failed: number } {
 }
 export function useLastSynced(): string | null {
   return useLocal(async () => (await getMeta<string>('last_synced_at')) ?? null, 'last') ?? null;
+}
+
+export function useReminders(): RemindersSnapshot | undefined {
+  return useLocal(readReminders, 'reminders');
+}
+export function useReminder(
+  id: string,
+): { view: ReminderView | null; basis: OdometerBasis | null; today: string } | undefined {
+  return useLocal(() => readReminder(id), `reminder:${id}`);
+}
+export function useTemplates(): { loaded: boolean; items: ReminderTemplate[] } | undefined {
+  return useLocal(readTemplates, 'templates');
 }

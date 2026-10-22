@@ -4,7 +4,8 @@ import {
   serverRecords,
   signIn,
   unique,
-  utcTomorrow,
+  klDate,
+  klTomorrow,
   waitForServiceWorker,
 } from './helpers';
 
@@ -166,33 +167,33 @@ test('a date the server rejects as "future" is explained next to the field', asy
   const description = unique('FUT');
   await page.goto('/');
   await signIn(page);
-  await addRecord(page, { description, date: utcTomorrow() });
+  await addRecord(page, { description, date: klTomorrow() });
   // Saved locally, then refused by the server: shown as failed with the explanation.
   const row = page.getByRole('listitem').filter({ hasText: description });
   await expect(row.getByTestId('sync-failed')).toBeVisible();
   await row.getByRole('link').click();
   await expect(page.getByText('must not be in the future')).toBeVisible();
-  await expect(page.getByText(/Between 00:00 and 08:00 Malaysian time/)).toBeVisible();
+  await expect(page.getByText(/Between 00:00 and 08:00/)).toHaveCount(0);
   await page.getByRole('button', { name: 'Discard my change' }).click();
 });
 
-test.describe('default date at 03:00 Malaysian time (owner decision 2026-10-12)', () => {
+test.describe('default date at 03:00 Malaysian time (owner decision 2026-10-22)', () => {
   test.use({ timezoneId: 'Asia/Kuala_Lumpur' });
 
-  test('the untouched default date is the UTC date and the real API accepts it', async ({
+  test('the untouched default date is the Malaysian date and the real API accepts it', async ({
     page,
     browser,
     baseURL,
   }) => {
-    // Browser clock: 19:00 UTC today, which is 03:00 tomorrow in Malaysia. The local date is then
-    // ahead of the real UTC date, so the old default (local date) is refused by the real API.
-    const utcToday = new Date().toISOString().slice(0, 10);
-    await page.clock.setFixedTime(new Date(`${utcToday}T19:00:00Z`));
+    // Browser clock: 03:00 Malaysian time today, which is still the previous day in UTC. The old
+    // UTC rule refused this date; the Malaysian rule accepts it.
+    const myToday = klDate();
+    await page.clock.setFixedTime(new Date(`${myToday}T03:00:00+08:00`));
     const description = unique('DEFDATE');
     await page.goto('/');
     await signIn(page);
     await page.getByRole('link', { name: 'Add service' }).click();
-    await expect(page.getByLabel('Date')).toHaveValue(utcToday);
+    await expect(page.getByLabel('Date')).toHaveValue(myToday);
     await page.getByLabel('Odometer (km)').fill('4321');
     await page.getByLabel('Description').fill(description);
     await page.getByLabel('Cost (MYR)').fill('10.00');

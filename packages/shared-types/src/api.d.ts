@@ -23,6 +23,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reminder-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reminder Templates
+         * @description Read-only suggestions. Creates nothing; accepting means ordinary POST /reminders calls.
+         */
+        get: operations["list_reminder_templates_api_v1_reminder_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reminders */
+        get: operations["list_reminders_api_v1_reminders_get"];
+        put?: never;
+        /** Create Reminder */
+        post: operations["create_reminder_api_v1_reminders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/{reminder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Reminder */
+        get: operations["get_reminder_api_v1_reminders__reminder_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Reminder */
+        delete: operations["delete_reminder_api_v1_reminders__reminder_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Reminder */
+        patch: operations["patch_reminder_api_v1_reminders__reminder_id__patch"];
+        trace?: never;
+    };
     "/api/v1/service-records": {
         parameters: {
             query?: never;
@@ -99,6 +156,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CurrentOdometer */
+        CurrentOdometer: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Km */
+            km: number;
+            /**
+             * Service Record Id
+             * Format: uuid
+             */
+            service_record_id: string;
+            /**
+             * Source
+             * @constant
+             */
+            source: "latest_service_record";
+        };
         /** ErrorBody */
         ErrorBody: {
             /**
@@ -124,6 +201,124 @@ export interface components {
          */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** ReminderCreate */
+        ReminderCreate: {
+            /** Due Date */
+            due_date?: string | null;
+            /** Due Odometer */
+            due_odometer?: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "service" | "insurance_renewal" | "road_tax_renewal";
+            /** Notes */
+            notes?: string | null;
+            /** Template Ref */
+            template_ref?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** ReminderList */
+        ReminderList: {
+            current_odometer: components["schemas"]["CurrentOdometer"] | null;
+            /** Items */
+            items: components["schemas"]["ReminderOut"][];
+        };
+        /** ReminderOut */
+        ReminderOut: {
+            /** Completed On */
+            completed_on: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Due Odometer */
+            due_odometer: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "service" | "insurance_renewal" | "road_tax_renewal";
+            /** Notes */
+            notes: string | null;
+            /** Overdue By */
+            overdue_by: ("date" | "odometer")[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "upcoming" | "overdue" | "completed";
+            /** Template Ref */
+            template_ref: string | null;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ReminderPatch
+         * @description Partial update. `kind` and `title` may not be null; the others may be set to null.
+         *
+         *     `status`, `overdue_by` and `template_ref` are not accepted (extra=forbid).
+         */
+        ReminderPatch: {
+            /** Completed On */
+            completed_on?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Due Odometer */
+            due_odometer?: number | null;
+            /** Kind */
+            kind?: ("service" | "insurance_renewal" | "road_tax_renewal") | null;
+            /** Notes */
+            notes?: string | null;
+            /** Title */
+            title?: string | null;
+        };
+        /** ReminderTemplate */
+        ReminderTemplate: {
+            /** Baseline Required */
+            baseline_required: boolean;
+            /** Caveat */
+            caveat: string;
+            /** Checkpoints */
+            checkpoints: components["schemas"]["TemplateCheckpoint"][];
+            /** Id */
+            id: string;
+            interval: components["schemas"]["TemplateInterval"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "service" | "insurance_renewal" | "road_tax_renewal";
+            /** Name */
+            name: string;
+            source: components["schemas"]["TemplateSource"];
+            /** Version */
+            version: number;
+        };
+        /** ReminderTemplateList */
+        ReminderTemplateList: {
+            /** Items */
+            items: components["schemas"]["ReminderTemplate"][];
         };
         /** ServiceRecordCreate */
         ServiceRecordCreate: {
@@ -215,6 +410,47 @@ export interface components {
             odometer?: number | null;
             /** Provider */
             provider?: string | null;
+        };
+        /** TemplateCheckpoint */
+        TemplateCheckpoint: {
+            /** Km */
+            km: number;
+            /** Months */
+            months: number;
+            /** Number */
+            number: number;
+            /** Work Items */
+            work_items: string[];
+            /** Work Items Stated */
+            work_items_stated: boolean;
+        };
+        /** TemplateInterval */
+        TemplateInterval: {
+            /** Km */
+            km: number;
+            /** Months */
+            months: number;
+            /** Rule */
+            rule: string;
+        };
+        /** TemplateSource */
+        TemplateSource: {
+            /** Research Ref */
+            research_ref: string;
+            /**
+             * Retrieved
+             * Format: date
+             */
+            retrieved: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "verified";
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** TokenRequest */
         TokenRequest: {
@@ -351,6 +587,343 @@ export interface operations {
                 headers: {
                     /** @description Seconds until another attempt is allowed */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_reminder_templates_api_v1_reminder_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderTemplateList"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_reminders_api_v1_reminders_get: {
+        parameters: {
+            query?: {
+                /** @description Date used for status; defaults to KL today */
+                today?: string | null;
+                include_completed?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderList"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_reminder_api_v1_reminders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderCreate"];
+            };
+        };
+        responses: {
+            /** @description Identical replay of an existing reminder */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_reminder_api_v1_reminders__reminder_id__get: {
+        parameters: {
+            query?: {
+                /** @description Date used for status; defaults to KL today */
+                today?: string | null;
+            };
+            header?: never;
+            path: {
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_reminder_api_v1_reminders__reminder_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_reminder_api_v1_reminders__reminder_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

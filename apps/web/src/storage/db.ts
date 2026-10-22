@@ -2,7 +2,14 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { FieldIssue } from '../api/types';
 
 export type QueueStatus = 'pending' | 'sending' | 'failed';
-export type QueueKind = 'create-record' | 'edit-record' | 'delete-record' | 'put-vehicle';
+export type QueueKind =
+  | 'create-record'
+  | 'edit-record'
+  | 'delete-record'
+  | 'put-vehicle'
+  | 'create-reminder'
+  | 'edit-reminder'
+  | 'delete-reminder';
 
 export interface QueueError {
   /** HTTP status, or null for a network failure. */

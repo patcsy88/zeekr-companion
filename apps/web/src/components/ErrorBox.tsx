@@ -1,10 +1,7 @@
 import type { QueueError } from '../storage/db';
-import { isFutureDateIssue } from '../lib/forms';
-import { UTC_DATE_EXPLANATION } from '../lib/dates';
 
 /** Shows why a queued change was refused by the server, in words. */
 export function FailedNotice({ error }: { error: QueueError }) {
-  const dateIssue = error.details.find((d) => d.field === 'date' && isFutureDateIssue(d.issue));
   return (
     <div role="alert" className="notice bad">
       <p>
@@ -22,7 +19,6 @@ export function FailedNotice({ error }: { error: QueueError }) {
           ))}
         </ul>
       ) : null}
-      {dateIssue ? <p>{UTC_DATE_EXPLANATION}</p> : null}
     </div>
   );
 }

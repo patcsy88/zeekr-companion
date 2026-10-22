@@ -1,0 +1,20 @@
+{
+  "description": "Shared test vectors for the reminder status rule (AC-17). Used by pytest and Vitest. today is the Asia/Kuala_Lumpur date. current_odometer_km null means unknown.",
+  "cases": [
+    {"name": "completed is never overdue (past date)", "today": "2026-10-22", "current_odometer_km": 50000, "reminder": {"due_date": "2026-01-01", "due_odometer": 10000, "completed_on": "2026-02-01"}, "expected": {"status": "completed", "overdue_by": []}},
+    {"name": "due today is upcoming", "today": "2026-10-22", "current_odometer_km": null, "reminder": {"due_date": "2026-10-22", "due_odometer": null, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "due yesterday is overdue by date", "today": "2026-10-22", "current_odometer_km": null, "reminder": {"due_date": "2026-10-21", "due_odometer": null, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["date"]}},
+    {"name": "due tomorrow is upcoming", "today": "2026-10-22", "current_odometer_km": null, "reminder": {"due_date": "2026-10-23", "due_odometer": null, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "odometer equal to due is upcoming", "today": "2026-10-22", "current_odometer_km": 20000, "reminder": {"due_date": null, "due_odometer": 20000, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "odometer one above due is overdue by odometer", "today": "2026-10-22", "current_odometer_km": 20001, "reminder": {"due_date": null, "due_odometer": 20000, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["odometer"]}},
+    {"name": "odometer below due is upcoming", "today": "2026-10-22", "current_odometer_km": 19999, "reminder": {"due_date": null, "due_odometer": 20000, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "unknown odometer is not overdue by odometer", "today": "2026-10-22", "current_odometer_km": null, "reminder": {"due_date": null, "due_odometer": 100, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "both fields, only date passed", "today": "2026-10-22", "current_odometer_km": 5000, "reminder": {"due_date": "2026-10-01", "due_odometer": 20000, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["date"]}},
+    {"name": "both fields, only odometer passed", "today": "2026-10-22", "current_odometer_km": 25000, "reminder": {"due_date": "2027-01-01", "due_odometer": 20000, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["odometer"]}},
+    {"name": "both fields, both passed", "today": "2026-10-22", "current_odometer_km": 25000, "reminder": {"due_date": "2026-10-01", "due_odometer": 20000, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["date", "odometer"]}},
+    {"name": "both fields, neither passed, equal odometer and due today", "today": "2026-10-22", "current_odometer_km": 20000, "reminder": {"due_date": "2026-10-22", "due_odometer": 20000, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "both fields, date passed, odometer unknown", "today": "2026-10-22", "current_odometer_km": null, "reminder": {"due_date": "2026-10-01", "due_odometer": 20000, "completed_on": null}, "expected": {"status": "overdue", "overdue_by": ["date"]}},
+    {"name": "zero odometer known, due odometer zero is upcoming", "today": "2026-10-22", "current_odometer_km": 0, "reminder": {"due_date": null, "due_odometer": 0, "completed_on": null}, "expected": {"status": "upcoming", "overdue_by": []}},
+    {"name": "completed with odometer passed stays completed", "today": "2026-10-22", "current_odometer_km": 90000, "reminder": {"due_date": null, "due_odometer": 20000, "completed_on": "2026-10-20"}, "expected": {"status": "completed", "overdue_by": []}}
+  ]
+}

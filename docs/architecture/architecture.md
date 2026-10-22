@@ -70,6 +70,7 @@ Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8
 - The template is static, versioned data in code. It has no table.
 - One migration (`0002`) adds the table, with a downgrade.
 - Web: the IndexedDB `cache` store gains a reminders key, and the `queue` gains reminder create, edit and delete kinds. This needs no new object store, but `QueueKind` and `applySuccess` change. Overdue is computed on the device by a pure function that shares test vectors with the backend. The service worker is unchanged and still never caches `/api/*`.
+- Implemented 2026-10-22: migration `0002_reminder`, `Reminder` model, `app/clock.py` (`today_kl`, Asia/Kuala_Lumpur) used by both service-record and reminder date checks, `reminder_status.compute_status` (backend) and `apps/web/src/lib/reminderStatus.ts` (web), tested against one shared vector file. `zoneinfo` finds `Asia/Kuala_Lumpur` in the `python:3.13-slim` image, so no `tzdata` dependency was added. The device date is derived with `Intl` in the same zone. The web refreshes the vehicle, records and reminders one after the other, because guarded refreshes that ran side by side kept invalidating each other.
 - Staleness risk: the offline status uses the device date and the cached latest service record, so it can differ from the server until the next sync. The UI says so.
 
 ## Offline and sync (proposed, see ADR-002)
