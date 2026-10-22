@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Full-UI tests type into forms with userEvent; under parallel load they can pass 5 s.
+    testTimeout: 15000,
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.{ts,tsx}'],
     restoreMocks: true,
