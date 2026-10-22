@@ -60,7 +60,7 @@ def decode_cursor(cursor: str) -> HistoryKey:
             created_at=created_at,
             id=uuid.UUID(data["i"]),
         )
-    except (ValueError, KeyError, TypeError, binascii.Error) as exc:
+    except (ValueError, KeyError, TypeError, AttributeError, binascii.Error) as exc:
         raise InvalidInput(
             "Invalid cursor.", [FieldIssue("cursor", "is not a valid cursor")]
         ) from exc

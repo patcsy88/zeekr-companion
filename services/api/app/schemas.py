@@ -215,6 +215,22 @@ def _date_string_only(value: Any) -> Any:
 StrictDate = Annotated[dt.date, BeforeValidator(_date_string_only)]
 
 
+def _digits_only(value: Any) -> Any:
+    """A page size is plain digits: no '1.0', no padding, no sign."""
+    if isinstance(value, str) and not re.fullmatch(r"[0-9]{1,6}", value):
+        raise ValueError("must be a whole number")
+    return value
+
+
+def _page_limit_range(value: int) -> int:
+    if not 1 <= value <= 100:
+        raise ValueError("must be between 1 and 100")
+    return value
+
+
+PageLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_page_limit_range)]
+
+
 class ReminderCreate(_Input):
     id: uuid.UUID
     kind: ReminderKind
@@ -342,6 +358,11 @@ def _expense_date(value: dt.date | None) -> dt.date | None:
     return _not_in_future(value)
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    """Notes that are empty after trimming mean 'no notes': one state, stored as null."""
+    return None if value is not None and value == "" else value
+
+
 class ExpenseCreate(_Input):
     id: uuid.UUID
     date: StrictDate
@@ -351,6 +372,7 @@ class ExpenseCreate(_Input):
     notes: str | None = Field(default=None, max_length=5000)
 
     _check_date = field_validator("date")(_expense_date)
+    _blank_notes = field_validator("notes")(_blank_to_none)
 
 
 class ExpensePatch(_Input):
@@ -363,6 +385,7 @@ class ExpensePatch(_Input):
     notes: str | None = Field(default=None, max_length=5000)
 
     _check_date = field_validator("date")(_expense_date)
+    _blank_notes = field_validator("notes")(_blank_to_none)
 
     @field_validator("date", "category", "amount_minor", "currency", mode="before")
     @classmethod

@@ -227,11 +227,6 @@ def test_notes_interior_whitespace_and_newlines_kept(
     assert e["notes"] == "a  b\n\nc\t d"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-E3: whitespace-only notes are stored as '' instead of null, so '' and null are "
-    "two different 'no notes' states (and a replay of null vs '' is a 409)",
-)
 def test_whitespace_only_notes_normalise_to_null(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
@@ -239,12 +234,12 @@ def test_whitespace_only_notes_normalise_to_null(
     assert e["notes"] is None
 
 
-def test_empty_string_notes_is_stored_as_given_and_not_null(
+def test_empty_string_notes_is_stored_as_null(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
     b = body(notes="")
-    assert client.post(URL, json=b, headers=auth_headers).json()["notes"] == ""
-    assert client.post(URL, json={**b, "notes": None}, headers=auth_headers).status_code == 409
+    assert client.post(URL, json=b, headers=auth_headers).json()["notes"] is None
+    assert client.post(URL, json={**b, "notes": None}, headers=auth_headers).status_code == 200
 
 
 def test_patch_notes_empty_string_and_null(
@@ -253,7 +248,7 @@ def test_patch_notes_empty_string_and_null(
     e = post(client, auth_headers, notes="x")
     assert (
         client.patch(f"{URL}/{e['id']}", json={"notes": ""}, headers=auth_headers).json()["notes"]
-        == ""
+        is None
     )
     assert (
         client.patch(f"{URL}/{e['id']}", json={"notes": None}, headers=auth_headers).json()["notes"]
@@ -471,11 +466,6 @@ def test_tampered_cursor_is_400(
     assert fields(r) == ["cursor"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-E1: a cursor whose 'i' is a JSON number, list, object or float raises "
-    "AttributeError/TypeError in uuid.UUID() which decode_cursor does not catch: 500 not 400",
-)
 @pytest.mark.parametrize("bad_i", [5, [], {}, 1.5, True])
 def test_cursor_with_non_string_id_is_400(
     client: TestClient, auth_headers: dict[str, str], bad_i: Any
@@ -515,11 +505,6 @@ def test_limit_rejected(client: TestClient, auth_headers: dict[str, str], limit:
     assert fields(r) == ["limit"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-E4: limit=1.0 is accepted (pydantic lax int parsing of a float string); the "
-    "contract says an integer",
-)
 def test_limit_float_string_rejected(client: TestClient, auth_headers: dict[str, str]) -> None:
     for value in ("1.0", " 5"):
         assert client.get(URL, params={"limit": value}, headers=auth_headers).status_code == 400, (
@@ -1124,3 +1109,17 @@ def test_hostile_looking_notes_are_stored_verbatim(
     e = post(client, auth_headers, notes=notes)
     assert client.get(f"{URL}/{e['id']}", headers=auth_headers).json()["notes"] == notes
     assert client.get(SUMMARY, headers=auth_headers).json()["count"] == 1
+
+
+@pytest.mark.parametrize("bad_i", [5, [], {}, 1.5, True])
+def test_service_record_cursor_with_non_string_id_is_400(
+    client: TestClient, auth_headers: dict[str, str], bad_i: object
+) -> None:
+    """The cursor decoder is shared with service records; QA-E1 was fixed there."""
+    import base64
+    import json
+
+    raw = json.dumps({"d": "2026-01-01", "c": "2026-01-01T00:00:00+00:00", "i": bad_i})
+    cursor = base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
+    r = client.get("/api/v1/service-records", params={"cursor": cursor}, headers=auth_headers)
+    assert r.status_code == 400
