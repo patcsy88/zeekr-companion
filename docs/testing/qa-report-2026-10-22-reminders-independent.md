@@ -19,8 +19,8 @@ Commit under test: `adb55a5` plus `608c1fc` (certifi pin). Written after two QA-
 
 | ID | Severity | Finding | Evidence |
 |---|---|---|---|
-| QA-D1 | Minor (single user) | The 500-reminder cap is check-then-insert, not atomic. 40 concurrent creates from 490 rows can exceed 500. | `test_cap_500_is_not_exceeded_by_concurrent_creates` (strict xfail) |
-| QA-D2 | Minor | A datetime string such as `2026-10-21T00:00:00` is accepted as a date, on create and as the `today` query parameter. The contract says `YYYY-MM-DD`. | `test_nonstandard_date_strings_probe[override1]`, `test_today_param_malformed[2026-10-21T00:00:00]` (strict xfail) |
+| QA-D1 | Minor (single user), **fixed** | The 500-reminder cap is check-then-insert, not atomic. 40 concurrent creates from 490 rows can exceed 500. | `test_cap_500_is_not_exceeded_by_concurrent_creates` (strict xfail) |
+| QA-D2 | Minor, **fixed** | A datetime string such as `2026-10-21T00:00:00` is accepted as a date, on create and as the `today` query parameter. The contract says `YYYY-MM-DD`. | `test_nonstandard_date_strings_probe[override1]`, `test_today_param_malformed[2026-10-21T00:00:00]` (strict xfail) |
 
 The tests are marked strict `xfail`, so they fail the suite once the defects are fixed and the marks must be removed. No application source was changed.
 
@@ -31,3 +31,7 @@ Midnight boundary at UTC+8, overdue equality, clearing both due fields, kind cha
 ## Traceability
 
 AC-10 to AC-26, AC-28, AC-29: verified by the Lead's tests plus this pass on the backend. Web behaviour for these (offline queue, template screen, plain-text rendering) is verified only by the Lead's web tests. AC-27: server storage verified on `localhost`; iPhone check deferred.
+
+## Fixes
+
+QA-D1 and QA-D2 were fixed afterwards. The reminder count check and insert now share one transaction under a Postgres advisory lock, and dates must match `YYYY-MM-DD` exactly (body and the `today` query parameter). The three expected-failure marks were removed, and the suite passes: 473 passed, plus ruff, format, mypy and the shared-types drift check. Web unit tests still 162 passed.

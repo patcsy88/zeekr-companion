@@ -6,7 +6,7 @@ import uuid
 from app.clock import today_kl
 from app.errors import Conflict, FieldIssue, InvalidInput, NotFound
 from app.models import Reminder
-from app.repositories.reminders import ReminderRepository
+from app.repositories.reminders import ReminderCapReached, ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.schemas import (
     MAX_REMINDERS,
@@ -93,12 +93,13 @@ class ReminderService:
                 if all(getattr(existing, f) == values[f] for f in _CONTENT_FIELDS):
                     return self._view(existing, None), False
                 raise Conflict("A reminder with this id already exists with different content.")
-            if self._repo.count() >= MAX_REMINDERS:
+            try:
+                inserted = self._repo.insert_if_absent(values, MAX_REMINDERS)
+            except ReminderCapReached:
                 raise InvalidInput(
                     "Request failed validation.",
                     [FieldIssue("body", f"at most {MAX_REMINDERS} reminders are allowed")],
-                )
-            inserted = self._repo.insert_if_absent(values)
+                ) from None
             if inserted is not None:
                 return self._view(inserted, None), True
         raise Conflict("Could not create the reminder; please retry.")

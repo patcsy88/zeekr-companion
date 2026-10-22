@@ -10,6 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.models import Reminder
 
+_CAP_LOCK_KEY = 726_001  # arbitrary app-level advisory lock id for the reminder cap
+
+
+class ReminderCapReached(Exception):  # noqa: N818
+    """The reminder table is full."""
+
 
 class ReminderRepository:
     def __init__(self, session: Session) -> None:
@@ -30,7 +36,19 @@ class ReminderRepository:
         self._session.rollback()
         return rows
 
-    def insert_if_absent(self, values: dict[str, Any]) -> Reminder | None:
+    def insert_if_absent(
+        self, values: dict[str, Any], max_rows: int | None = None
+    ) -> Reminder | None:
+        """Insert unless the id exists. With max_rows, the count check and the insert share one
+        transaction guarded by an advisory lock, so concurrent creates cannot exceed the cap.
+        Raises ReminderCapReached when the table is full."""
+        if max_rows is not None:
+            self._session.execute(select(func.pg_advisory_xact_lock(_CAP_LOCK_KEY)))
+            n = self._session.execute(select(func.count()).select_from(Reminder)).scalar_one()
+            exists = self._session.get(Reminder, values["id"], populate_existing=True)
+            if exists is None and n >= max_rows:
+                self._session.rollback()
+                raise ReminderCapReached
         stmt = (
             pg_insert(Reminder)
             .values(**values)
