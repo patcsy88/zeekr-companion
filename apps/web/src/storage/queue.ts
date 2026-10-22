@@ -1,4 +1,10 @@
-import type { ServiceRecordCreate, ServiceRecordPatch, Vehicle } from '../api/types';
+import type {
+  ReminderCreate,
+  ReminderEdit,
+  ServiceRecordCreate,
+  ServiceRecordPatch,
+  Vehicle,
+} from '../api/types';
 import { notifyData } from '../lib/events';
 import { uuid } from '../lib/uuid';
 import { getDb, type QueueEntry, type QueueError } from './db';
@@ -136,6 +142,81 @@ export async function enqueuePutVehicle(vehicle: Vehicle): Promise<void> {
     if (e.kind === 'put-vehicle' && e.status !== 'sending') await tx.store.delete(e.seq);
   }
   await tx.store.add(base('put-vehicle', 'PUT', '/vehicle', vehicle, vehicle.id) as QueueEntry);
+  await tx.done;
+  notifyData();
+}
+
+/** Queue a reminder creation. As for records, the reminder id is the entry id (idempotent POST). */
+export async function enqueueReminderCreate(body: ReminderCreate): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const existing = (await tx.store.index('by_record').getAll(body.id)).find(
+    (e) => e.kind === 'create-reminder' && e.status !== 'sending',
+  );
+  if (existing) await tx.store.put(reset(existing, body));
+  else
+    await tx.store.add(
+      base('create-reminder', 'POST', '/reminders', body, body.id, body.id) as QueueEntry,
+    );
+  await tx.done;
+  notifyData();
+}
+
+/**
+ * Queue a reminder edit (including complete and reopen). Merged into the last unsent edit if
+ * there is one; otherwise folded into an unsent create so one POST carries the final content.
+ * The create body cannot carry `completed_on`, so a completion always travels as its own PATCH,
+ * which FIFO order sends after the create.
+ */
+export async function enqueueReminderEdit(id: string, patch: ReminderEdit): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
+  const create = entries.find((e) => e.kind === 'create-reminder' && e.status !== 'sending');
+  const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-reminder');
+  if (lastEdit && lastEdit.status !== 'sending') {
+    await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ReminderEdit), ...patch }));
+  } else if (create && !('completed_on' in patch)) {
+    await tx.store.put(reset(create, { ...(create.body as ReminderCreate), ...patch }));
+  } else {
+    await tx.store.add(
+      base(
+        'edit-reminder',
+        'PATCH',
+        `/reminders/${encodeURIComponent(id)}`,
+        patch,
+        id,
+      ) as QueueEntry,
+    );
+  }
+  await tx.done;
+  notifyData();
+}
+
+/** Same rule as enqueueDelete: an unattempted create is cancelled together with its edits. */
+export async function enqueueReminderDelete(id: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = await tx.store.index('by_record').getAll(id);
+  const create = entries.find((e) => e.kind === 'create-reminder');
+  if (create && create.attempts === 0 && create.status !== 'sending') {
+    for (const e of entries) await tx.store.delete(e.seq);
+  } else {
+    for (const e of entries) {
+      if (e.kind === 'edit-reminder' && e.status !== 'sending') await tx.store.delete(e.seq);
+    }
+    if (!entries.some((e) => e.kind === 'delete-reminder')) {
+      await tx.store.add(
+        base(
+          'delete-reminder',
+          'DELETE',
+          `/reminders/${encodeURIComponent(id)}`,
+          undefined,
+          id,
+        ) as QueueEntry,
+      );
+    }
+  }
   await tx.done;
   notifyData();
 }

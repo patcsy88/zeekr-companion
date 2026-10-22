@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import type { ServiceRecord } from '../api/types';
-import { DEFAULT_DATE_HINT, isIsoDate, UTC_DATE_EXPLANATION, utcToday } from '../lib/dates';
-import { isFutureDateIssue, issuesByField } from '../lib/forms';
+import { DEFAULT_DATE_HINT, isIsoDate, klToday } from '../lib/dates';
+import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
 import { TextArea, TextField } from './Field';
 
@@ -30,10 +30,9 @@ type Errors = Partial<
 
 export function RecordForm({ initial, submitLabel, onSubmit, onCancel, serverIssues }: Props) {
   const [date, setDate] = useState(
-    // Owner decision 2026-10-12: new records default to the UTC date, so the default is never
-    // rejected by the server's "not in the future" rule (checked in UTC) between 00:00 and 08:00
-    // Malaysian time. A stored date is shown exactly as stored.
-    initial?.date ?? utcToday(),
+    // Owner decision 2026-10-22: dates are judged against the Asia/Kuala_Lumpur date, so the
+    // default is that date. A stored date is shown exactly as stored.
+    initial?.date ?? klToday(),
   );
   const [odometer, setOdometer] = useState(initial ? String(initial.odometer) : '');
   const [provider, setProvider] = useState(initial?.provider ?? '');
@@ -111,11 +110,6 @@ export function RecordForm({ initial, submitLabel, onSubmit, onCancel, serverIss
             <p className="hint" id="date-hint-default" data-testid="date-default-hint">
               {DEFAULT_DATE_HINT}
             </p>
-            {isFutureDateIssue(sd) ? (
-              <p className="explain" id="date-explain">
-                {UTC_DATE_EXPLANATION}
-              </p>
-            ) : null}
           </>
         }
       />

@@ -1,9 +1,14 @@
 import { assertUuid, request } from './client';
 import type {
+  Reminder,
+  ReminderCreate,
+  ReminderList,
+  ReminderTemplateList,
   ServiceRecord,
   ServiceRecordCreate,
   ServiceRecordPage,
   ServiceRecordPatch,
+  ReminderEdit,
   TokenResponse,
   Vehicle,
   VehicleInput,
@@ -57,4 +62,28 @@ export async function patchServiceRecord(
 
 export async function deleteServiceRecord(id: string): Promise<void> {
   await request({ method: 'DELETE', path: recordPath(id) });
+}
+
+/** Always asks for completed reminders too: the device keeps them all and filters locally. */
+export async function listReminders(): Promise<ReminderList> {
+  return (await request<ReminderList>({ method: 'GET', path: '/reminders?include_completed=true' }))
+    .data;
+}
+
+const reminderPath = (id: string) => `/reminders/${encodeURIComponent(assertUuid(id))}`;
+
+export async function createReminder(body: ReminderCreate): Promise<Reminder> {
+  return (await request<Reminder>({ method: 'POST', path: '/reminders', body })).data;
+}
+
+export async function patchReminder(id: string, body: ReminderEdit): Promise<Reminder> {
+  return (await request<Reminder>({ method: 'PATCH', path: reminderPath(id), body })).data;
+}
+
+export async function deleteReminder(id: string): Promise<void> {
+  await request({ method: 'DELETE', path: reminderPath(id) });
+}
+
+export async function getReminderTemplates(): Promise<ReminderTemplateList> {
+  return (await request<ReminderTemplateList>({ method: 'GET', path: '/reminder-templates' })).data;
 }

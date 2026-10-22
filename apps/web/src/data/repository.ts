@@ -42,7 +42,7 @@ export function withCacheLock<T>(fn: () => Promise<T>): Promise<T> {
  * and applying it would undo that change; fetch again instead. Gives up quietly after 3 tries:
  * the next sync refreshes.
  */
-async function refreshGuarded<T>(
+export async function refreshGuarded<T>(
   fetcher: () => Promise<T>,
   apply: (value: T) => Promise<void>,
 ): Promise<void> {

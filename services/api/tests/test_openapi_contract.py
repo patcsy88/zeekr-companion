@@ -52,3 +52,40 @@ def test_only_health_and_login_are_unauthenticated(schema: dict[str, Any]) -> No
         if "security" not in op
     }
     assert open_ops == {("get", "/health"), ("post", "/api/v1/auth/token")}
+
+
+REMINDER_ROUTES = {
+    ("post", "/api/v1/reminders"),
+    ("get", "/api/v1/reminders"),
+    ("get", "/api/v1/reminders/{reminder_id}"),
+    ("patch", "/api/v1/reminders/{reminder_id}"),
+    ("delete", "/api/v1/reminders/{reminder_id}"),
+    ("get", "/api/v1/reminder-templates"),
+}
+
+
+def test_reminder_routes_exist_need_auth_and_document_errors(schema: dict[str, Any]) -> None:
+    found = {
+        (method, path)
+        for path, item in schema["paths"].items()
+        for method in item
+        if "reminder" in path
+    }
+    assert found == REMINDER_ROUTES
+    for method, path in REMINDER_ROUTES:
+        op = schema["paths"][path][method]
+        assert op["security"] == [{"bearerAuth": []}]
+        assert "401" in op["responses"]
+        assert "422" not in op["responses"]
+    assert "200" in schema["paths"]["/api/v1/reminders"]["post"]["responses"]
+    assert "201" in schema["paths"]["/api/v1/reminders"]["post"]["responses"]
+    assert "409" in schema["paths"]["/api/v1/reminders"]["post"]["responses"]
+    assert "204" in schema["paths"]["/api/v1/reminders/{reminder_id}"]["delete"]["responses"]
+
+
+def test_reminder_input_models_forbid_extra_fields(schema: dict[str, Any]) -> None:
+    for name in ("ReminderCreate", "ReminderPatch"):
+        assert schema["components"]["schemas"][name]["additionalProperties"] is False
+    props = schema["components"]["schemas"]["ReminderCreate"]["properties"]
+    assert "status" not in props
+    assert "completed_on" not in props

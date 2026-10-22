@@ -109,7 +109,7 @@ describe('RecordForm', () => {
     expect(cost).toHaveAccessibleDescription(/amount in MYR/);
   });
 
-  it('explains a server "future date" rejection (the UTC rule) next to the date field', async () => {
+  it('shows a server "future date" rejection next to the date field, with no UTC explanation', async () => {
     const user = userEvent.setup();
     render(
       <RecordForm
@@ -133,10 +133,8 @@ describe('RecordForm', () => {
       expect(date).toHaveAttribute('aria-invalid', 'true');
     });
     expect(date).toHaveAccessibleDescription(/must not be in the future/);
-    // The failed-item explanation (not the always-visible default-date hint, which says similar words).
-    expect(document.getElementById('date-explain')).toHaveTextContent(
-      /Between 00:00 and 08:00 Malaysian time/,
-    );
+    expect(document.getElementById('date-explain')).toBeNull();
+    expect(screen.queryByText(/Between 00:00 and 08:00/)).not.toBeInTheDocument();
   });
 });
 

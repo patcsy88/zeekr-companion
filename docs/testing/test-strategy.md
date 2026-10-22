@@ -1,6 +1,6 @@
 # Test Strategy
 
-Status: **proposed**, updated 2026-10-11 for the web client (ADR-002). Commands are the gates. All backend, web, shared-types, infra smoke and secret-scan gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The AC-6 and AC-7 iPhone checks and the ADR-003 remote-access checks are blocked until the owner sets up the Tailscale HTTPS origin.
+Status: **proposed**, updated 2026-10-22 for the Reminders slice. Commands are the gates. The initial-slice gates were run independently by QA on commit `3297776` and passed (2026-10-14/15, see `docs/testing/qa-report-2026-10-14.md`). The Reminders slice gates were run by the Engineering Lead on 2026-10-22 (see `docs/testing/qa-report-2026-10-22-reminders.md`); an independent QA pass is still to do. The AC-6, AC-7 and AC-27 iPhone checks and the ADR-003 remote-access checks are blocked until the owner sets up the Tailscale HTTPS origin.
 
 ## Test layers
 
@@ -56,10 +56,23 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-7 | Vitest cache test and Playwright cold start with the API stopped. Manual iPhone check: **blocked on HTTPS** |
 | AC-8 | All gates |
 | AC-9 | Vitest queue tests and Playwright offline create then reconnect, asserting exactly one record on the server |
+| AC-10, AC-11, AC-12, AC-13, AC-14 | `services/api/tests/test_reminders.py` (create, replay 200, conflict 409, both-due-fields rule, validation cases, patch, delete). Web: `apps/web/test/reminders.test.tsx` |
+| AC-15 | `reminders.test.tsx` (kinds, "Road tax (JPJ)" label, no due odometer for non-service kinds) |
+| AC-16 | `test_reminders.py` (current odometer and its basis) and `reminders.test.tsx` (basis shown next to odometer reminders) |
+| AC-17 | Shared vectors `packages/shared-types/test-vectors/reminder-status.json`, run by `test_reminders.py` and `apps/web/test/reminder-status.test.ts` |
+| AC-18, AC-19 | `reminders.test.tsx` and Playwright `e2e/reminders.spec.ts` (groups, Completed filter, complete, reopen) |
+| AC-20, AC-21, AC-22, AC-23 | `test_reminders.py` (template content, GET creates nothing), `reminders.test.tsx` (cancel and app start create nothing, preselect, baseline required, one POST per selected item), Playwright template test |
+| AC-24, AC-25 | `reminders.test.tsx`, `reminder-queue.test.ts` (coalescing, exactly once, per-item failure) and Playwright offline create |
+| AC-26 | `test_reminders.py` 401 test for every reminder and template route |
+| AC-27 | Playwright (second profile reads from the API, reload). Manual iPhone check: **blocked on HTTPS** |
+| AC-28 | `reminders.test.tsx` and Playwright with the title `<img src=x onerror=alert(1)>` |
+| AC-29 | `test_migrations.py` (apply, re-run, downgrade) and all gates |
 
 Remote-access checks from ADR-003 (manual, owner holds the iPhone; reports use placeholder names only): HTTPS smoke from the iPhone on cellular; headers present exactly once; rate-limit keying behind Tailscale Serve and Caddy; Tailscale identity headers never reach the API; no public port and Funnel off.
 
 Additional checks from ADR-002: auth rate limit keys on the real client address behind the proxy; security headers and CSP present; the service worker never caches `/api/*`.
+
+Date rule (owner decision 2026-10-22): calendar-date checks use the Asia/Kuala_Lumpur date. Covered by `test_service_records.py`, `default-date.test.tsx`, `qa-task5.test.tsx` and the Playwright default-date test.
 
 ## Not yet covered
 

@@ -7,20 +7,36 @@ import type {
   ApiErrorCode,
   ApiErrorDetail,
   ApiErrorResponse,
+  CurrentOdometer,
+  Reminder,
+  ReminderCreate,
+  ReminderKind,
+  ReminderList,
+  ReminderTemplate,
+  ReminderTemplateList,
   ServiceRecord,
   ServiceRecordCreate,
   ServiceRecordPage,
   ServiceRecordPatch,
+  TemplateCheckpoint,
   TokenResponse,
   Vehicle,
   VehicleInput,
 } from '@zeekr-companion/shared-types';
 
 export type {
+  CurrentOdometer,
+  Reminder,
+  ReminderCreate,
+  ReminderKind,
+  ReminderList,
+  ReminderTemplate,
+  ReminderTemplateList,
   ServiceRecord,
   ServiceRecordCreate,
   ServiceRecordPage,
   ServiceRecordPatch,
+  TemplateCheckpoint,
   TokenResponse,
   Vehicle,
   VehicleInput,
@@ -40,4 +56,14 @@ export interface RecordEdit {
   cost_minor?: number;
   provider?: string | null;
   notes?: string | null;
+}
+
+/** What the reminder forms edit and the queue sends. Required fields are never null. */
+export interface ReminderEdit {
+  kind?: ReminderKind;
+  title?: string;
+  due_date?: string | null;
+  due_odometer?: number | null;
+  notes?: string | null;
+  completed_on?: string | null;
 }

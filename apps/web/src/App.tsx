@@ -6,6 +6,10 @@ import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession } from './data/hooks';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
+import { ReminderDetailPage } from './pages/ReminderDetailPage';
+import { EditReminderPage, NewReminderPage } from './pages/ReminderFormPages';
+import { ReminderTemplatePage } from './pages/ReminderTemplatePage';
+import { RemindersPage } from './pages/RemindersPage';
 import { RecordsPage } from './pages/RecordsPage';
 import { VehicleEditPage, VehiclePage } from './pages/VehiclePage';
 import { AccountMenu } from './components/AccountMenu';
@@ -54,6 +58,11 @@ function Layout() {
           <Route path="/records/new" element={<NewRecordPage />} />
           <Route path="/records/:id" element={<RecordDetailPage />} />
           <Route path="/records/:id/edit" element={<EditRecordPage />} />
+          <Route path="/reminders" element={<RemindersPage />} />
+          <Route path="/reminders/new" element={<NewReminderPage />} />
+          <Route path="/reminders/template" element={<ReminderTemplatePage />} />
+          <Route path="/reminders/:id" element={<ReminderDetailPage />} />
+          <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
           <Route path="/vehicle" element={<VehiclePage />} />
           <Route path="/vehicle/edit" element={<VehicleEditPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
@@ -63,6 +72,7 @@ function Layout() {
         <NavLink to="/" end>
           Service
         </NavLink>
+        <NavLink to="/reminders">Reminders</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>
     </>

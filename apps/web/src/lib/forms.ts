@@ -8,7 +8,3 @@ export function issuesByField(details: FieldIssue[]): Record<string, string> {
   }
   return out;
 }
-
-export function isFutureDateIssue(issue: string | undefined): boolean {
-  return issue !== undefined && /future/i.test(issue);
-}
