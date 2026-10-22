@@ -11,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     MetaData,
@@ -176,4 +177,98 @@ class Expense(Base):
         CheckConstraint("currency = 'MYR'", name="currency_myr"),
         CheckConstraint("date >= DATE '2000-01-01'", name="date_min"),
         Index("ix_expense_history", desc("date"), desc("created_at"), desc("id")),
+    )
+
+
+class WarrantyCoverage(Base):
+    __tablename__ = "warranty_coverage"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    provider_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    start_date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[dt.date | None] = mapped_column(Date)
+    km_limit: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    source_kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    verification_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_note: Mapped[str | None] = mapped_column(String(200))
+    template_ref: Mapped[str | None] = mapped_column(String(100))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("char_length(name) BETWEEN 1 AND 200", name="name_length"),
+        CheckConstraint("provider_type IN ('factory', 'extended')", name="provider_type_valid"),
+        CheckConstraint("source_kind IN ('owner_entered', 'template')", name="source_kind_valid"),
+        CheckConstraint(
+            "verification_status IN ('confirmed', 'proposed', 'unverified')",
+            name="verification_status_valid",
+        ),
+        CheckConstraint("end_date IS NOT NULL OR km_limit IS NOT NULL", name="has_end_or_km"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="end_not_before_start"),
+        CheckConstraint(
+            "km_limit IS NULL OR km_limit BETWEEN 1 AND 10000000", name="km_limit_range"
+        ),
+        CheckConstraint(
+            "start_date BETWEEN DATE '2000-01-01' AND DATE '2200-12-31'", name="start_date_range"
+        ),
+        CheckConstraint(
+            "end_date IS NULL OR end_date BETWEEN DATE '2000-01-01' AND DATE '2200-12-31'",
+            name="end_date_range",
+        ),
+        CheckConstraint(
+            "template_ref IS NULL OR char_length(template_ref) <= 100", name="template_ref_length"
+        ),
+        CheckConstraint(
+            "template_ref IS NULL OR source_kind = 'template'",
+            name="template_ref_requires_template",
+        ),
+    )
+
+
+class WarrantyClaim(Base):
+    __tablename__ = "warranty_claim"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    coverage_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("warranty_coverage.id", ondelete="CASCADE"), nullable=False
+    )
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    odometer: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    cost_covered_minor: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="MYR")
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("char_length(description) BETWEEN 1 AND 500", name="description_length"),
+        CheckConstraint(
+            "status IN ('submitted', 'approved', 'rejected', 'completed')", name="status_valid"
+        ),
+        CheckConstraint("odometer BETWEEN 0 AND 10000000", name="odometer_range"),
+        CheckConstraint(
+            "cost_covered_minor IS NULL OR cost_covered_minor BETWEEN 0 AND 1000000000000",
+            name="cost_covered_range",
+        ),
+        CheckConstraint("currency = 'MYR'", name="currency_myr"),
+        CheckConstraint("date >= DATE '2000-01-01'", name="date_min"),
+        Index(
+            "ix_warranty_claim_history",
+            "coverage_id",
+            desc("date"),
+            desc("created_at"),
+            desc("id"),
+        ),
     )

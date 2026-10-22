@@ -16,6 +16,7 @@ from app.schemas import (
     ReminderOut,
     ReminderPatch,
 )
+from app.services.odometer import read_current_odometer
 from app.services.reminder_status import compute_status
 
 _CONTENT_FIELDS = ("kind", "title", "due_date", "due_odometer", "notes", "template_ref")
@@ -46,13 +47,7 @@ class ReminderService:
         self._records = records
 
     def _current_odometer(self) -> CurrentOdometer | None:
-        rows = self._records.list_page(1, None)
-        if not rows:
-            return None
-        r = rows[0]
-        return CurrentOdometer(
-            km=r.odometer, source="latest_service_record", service_record_id=r.id, date=r.date
-        )
+        return read_current_odometer(self._records)
 
     @staticmethod
     def _out(row: Reminder, today: dt.date, km: int | None) -> ReminderOut:

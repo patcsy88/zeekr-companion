@@ -429,3 +429,176 @@ class ExpenseSummary(BaseModel):
     count: int
     by_category: list[ExpenseCategoryTotal]
     by_month: list[ExpenseMonthTotal]
+
+
+# --- Warranty -------------------------------------------------------------------------------
+
+ProviderType = Literal["factory", "extended"]
+SourceKind = Literal["owner_entered", "template"]
+VerificationStatus = Literal["confirmed", "proposed", "unverified"]
+ClaimStatus = Literal["submitted", "approved", "rejected", "completed"]
+CoverageStatus = Literal["not_started", "active", "expiring_soon", "expired"]
+MAX_WARRANTY_COVERAGES = 50
+MAX_WARRANTY_CLAIMS = 500
+MAX_KM_LIMIT = 10_000_000
+KmLimit = Annotated[int, Field(strict=True, ge=1, le=MAX_KM_LIMIT)]
+CostCovered = Annotated[int, Field(strict=True, ge=0, le=MAX_MONEY_MINOR)]
+
+
+class WarrantyCoverageCreate(_Input):
+    id: uuid.UUID
+    name: str = Field(min_length=1, max_length=200)
+    provider_type: ProviderType
+    start_date: StrictDate
+    end_date: StrictDate | None = None
+    km_limit: KmLimit | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+    source_kind: SourceKind = "owner_entered"
+    verification_status: VerificationStatus = "unverified"
+    source_note: str | None = Field(default=None, max_length=200)
+    template_ref: str | None = Field(default=None, max_length=100)
+
+    _check_start = field_validator("start_date")(_due_date_in_range)
+    _check_end = field_validator("end_date")(_due_date_in_range)
+    _blank = field_validator("notes", "source_note", "template_ref")(_blank_to_none)
+
+
+class WarrantyCoveragePatch(_Input):
+    """Partial update. `end_date`, `km_limit`, `notes` and `source_note` may be set to null.
+
+    `source_kind`, `template_ref` and the computed fields are not accepted (extra=forbid).
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    provider_type: ProviderType | None = None
+    start_date: StrictDate | None = None
+    end_date: StrictDate | None = None
+    km_limit: KmLimit | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+    verification_status: VerificationStatus | None = None
+    source_note: str | None = Field(default=None, max_length=200)
+
+    _check_start = field_validator("start_date")(_due_date_in_range)
+    _check_end = field_validator("end_date")(_due_date_in_range)
+    _blank = field_validator("notes", "source_note")(_blank_to_none)
+
+    @field_validator("name", "provider_type", "start_date", "verification_status", mode="before")
+    @classmethod
+    def _not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("must not be null")
+        return value
+
+
+class WarrantyCoverageOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    provider_type: ProviderType
+    start_date: dt.date
+    end_date: dt.date | None
+    km_limit: int | None
+    notes: str | None
+    source_kind: SourceKind
+    verification_status: VerificationStatus
+    source_note: str | None
+    template_ref: str | None
+    status: CoverageStatus
+    expired_by: list[Literal["date", "odometer"]]
+    expiring_soon_by: list[Literal["date", "odometer"]]
+    claim_count: int
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class WarrantyCoverageList(BaseModel):
+    items: list[WarrantyCoverageOut]
+    current_odometer: CurrentOdometer | None
+
+
+class WarrantyClaimCreate(_Input):
+    id: uuid.UUID
+    coverage_id: uuid.UUID
+    date: StrictDate
+    odometer: Distance
+    description: str = Field(min_length=1, max_length=500)
+    status: ClaimStatus
+    cost_covered_minor: CostCovered | None = None
+    currency: Currency = "MYR"
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+    _blank = field_validator("notes")(_blank_to_none)
+
+
+class WarrantyClaimPatch(_Input):
+    """Partial update. Only `cost_covered_minor` and `notes` may be set to null.
+
+    `coverage_id` cannot be changed (extra=forbid).
+    """
+
+    date: StrictDate | None = None
+    odometer: Distance | None = None
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    status: ClaimStatus | None = None
+    cost_covered_minor: CostCovered | None = None
+    currency: Currency | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+    _blank = field_validator("notes")(_blank_to_none)
+
+    @field_validator("date", "odometer", "description", "status", "currency", mode="before")
+    @classmethod
+    def _not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("must not be null")
+        return value
+
+
+class WarrantyClaimOut(_Output):
+    id: uuid.UUID
+    coverage_id: uuid.UUID
+    date: dt.date
+    odometer: int
+    description: str
+    status: ClaimStatus
+    cost_covered_minor: int | None
+    currency: str
+    notes: str | None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class WarrantyClaimList(BaseModel):
+    items: list[WarrantyClaimOut]
+
+
+class WarrantyTemplateSource(BaseModel):
+    title: str
+    url: str
+    research_ref: str
+    status: Literal["verified"]
+    retrieved: dt.date
+
+
+class WarrantyTemplateItem(BaseModel):
+    key: str
+    name: str
+    months: int | None
+    km: int | None
+    research_ref: str
+    enter_manually: bool = False
+
+
+class WarrantyTemplate(BaseModel):
+    id: str
+    version: int
+    name: str
+    source: WarrantyTemplateSource
+    caveat: str
+    baseline_required: bool
+    items: list[WarrantyTemplateItem]
+
+
+class WarrantyTemplateList(BaseModel):
+    items: list[WarrantyTemplate]

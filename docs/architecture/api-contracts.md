@@ -364,7 +364,7 @@ None proposed. Out of scope here: attachments (FR-10), CSV export (proposal, Q17
 
 ## Warranty (approved 2026-10-22)
 
-**Approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed).** Drafted 2026-10-22 by the Engineering Lead for the Warranty slice (FR-6; AC-48 to AC-68). It starts after the Expenses slice. Nothing here is implemented or approved.
+**Approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed).** Drafted 2026-10-22 by the Engineering Lead for the Warranty slice (FR-6; AC-48 to AC-68). It starts after the Expenses slice. Backend implemented 2026-10-22 (migration `0004`); implementation notes below.
 
 Reuses all Conventions above. No new status code or error code. No approved part changes. The app records what the owner enters; it never states what a warranty covers.
 
@@ -499,6 +499,20 @@ Same pattern as reminders. Queue kinds are added for coverage and claim create, 
 ### Errors
 
 As for Expenses. A claim `POST` or `PATCH` with an unknown `coverage_id` is `400 validation_error` on `coverage_id`; `GET`, `PATCH`, `DELETE` of an unknown id is `404 not_found`.
+
+### Backend implementation notes (2026-10-22)
+
+Points the contract left open; the backend chose the reading below. Flagged for the Lead to confirm or amend.
+
+- `GET /warranty-claims` returns `{ "items": [claim] }` (the contract gives the order and cap, not the envelope). Consistent with the reminders list shape.
+- Template items omit `enter_manually` unless it is `true`, exactly as in the contract example.
+- `template_ref` and `source_note` that are empty after trimming are stored as null (same rule as notes).
+- A `POST` that is an identical replay of a claim whose coverage has since been deleted gets `400` on `coverage_id`, because the claim no longer exists and the create is evaluated afresh.
+- Claim `date` uses the same rules as expenses (2000-01-01 up to today in Asia/Kuala_Lumpur) on both create and `PATCH`.
+- A malformed `today` query returns `400` with field `today`.
+- `coverage_id` filter on the claim list that is not a UUID returns `400`; an unknown UUID returns an empty list.
+- Replay compares all create content fields including `source_kind`, `verification_status`, `source_note` and `template_ref`.
+- Extra database check constraints beyond the architecture list: name and description length, date ranges, `template_ref` requires `source_kind` `template`, claim `currency = 'MYR'`, claim `date >= 2000-01-01`.
 
 ### Changes to approved parts
 
