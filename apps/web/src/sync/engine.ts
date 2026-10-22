@@ -300,7 +300,7 @@ export async function syncAll(force = false): Promise<void> {
     await refreshVehicle();
     await refreshRecords();
     await refreshReminders();
-//     await refreshExpenses();
+    await refreshExpenses();
     // The template is static: one fetch per sync is enough, and a failure here is not fatal.
     await refreshTemplates().catch(() => undefined);
     setStatus({ lastError: null });
