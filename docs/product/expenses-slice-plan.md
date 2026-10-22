@@ -1,6 +1,6 @@
 # Expenses slice plan
 
-Status: **proposed, pending owner approval**, drafted 2026-10-22 by the Engineering Lead. Covers FR-5. Acceptance criteria AC-30 to AC-47 in `docs/product/requirements.md`. Contract: "Expenses (DRAFT)" in `docs/architecture/api-contracts.md`. Data model: "Expenses data model" in `docs/architecture/architecture.md`. Built first; the Warranty slice (`warranty-slice-plan.md`) starts after this slice is accepted. Attachments (FR-10) and CSV export are out of scope.
+Status: **approved by the owner 2026-10-22**, drafted 2026-10-22 by the Engineering Lead. Covers FR-5. Acceptance criteria AC-30 to AC-47 in `docs/product/requirements.md`. Contract: "Expenses" in `docs/architecture/api-contracts.md`. Data model: "Expenses data model" in `docs/architecture/architecture.md`. Built first; the Warranty slice (`warranty-slice-plan.md`) starts after this slice is accepted. Attachments (FR-10) and CSV export are out of scope.
 
 ## Task breakdown
 

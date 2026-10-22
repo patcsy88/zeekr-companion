@@ -104,9 +104,9 @@ Owner answers 2026-10-22: **Q1 accepted** (odometer derived from the latest serv
 8. **Q8 Past due dates.** Accept a `due_date` in the past on create (proposal), so already-overdue items can be entered.
 9. **Q9 JPJ and insurance wording.** Confirm the label-only approach (AC-15): no JPJ or insurer integration, no stated fees or renewal periods.
 
-## Acceptance criteria: Expenses slice (proposed, pending owner approval)
+## Acceptance criteria: Expenses slice (approved by the owner 2026-10-22)
 
-Status: **proposed, pending owner approval**. Drafted 2026-10-22 by the Engineering Lead. Covers FR-5. Build order: Expenses first, then Warranty. The draft contract is "Expenses (DRAFT)" in `docs/architecture/api-contracts.md`; the plan is `docs/product/expenses-slice-plan.md`. Items marked (proposal, Qn) depend on the open questions at the end of this section group. Attachments (FR-10) are out of scope. Field names: `date`, `category`, `amount_minor`, `currency`, `notes`.
+Status: **approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed)**. Drafted 2026-10-22 by the Engineering Lead. Covers FR-5. Build order: Expenses first, then Warranty. The draft contract is "Expenses" in `docs/architecture/api-contracts.md`; the plan is `docs/product/expenses-slice-plan.md`. Items marked (proposal, Qn) depend on the open questions at the end of this section group. Attachments (FR-10) are out of scope. Field names: `date`, `category`, `amount_minor`, `currency`, `notes`.
 
 | ID | Criterion |
 |---|---|
@@ -129,9 +129,9 @@ Status: **proposed, pending owner approval**. Drafted 2026-10-22 by the Engineer
 | AC-46 | Scope boundary: an expense is independent of service records (proposal, Q10). Creating, editing or deleting an expense never changes a service record, and a service record cost never appears in expense totals. There is no attachment, no CSV export (proposal, Q17) and no link field in this slice. |
 | AC-47 | The migration for the expense table applies to an empty database and re-runs without error (extends AC-2). Lint, type checks, tests, the OpenAPI drift check and the other gates in `docs/testing/test-strategy.md` pass for both the backend and the web client (extends AC-8). |
 
-## Acceptance criteria: Warranty slice (proposed, pending owner approval)
+## Acceptance criteria: Warranty slice (approved by the owner 2026-10-22)
 
-Status: **proposed, pending owner approval**. Drafted 2026-10-22 by the Engineering Lead. Covers FR-6. It starts after the Expenses slice is accepted. The draft contract is "Warranty (DRAFT)" in `docs/architecture/api-contracts.md`; the plan is `docs/product/warranty-slice-plan.md`. A **coverage** is one warranty entry (for example a factory warranty or an extended plan). A **claim** is a record of a claim made under one coverage. Factory terms come from research M8 to M10 (`verified`, official Malaysia warranty PDF) and are offered only as an editable, explicitly accepted template. The owner's extended warranty is entered by the owner as ordinary data; it is not in the template and no personal identifier, certificate number or provider name is stored in the repository.
+Status: **approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed)**. Drafted 2026-10-22 by the Engineering Lead. Covers FR-6. It starts after the Expenses slice is accepted. The draft contract is "Warranty" in `docs/architecture/api-contracts.md`; the plan is `docs/product/warranty-slice-plan.md`. A **coverage** is one warranty entry (for example a factory warranty or an extended plan). A **claim** is a record of a claim made under one coverage. Factory terms come from research M8 to M10 (`verified`, official Malaysia warranty PDF) and are offered only as an editable, explicitly accepted template. The owner's extended warranty is entered by the owner as ordinary data; it is not in the template and no personal identifier, certificate number or provider name is stored in the repository.
 
 | ID | Criterion |
 |---|---|
@@ -157,7 +157,7 @@ Status: **proposed, pending owner approval**. Drafted 2026-10-22 by the Engineer
 | AC-67 | Scope boundary: no attachment (FR-10), no reminder is created automatically from a warranty end date, no document or certificate number field, no provider name field, no import from a Zeekr or provider source, and no statement of coverage. The app never contacts the warranty provider or Zeekr. |
 | AC-68 | Migrations for the two warranty tables (with the foreign key from claim to coverage) apply to an empty database, re-run without error and downgrade cleanly (extends AC-2). Lint, type checks, tests, the OpenAPI drift check and the other gates in `docs/testing/test-strategy.md` pass for both the backend and the web client (extends AC-8). |
 
-### Open questions for the owner: Expenses and Warranty (proposed; reply "accept the proposals" to take them all)
+### Open questions for the owner: Expenses and Warranty (all accepted as proposed by the owner, 2026-10-22)
 
 **Blocking** (needed before the AC rows and contract drafts can be approved):
 

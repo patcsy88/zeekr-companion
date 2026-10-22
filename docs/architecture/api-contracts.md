@@ -276,9 +276,9 @@ One change to an approved part, by owner decision 2026-10-22: the service-record
 1. The line "Not yet specified" below was edited only to remove "reminders" from its list.
 2. If the owner picks the alternative in Q1 (an owner-entered current odometer), that would add a field to `Vehicle` or a new resource, which does change the approved vehicle contract and needs a separate amendment. The proposal avoids this.
 
-## Expenses (DRAFT, pending owner approval)
+## Expenses (approved 2026-10-22)
 
-**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Expenses slice (FR-5; AC-30 to AC-47 in `docs/product/requirements.md`). Nothing here is implemented or approved. Items marked (proposal, Qn) depend on the open questions in `requirements.md`.
+**Approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed).** Drafted 2026-10-22 by the Engineering Lead for the Expenses slice (FR-5; AC-30 to AC-47 in `docs/product/requirements.md`). Nothing here is implemented or approved. Items marked (proposal, Qn) depend on the open questions in `requirements.md`.
 
 Reuses all Conventions above (`/api/v1`, `snake_case`, client UUIDs, Bearer token, `no-store`, 64 KiB body limit, error shape and codes, `currency` MYR only, `extra=forbid`, trimmed strings, no NUL). No new status code or error code. No approved part changes.
 
@@ -362,9 +362,9 @@ Same pattern as service records and reminders (ADR-002): the client generates th
 
 None proposed. Out of scope here: attachments (FR-10), CSV export (proposal, Q17), multi-currency.
 
-## Warranty (DRAFT, pending owner approval)
+## Warranty (approved 2026-10-22)
 
-**DRAFT, pending owner approval.** Drafted 2026-10-22 by the Engineering Lead for the Warranty slice (FR-6; AC-48 to AC-68). It starts after the Expenses slice. Nothing here is implemented or approved.
+**Approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepted as proposed).** Drafted 2026-10-22 by the Engineering Lead for the Warranty slice (FR-6; AC-48 to AC-68). It starts after the Expenses slice. Nothing here is implemented or approved.
 
 Reuses all Conventions above. No new status code or error code. No approved part changes. The app records what the owner enters; it never states what a warranty covers.
 

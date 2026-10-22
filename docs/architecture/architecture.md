@@ -73,9 +73,9 @@ Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8
 - Implemented 2026-10-22: migration `0002_reminder`, `Reminder` model, `app/clock.py` (`today_kl`, Asia/Kuala_Lumpur) used by both service-record and reminder date checks, `reminder_status.compute_status` (backend) and `apps/web/src/lib/reminderStatus.ts` (web), tested against one shared vector file. `zoneinfo` finds `Asia/Kuala_Lumpur` in the `python:3.13-slim` image, so no `tzdata` dependency was added. The device date is derived with `Intl` in the same zone. The web refreshes the vehicle, records and reminders one after the other, because guarded refreshes that ran side by side kept invalidating each other.
 - Staleness risk: the offline status uses the device date and the cached latest service record, so it can differ from the server until the next sync. The UI says so.
 
-### Expenses data model (proposed, pending owner approval)
+### Expenses data model (approved 2026-10-22)
 
-Refines the placeholder `expense` row (drops `vehicle_id` as there is one vehicle, keeps `amount_minor`, adds `currency` and timestamps). Contract: "Expenses (DRAFT)" in `api-contracts.md`.
+Refines the placeholder `expense` row (drops `vehicle_id` as there is one vehicle, keeps `amount_minor`, adds `currency` and timestamps). Contract: "Expenses" in `api-contracts.md`.
 
 | Table | Fields |
 |---|---|
@@ -88,9 +88,9 @@ Refines the placeholder `expense` row (drops `vehicle_id` as there is one vehicl
 - Migration `0003` adds the table, with a downgrade.
 - Web: a `expenses` cache key, queue kinds for expense create, edit and delete, a pure `expenseTotals` function with shared vectors in `packages/shared-types/test-vectors`, and a pending overlay like `reminderOverlay.ts`. The list uses cursor paging like service records, so the offline totals warn when the cache is partial (AC-41).
 
-### Warranty data model (proposed, pending owner approval)
+### Warranty data model (approved 2026-10-22)
 
-Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty (DRAFT)" in `api-contracts.md`.
+Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty" in `api-contracts.md`.
 
 | Table | Fields |
 |---|---|
