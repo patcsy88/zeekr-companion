@@ -76,7 +76,7 @@ Status: **approved by the owner 2026-10-22**. It covers FR-7, FR-8 and FR-12. Th
 | AC-24 | Offline read (extends AC-7, NFR-1): after the reminders page has been opened once online, a cold start with the API unreachable still lists the cached reminders, with the offline indicator. Overdue and upcoming are computed on the device from cached reminders, cached service records and the device date, and the page says the status is computed offline. If the template was never fetched, the template screen says it needs one online visit. |
 | AC-25 | Offline write (extends AC-9, NFR-2): a reminder created, edited, completed, reopened or deleted while offline is shown as pending, persists across a reload, and is sent when the API is reachable again exactly once, with no duplicate. Create then edit of the same reminder offline is coalesced into one request. Accepting template items offline queues each as its own create, and a failure on one item is shown for that item without blocking the others. |
 | AC-26 | Every reminder and template endpoint returns `401` without a valid token (extends AC-3). |
-| AC-27 | A reminder created in the web app is stored on the server: it is returned by `GET /api/v1/reminders` from a different browser profile and survives a reload and reopening the app. The iPhone installed-app check stays blocked until the Tailscale HTTPS origin exists, and is reported as blocked, not passed. |
+| AC-27 | A reminder created in the web app is stored on the server: it is returned by `GET /api/v1/reminders` from a different browser profile and survives a reload and reopening the app. The iPhone installed-app check is deferred (owner decision 2026-10-22) until an HTTPS origin exists, and is reported as deferred, not passed. |
 | AC-28 | Title, notes and template text are rendered as plain text. A title such as `<img src=x onerror=alert(1)>` appears literally and runs nothing. No third-party script or raw HTML injection is added. |
 | AC-29 | Migrations for the reminder table apply to an empty database and re-run without error (extends AC-2). Lint, type checks, tests, the OpenAPI drift check and the other gates in `docs/testing/test-strategy.md` pass for both the backend and the web client (extends AC-8). |
 
@@ -87,7 +87,7 @@ Implemented and verified by the Engineering Lead on disposable data. Details in 
 | AC | Status |
 |---|---|
 | AC-10 to AC-26, AC-28, AC-29 | Verified (backend pytest, Vitest, Playwright on `localhost`, gates) |
-| AC-27 | Server storage and second-profile read verified on `localhost`. **iPhone installed-app check: BLOCKED** until the Tailscale HTTPS origin exists |
+| AC-27 | Server storage and second-profile read verified on `localhost`. **iPhone installed-app check: DEFERRED (optional, not passed)** until an HTTPS origin exists |
 
 
 ### Open questions for the owner: Reminders slice (block approval)
@@ -125,7 +125,7 @@ Resolved:
 - Client is a mobile-responsive web app instead of a native iOS app, to avoid the Apple Developer fee (confirmed 2026-10-11). The web stack is a React + Vite + TypeScript PWA (ADR-002, approved 2026-10-11), served same-origin through a reverse proxy container.
 - Cached data is readable without an app lock; the owner relies on the phone lock (confirmed 2026-10-11).
 - `gitleaks` and Playwright browser downloads are approved as free tools (confirmed 2026-10-11).
-- Phone-side checks for AC-6 and AC-7 are blocked until the Tailscale HTTPS origin is set up (owner chose Tailscale on 2026-10-13, see ADR-003). They are reported as blocked, not passed.
+- Owner decision 2026-10-22: Tailscale setup is no longer a requirement for completing a slice. ADR-003 stays as the intended design for later. The phone-side checks for AC-6, AC-7 and AC-27 are **deferred (optional)**: they do not gate acceptance of a slice, but they are still not passed. Report them as "deferred, not run", never as passed. The automated `localhost` checks remain the gates.
 - Remote access: Tailscale, free Personal plan (owner decision 2026-10-13, ADR-003). Funnel stays off and nothing is exposed to the public internet (NFR-6). The repository is public, so the real tailnet name, hostnames, account email and device names must never appear in it; use placeholders.
 
 - The owner's market is Malaysia, not the UK, and the currency is MYR with the `currency` field kept and defaulting to MYR (confirmed 2026-10-11). The earlier UK research is void for the owner's market.
