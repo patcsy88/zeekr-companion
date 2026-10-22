@@ -73,6 +73,40 @@ Refines the placeholder `reminder` row above for the Reminders slice (FR-7, FR-8
 - Implemented 2026-10-22: migration `0002_reminder`, `Reminder` model, `app/clock.py` (`today_kl`, Asia/Kuala_Lumpur) used by both service-record and reminder date checks, `reminder_status.compute_status` (backend) and `apps/web/src/lib/reminderStatus.ts` (web), tested against one shared vector file. `zoneinfo` finds `Asia/Kuala_Lumpur` in the `python:3.13-slim` image, so no `tzdata` dependency was added. The device date is derived with `Intl` in the same zone. The web refreshes the vehicle, records and reminders one after the other, because guarded refreshes that ran side by side kept invalidating each other.
 - Staleness risk: the offline status uses the device date and the cached latest service record, so it can differ from the server until the next sync. The UI says so.
 
+### Expenses data model (proposed, pending owner approval)
+
+Refines the placeholder `expense` row (drops `vehicle_id` as there is one vehicle, keeps `amount_minor`, adds `currency` and timestamps). Contract: "Expenses (DRAFT)" in `api-contracts.md`.
+
+| Table | Fields |
+|---|---|
+| `expense` | `id` uuid PK (client generated), `date` date, `category` varchar(30), `amount_minor` bigint, `currency` varchar(3) default 'MYR', `notes` text null, `created_at`, `updated_at` timestamptz |
+
+- Check constraints (named): `category IN (...)` the 11 values; `amount_minor >= 1 AND amount_minor <= 10^12`; `currency = 'MYR'`; `date >= '2000-01-01'`. The future-date rule is not a database constraint (it depends on today), it is enforced in the schema like service records.
+- Index on `(date DESC, created_at DESC, id DESC)` for the list and cursor. Filters on `category` and `date` use that index plus a filter; at most 5,000 rows.
+- Totals by category and by month are `GROUP BY` queries on read (`to_char(date, 'YYYY-MM')`), never stored. Summing 5,000 rows of at most 10^12 stays far below the 64-bit limit; the JSON numbers stay below 2^53 (5,000 x 10^12 = 5 x 10^15 is under 9 x 10^15). Flag: do not raise the cap or the amount bound without rechecking this.
+- No foreign key to `service_record` (proposal, Q10).
+- Migration `0003` adds the table, with a downgrade.
+- Web: a `expenses` cache key, queue kinds for expense create, edit and delete, a pure `expenseTotals` function with shared vectors in `packages/shared-types/test-vectors`, and a pending overlay like `reminderOverlay.ts`. The list uses cursor paging like service records, so the offline totals warn when the cache is partial (AC-41).
+
+### Warranty data model (proposed, pending owner approval)
+
+Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty (DRAFT)" in `api-contracts.md`.
+
+| Table | Fields |
+|---|---|
+| `warranty_coverage` | `id` uuid PK (client generated), `name` varchar(200), `provider_type` varchar(20), `start_date` date, `end_date` date null, `km_limit` integer null, `notes` text null, `source_kind` varchar(20), `verification_status` varchar(20), `source_note` varchar(200) null, `template_ref` varchar(100) null, `created_at`, `updated_at` timestamptz |
+| `warranty_claim` | `id` uuid PK (client generated), `coverage_id` uuid FK to `warranty_coverage.id` ON DELETE CASCADE, `date` date, `odometer` integer, `description` varchar(500), `status` varchar(20), `cost_covered_minor` bigint null, `currency` varchar(3) default 'MYR', `notes` text null, `created_at`, `updated_at` timestamptz |
+
+- Check constraints (named): `provider_type IN ('factory','extended')`; `source_kind IN ('owner_entered','template')`; `verification_status IN ('confirmed','proposed','unverified')`; `end_date IS NOT NULL OR km_limit IS NOT NULL`; `end_date IS NULL OR end_date >= start_date`; `km_limit IS NULL OR (km_limit BETWEEN 1 AND 10000000)`; claim `status IN ('submitted','approved','rejected','completed')`; `odometer BETWEEN 0 AND 10000000`; `cost_covered_minor IS NULL OR BETWEEN 0 AND 10^12`.
+- Index on `warranty_claim (coverage_id, date DESC, created_at DESC, id DESC)`.
+- `status`, `expired_by`, `expiring_soon_by` and `claim_count` are computed on read, never stored (they depend on today and the latest service record).
+- Current odometer is read through the service layer from `service_record`, the same read reminders use. The reminders service has this logic today; the plan extracts it into a shared function (a refactor of approved reminders code with no contract change, covered by the existing reminder tests).
+- The factory template is static, versioned data in code (no table), like the reminder template.
+- Migration `0004` adds both tables, with a downgrade.
+- No personal data: there is no provider name, certificate number or VIN column. Owner documents (research O1 to O8) are used only as the owner's reference when typing values; their identifiers are never stored in the repository.
+- Web: cache keys for coverages and claims, queue kinds for both entities with a dependency rule (a claim create waits on its coverage create), a pure `warrantyStatus` function with shared vectors, a template screen modelled on `ReminderTemplatePage`. Service worker unchanged.
+- Known limit: `km_limit` is compared with the odometer reading, not with km since the start date (Q13).
+
 ## Offline and sync (proposed, see ADR-002)
 
 - The service worker caches the app shell only. Data lives in IndexedDB, not Cache Storage.
