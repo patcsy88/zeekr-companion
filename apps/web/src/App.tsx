@@ -14,6 +14,15 @@ import { EditReminderPage, NewReminderPage } from './pages/ReminderFormPages';
 import { ReminderTemplatePage } from './pages/ReminderTemplatePage';
 import { RemindersPage } from './pages/RemindersPage';
 import { RecordsPage } from './pages/RecordsPage';
+import { CoverageDetailPage } from './pages/CoverageDetailPage';
+import {
+  EditClaimPage,
+  EditCoveragePage,
+  NewClaimPage,
+  NewCoveragePage,
+} from './pages/WarrantyFormPages';
+import { WarrantyPage } from './pages/WarrantyPage';
+import { WarrantyTemplatePage } from './pages/WarrantyTemplatePage';
 import { VehicleEditPage, VehiclePage } from './pages/VehiclePage';
 import { AccountMenu } from './components/AccountMenu';
 import { probeApi } from './api/health';
@@ -70,6 +79,13 @@ function Layout() {
           <Route path="/expenses/new" element={<NewExpensePage />} />
           <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
           <Route path="/expenses/:id/edit" element={<EditExpensePage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
+          <Route path="/warranty/new" element={<NewCoveragePage />} />
+          <Route path="/warranty/template" element={<WarrantyTemplatePage />} />
+          <Route path="/warranty/claims/:claimId/edit" element={<EditClaimPage />} />
+          <Route path="/warranty/:id" element={<CoverageDetailPage />} />
+          <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
+          <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
           <Route path="/vehicle" element={<VehiclePage />} />
           <Route path="/vehicle/edit" element={<VehicleEditPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
@@ -81,6 +97,7 @@ function Layout() {
         </NavLink>
         <NavLink to="/reminders">Reminders</NavLink>
         <NavLink to="/expenses">Expenses</NavLink>
+        <NavLink to="/warranty">Warranty</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>
     </>

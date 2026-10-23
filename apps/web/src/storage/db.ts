@@ -12,7 +12,13 @@ export type QueueKind =
   | 'delete-reminder'
   | 'create-expense'
   | 'edit-expense'
-  | 'delete-expense';
+  | 'delete-expense'
+  | 'create-coverage'
+  | 'edit-coverage'
+  | 'delete-coverage'
+  | 'create-claim'
+  | 'edit-claim'
+  | 'delete-claim';
 
 export interface QueueError {
   /** HTTP status, or null for a network failure. */

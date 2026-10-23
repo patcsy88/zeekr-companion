@@ -11,7 +11,7 @@ import { syncAll } from '../sync/engine';
 /** Always-visible sync state: offline, pending, failed, last sync, and the Sync now button. */
 export function SyncBar() {
   const { online } = useConnectivity();
-  const { pending, failed } = useQueueCounts();
+  const { pending, failed, blocked } = useQueueCounts();
   const { flushing, paused } = useSyncStatus();
   const session = useSession();
   const last = useLastSynced();
@@ -41,6 +41,13 @@ export function SyncBar() {
           <li>
             <span className="badge bad" data-testid="failed-count">
               {failed} failed
+            </span>
+          </li>
+        ) : null}
+        {blocked > 0 ? (
+          <li>
+            <span className="badge bad" data-testid="blocked-count">
+              {blocked} blocked
             </span>
           </li>
         ) : null}

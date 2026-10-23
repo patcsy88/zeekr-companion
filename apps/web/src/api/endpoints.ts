@@ -1,5 +1,14 @@
 import { assertUuid, request } from './client';
 import type {
+  ClaimEdit,
+  CoverageEdit,
+  WarrantyClaim,
+  WarrantyClaimCreate,
+  WarrantyClaimList,
+  WarrantyCoverage,
+  WarrantyCoverageCreate,
+  WarrantyCoverageList,
+  WarrantyTemplateList,
   Expense,
   ExpenseCreate,
   ExpenseEdit,
@@ -110,4 +119,44 @@ export async function deleteExpense(id: string): Promise<void> {
 
 export async function getReminderTemplates(): Promise<ReminderTemplateList> {
   return (await request<ReminderTemplateList>({ method: 'GET', path: '/reminder-templates' })).data;
+}
+
+export async function listCoverages(): Promise<WarrantyCoverageList> {
+  return (await request<WarrantyCoverageList>({ method: 'GET', path: '/warranty-coverages' })).data;
+}
+
+export async function listClaims(): Promise<WarrantyClaimList> {
+  return (await request<WarrantyClaimList>({ method: 'GET', path: '/warranty-claims' })).data;
+}
+
+export async function getWarrantyTemplates(): Promise<WarrantyTemplateList> {
+  return (await request<WarrantyTemplateList>({ method: 'GET', path: '/warranty-templates' })).data;
+}
+
+const coveragePath = (id: string) => `/warranty-coverages/${encodeURIComponent(assertUuid(id))}`;
+const claimPath = (id: string) => `/warranty-claims/${encodeURIComponent(assertUuid(id))}`;
+
+export async function createCoverage(body: WarrantyCoverageCreate): Promise<WarrantyCoverage> {
+  return (await request<WarrantyCoverage>({ method: 'POST', path: '/warranty-coverages', body }))
+    .data;
+}
+
+export async function patchCoverage(id: string, body: CoverageEdit): Promise<WarrantyCoverage> {
+  return (await request<WarrantyCoverage>({ method: 'PATCH', path: coveragePath(id), body })).data;
+}
+
+export async function deleteCoverage(id: string): Promise<void> {
+  await request({ method: 'DELETE', path: coveragePath(id) });
+}
+
+export async function createClaim(body: WarrantyClaimCreate): Promise<WarrantyClaim> {
+  return (await request<WarrantyClaim>({ method: 'POST', path: '/warranty-claims', body })).data;
+}
+
+export async function patchClaim(id: string, body: ClaimEdit): Promise<WarrantyClaim> {
+  return (await request<WarrantyClaim>({ method: 'PATCH', path: claimPath(id), body })).data;
+}
+
+export async function deleteClaim(id: string): Promise<void> {
+  await request({ method: 'DELETE', path: claimPath(id) });
 }

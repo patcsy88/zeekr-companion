@@ -1,4 +1,8 @@
 import type {
+  ClaimEdit,
+  CoverageEdit,
+  WarrantyClaimCreate,
+  WarrantyCoverageCreate,
   ExpenseCreate,
   ExpenseEdit,
   ReminderCreate,
@@ -53,11 +57,40 @@ export async function listQueue(): Promise<QueueEntry[]> {
   return rows.sort((a, b) => a.seq - b.seq);
 }
 
-export async function countQueue(): Promise<{ pending: number; failed: number }> {
+const CLAIM_KINDS: QueueEntry['kind'][] = ['create-claim', 'edit-claim', 'delete-claim'];
+
+/**
+ * Claim creates that wait for a coverage whose create failed (400/409): claim id -> coverage id.
+ * Such claims are shown as blocked and are never sent. Retrying the coverage unblocks them.
+ */
+export function blockedClaimIds(rows: QueueEntry[]): Map<string, string> {
+  const failedCoverages = new Set(
+    rows
+      .filter((r) => r.kind === 'create-coverage' && r.status === 'failed')
+      .map((r) => r.record_id),
+  );
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    if (r.kind !== 'create-claim') continue;
+    const coverageId = (r.body as WarrantyClaimCreate).coverage_id;
+    if (failedCoverages.has(coverageId)) out.set(r.record_id, coverageId);
+  }
+  return out;
+}
+
+/** True for any queued claim write whose claim create is blocked by a failed coverage create. */
+export function isBlockedEntry(e: QueueEntry, blocked: Map<string, string>): boolean {
+  return CLAIM_KINDS.includes(e.kind) && e.status !== 'failed' && blocked.has(e.record_id);
+}
+
+export async function countQueue(): Promise<{ pending: number; failed: number; blocked: number }> {
   const rows = await listQueue();
+  const blocked = blockedClaimIds(rows);
+  const isBlocked = (r: QueueEntry) => isBlockedEntry(r, blocked);
   return {
-    pending: rows.filter((r) => r.status !== 'failed').length,
+    pending: rows.filter((r) => r.status !== 'failed' && !isBlocked(r)).length,
     failed: rows.filter((r) => r.status === 'failed').length,
+    blocked: rows.filter(isBlocked).length,
   };
 }
 
@@ -293,6 +326,189 @@ export async function enqueueExpenseDelete(id: string): Promise<void> {
   }
   await tx.done;
   notifyData();
+}
+
+/** Warranty coverage creation. The coverage id is the entry id (idempotent POST). */
+export async function enqueueCoverageCreate(body: WarrantyCoverageCreate): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const existing = (await tx.store.index('by_record').getAll(body.id)).find(
+    (e) => e.kind === 'create-coverage' && e.status !== 'sending',
+  );
+  if (existing) await tx.store.put(resetCreate(existing, body));
+  else
+    await tx.store.add(
+      base('create-coverage', 'POST', '/warranty-coverages', body, body.id, body.id) as QueueEntry,
+    );
+  await tx.done;
+  notifyData();
+}
+
+export async function enqueueCoverageEdit(id: string, patch: CoverageEdit): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
+  const create = entries.find((e) => e.kind === 'create-coverage' && e.status !== 'sending');
+  const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-coverage');
+  if (create) {
+    await tx.store.put(
+      resetCreate(create, { ...(create.body as WarrantyCoverageCreate), ...patch }),
+    );
+  } else if (lastEdit && lastEdit.status !== 'sending') {
+    await tx.store.put(reset(lastEdit, { ...(lastEdit.body as CoverageEdit), ...patch }));
+  } else {
+    await tx.store.add(
+      base(
+        'edit-coverage',
+        'PATCH',
+        `/warranty-coverages/${encodeURIComponent(id)}`,
+        patch,
+        id,
+      ) as QueueEntry,
+    );
+  }
+  await tx.done;
+  notifyData();
+}
+
+/**
+ * Delete a coverage. An unattempted create is cancelled together with its edits and every queued
+ * claim write for it (the server never saw any of them). Otherwise the create stays if it was
+ * attempted, a DELETE is added, and pending claim writes for this coverage are dropped locally:
+ * the server deletes the claims with the coverage (cascade), and a claim POST sent after the
+ * DELETE could only fail. `knownClaimIds` are claims already on the server, whose queued edits
+ * and deletes are dropped too. Returns how many unsent claim creates were dropped, for the notice.
+ */
+export async function enqueueCoverageDelete(
+  id: string,
+  knownClaimIds: string[] = [],
+): Promise<{ droppedClaimCreates: number }> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const all = await tx.store.getAll();
+  const claimCreates = all.filter(
+    (e) => e.kind === 'create-claim' && (e.body as WarrantyClaimCreate).coverage_id === id,
+  );
+  const claimIds = new Set([...knownClaimIds, ...claimCreates.map((e) => e.record_id)]);
+  for (const e of all) {
+    if (CLAIM_KINDS.includes(e.kind) && claimIds.has(e.record_id)) await tx.store.delete(e.seq);
+  }
+  const entries = await tx.store.index('by_record').getAll(id);
+  const create = entries.find((e) => e.kind === 'create-coverage');
+  if (create && create.attempts === 0 && create.status !== 'sending') {
+    for (const e of entries) await tx.store.delete(e.seq);
+  } else {
+    for (const e of entries) {
+      if (e.kind === 'edit-coverage' && e.status !== 'sending') await tx.store.delete(e.seq);
+    }
+    if (!entries.some((e) => e.kind === 'delete-coverage')) {
+      await tx.store.add(
+        base(
+          'delete-coverage',
+          'DELETE',
+          `/warranty-coverages/${encodeURIComponent(id)}`,
+          undefined,
+          id,
+        ) as QueueEntry,
+      );
+    }
+  }
+  await tx.done;
+  notifyData();
+  return { droppedClaimCreates: claimCreates.length };
+}
+
+/** Warranty claim creation. Sent after its coverage create (see sync/engine.ts). */
+export async function enqueueClaimCreate(body: WarrantyClaimCreate): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const existing = (await tx.store.index('by_record').getAll(body.id)).find(
+    (e) => e.kind === 'create-claim' && e.status !== 'sending',
+  );
+  if (existing) await tx.store.put(resetCreate(existing, body));
+  else
+    await tx.store.add(
+      base('create-claim', 'POST', '/warranty-claims', body, body.id, body.id) as QueueEntry,
+    );
+  await tx.done;
+  notifyData();
+}
+
+export async function enqueueClaimEdit(id: string, patch: ClaimEdit): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
+  const create = entries.find((e) => e.kind === 'create-claim' && e.status !== 'sending');
+  const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-claim');
+  if (create) {
+    await tx.store.put(resetCreate(create, { ...(create.body as WarrantyClaimCreate), ...patch }));
+  } else if (lastEdit && lastEdit.status !== 'sending') {
+    await tx.store.put(reset(lastEdit, { ...(lastEdit.body as ClaimEdit), ...patch }));
+  } else {
+    await tx.store.add(
+      base(
+        'edit-claim',
+        'PATCH',
+        `/warranty-claims/${encodeURIComponent(id)}`,
+        patch,
+        id,
+      ) as QueueEntry,
+    );
+  }
+  await tx.done;
+  notifyData();
+}
+
+export async function enqueueClaimDelete(id: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = await tx.store.index('by_record').getAll(id);
+  const create = entries.find((e) => e.kind === 'create-claim');
+  if (create && create.attempts === 0 && create.status !== 'sending') {
+    for (const e of entries) await tx.store.delete(e.seq);
+  } else {
+    for (const e of entries) {
+      if (e.kind === 'edit-claim' && e.status !== 'sending') await tx.store.delete(e.seq);
+    }
+    if (!entries.some((e) => e.kind === 'delete-claim')) {
+      await tx.store.add(
+        base(
+          'delete-claim',
+          'DELETE',
+          `/warranty-claims/${encodeURIComponent(id)}`,
+          undefined,
+          id,
+        ) as QueueEntry,
+      );
+    }
+  }
+  await tx.done;
+  notifyData();
+}
+
+/**
+ * Discard a failed coverage create (or other failed coverage entries) and every queued claim
+ * write for that coverage: those claims have nothing to attach to once the coverage is gone.
+ */
+export async function discardFailedCoverage(id: string): Promise<{ droppedClaimCreates: number }> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const all = await tx.store.getAll();
+  const claimCreates = all.filter(
+    (e) => e.kind === 'create-claim' && (e.body as WarrantyClaimCreate).coverage_id === id,
+  );
+  const failedHere = all.filter((e) => e.record_id === id && e.status === 'failed');
+  const dropsCoverage = failedHere.some((e) => e.kind === 'create-coverage');
+  for (const e of failedHere) await tx.store.delete(e.seq);
+  if (dropsCoverage) {
+    const ids = new Set(claimCreates.map((e) => e.record_id));
+    for (const e of all) {
+      if (CLAIM_KINDS.includes(e.kind) && ids.has(e.record_id)) await tx.store.delete(e.seq);
+    }
+  }
+  await tx.done;
+  notifyData();
+  return { droppedClaimCreates: dropsCoverage ? claimCreates.length : 0 };
 }
 
 export async function updateEntry(seq: number, changes: Partial<QueueEntry>): Promise<void> {

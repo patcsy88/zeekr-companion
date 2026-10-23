@@ -1,6 +1,15 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import type { Expense, Reminder, ReminderTemplate, ServiceRecord, Vehicle } from '../src/api/types';
+import type {
+  Expense,
+  Reminder,
+  ReminderTemplate,
+  ServiceRecord,
+  Vehicle,
+  WarrantyClaim,
+  WarrantyCoverage,
+  WarrantyTemplate,
+} from '../src/api/types';
 import { klToday } from '../src/lib/dates';
 
 /** In-memory fake of the contract. Disposable data only. */
@@ -32,7 +41,60 @@ export interface FakeApi {
   /** Page size the fake list uses regardless of `limit` (to force several pages). */
   expensePageCap: number | null;
   expenseGets: number;
+  coverages: Map<string, WarrantyCoverage>;
+  claims: Map<string, WarrantyClaim>;
+  coveragePosts: WarrantyCoverage[];
+  claimPosts: WarrantyClaim[];
+  coverageDeletes: string[];
+  claimDeletes: string[];
+  /** Status codes for the next coverage / claim POSTs, one per call (0 = succeed). */
+  coveragePostFailures: number[];
+  claimPostFailures: number[];
+  warrantyGets: number;
+  warrantyTemplateGets: number;
+  warrantyTemplates: WarrantyTemplate[];
 }
+
+export const WARRANTY_TEMPLATE: WarrantyTemplate = {
+  id: 'my-factory-warranty',
+  version: 1,
+  name: 'Zeekr Malaysia factory warranty terms',
+  source: {
+    title: 'Zeekr Malaysia Warranty (PDF)',
+    url: 'https://assets.zeekrlife.com/assets/my/Warranty.pdf',
+    research_ref: 'M8, M9, M10',
+    status: 'verified',
+    retrieved: '2026-10-22',
+  },
+  caveat:
+    'Terms, scope, exclusions and conditions vary by build date, usage and local rules. Confirm against your own warranty booklet or service centre.',
+  baseline_required: true,
+  items: [
+    { key: 'general', name: 'Vehicle warranty', months: 60, km: 150000, research_ref: 'M8' },
+    {
+      key: 'powertrain',
+      name: 'Electric powertrain warranty',
+      months: 96,
+      km: 160000,
+      research_ref: 'M9',
+    },
+    {
+      key: 'wear_short',
+      name: 'Wear-and-tear cover (short)',
+      months: 6,
+      km: 10000,
+      research_ref: 'M10',
+    },
+    {
+      key: 'genuine_parts',
+      name: 'Genuine replacement parts',
+      months: null,
+      km: null,
+      research_ref: 'M10',
+      enter_manually: true,
+    },
+  ],
+};
 
 export const TEMPLATE: ReminderTemplate = {
   id: 'awd-performance-service',
@@ -83,6 +145,17 @@ export const fake: FakeApi = {
   expensePostFailures: [],
   expensePageCap: null,
   expenseGets: 0,
+  coverages: new Map(),
+  claims: new Map(),
+  coveragePosts: [],
+  claimPosts: [],
+  coverageDeletes: [],
+  claimDeletes: [],
+  coveragePostFailures: [],
+  claimPostFailures: [],
+  warrantyGets: 0,
+  warrantyTemplateGets: 0,
+  warrantyTemplates: [WARRANTY_TEMPLATE],
 };
 
 export function resetFake(): void {
@@ -109,6 +182,17 @@ export function resetFake(): void {
   fake.expensePostFailures = [];
   fake.expensePageCap = null;
   fake.expenseGets = 0;
+  fake.coverages.clear();
+  fake.claims.clear();
+  fake.coveragePosts = [];
+  fake.claimPosts = [];
+  fake.coverageDeletes = [];
+  fake.claimDeletes = [];
+  fake.coveragePostFailures = [];
+  fake.claimPostFailures = [];
+  fake.warrantyGets = 0;
+  fake.warrantyTemplateGets = 0;
+  fake.warrantyTemplates = [WARRANTY_TEMPLATE];
 }
 
 export const err = (
@@ -366,4 +450,164 @@ export const expenseHandlers = [
   }),
 ];
 
-export const server = setupServer(...handlers, ...reminderHandlers, ...expenseHandlers);
+const sameCoverage = (a: WarrantyCoverage, b: WarrantyCoverage) =>
+  a.name === b.name &&
+  a.provider_type === b.provider_type &&
+  a.start_date === b.start_date &&
+  (a.end_date ?? null) === (b.end_date ?? null) &&
+  (a.km_limit ?? null) === (b.km_limit ?? null) &&
+  (a.notes ?? null) === (b.notes ?? null);
+
+/** The fake reads the current odometer like the server: newest service record by date. */
+function fakeOdometer() {
+  const newest = [...fake.records.values()].sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  return newest
+    ? {
+        km: newest.odometer,
+        source: 'latest_service_record' as const,
+        service_record_id: newest.id,
+        date: newest.date,
+      }
+    : null;
+}
+
+function withComputed(c: WarrantyCoverage): WarrantyCoverage {
+  const claimCount = [...fake.claims.values()].filter((x) => x.coverage_id === c.id).length;
+  return { ...c, claim_count: claimCount };
+}
+
+function coverageIssues(b: Partial<WarrantyCoverage>): { field: string; issue: string }[] {
+  const out: { field: string; issue: string }[] = [];
+  if (typeof b.name !== 'string' || b.name.trim() === '')
+    out.push({ field: 'name', issue: 'must not be empty' });
+  if ((b.end_date ?? null) === null && (b.km_limit ?? null) === null) {
+    out.push({ field: 'end_date', issue: 'enter an end date or a km limit' });
+    out.push({ field: 'km_limit', issue: 'enter an end date or a km limit' });
+  }
+  if (b.end_date && b.start_date && b.end_date < b.start_date)
+    out.push({ field: 'end_date', issue: 'must not be before start_date' });
+  return out;
+}
+
+/** Fake of /warranty-*: idempotent POST, cascade delete, claim_count, coverage_id must exist. */
+export const warrantyHandlers = [
+  http.get('*/api/v1/warranty-coverages', () => {
+    fake.warrantyGets += 1;
+    if (fake.down) return err(500, 'internal_error', 'Internal server error.');
+    return HttpResponse.json({
+      items: [...fake.coverages.values()].map(withComputed),
+      current_odometer: fakeOdometer(),
+    });
+  }),
+  http.post('*/api/v1/warranty-coverages', async ({ request }) => {
+    const body = (await request.json()) as WarrantyCoverage;
+    fake.coveragePosts.push(body);
+    const fail = fake.coveragePostFailures.shift();
+    if (fail === 400)
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'name', issue: 'rejected by test' },
+      ]);
+    if (fail === 409) return err(409, 'conflict', 'A coverage with this id already exists.');
+    if (fail !== undefined && fail !== 0)
+      return err(fail, 'internal_error', 'Internal server error.');
+    const existing = fake.coverages.get(body.id);
+    if (existing) {
+      if (!sameCoverage(existing, body)) return err(409, 'conflict', 'Different content.');
+      return HttpResponse.json(withComputed(existing), { status: 200 });
+    }
+    const issues = coverageIssues(body);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    const c: WarrantyCoverage = {
+      ...body,
+      end_date: body.end_date ?? null,
+      km_limit: body.km_limit ?? null,
+      notes: body.notes ?? null,
+      source_kind: body.source_kind ?? 'owner_entered',
+      verification_status: body.verification_status ?? 'unverified',
+      source_note: body.source_note ?? null,
+      template_ref: body.template_ref ?? null,
+      status: 'active',
+      expired_by: [],
+      expiring_soon_by: [],
+      claim_count: 0,
+      created_at: STAMP,
+      updated_at: STAMP,
+    };
+    fake.coverages.set(c.id, c);
+    return HttpResponse.json(c, { status: 201 });
+  }),
+  http.patch('*/api/v1/warranty-coverages/:id', async ({ request, params }) => {
+    const c = fake.coverages.get(String(params.id));
+    if (!c) return err(404, 'not_found', 'Coverage not found.');
+    const patch = (await request.json()) as Partial<WarrantyCoverage>;
+    const updated = { ...c, ...patch };
+    const issues = coverageIssues(updated);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    fake.coverages.set(c.id, updated);
+    return HttpResponse.json(withComputed(updated));
+  }),
+  http.delete('*/api/v1/warranty-coverages/:id', ({ params }) => {
+    const id = String(params.id);
+    fake.coverageDeletes.push(id);
+    if (!fake.coverages.delete(id)) return err(404, 'not_found', 'Coverage not found.');
+    for (const [k, v] of fake.claims) if (v.coverage_id === id) fake.claims.delete(k);
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.get('*/api/v1/warranty-claims', () => {
+    if (fake.down) return err(500, 'internal_error', 'Internal server error.');
+    return HttpResponse.json({ items: [...fake.claims.values()] });
+  }),
+  http.post('*/api/v1/warranty-claims', async ({ request }) => {
+    const body = (await request.json()) as WarrantyClaim;
+    fake.claimPosts.push(body);
+    const fail = fake.claimPostFailures.shift();
+    if (fail === 400)
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'description', issue: 'rejected by test' },
+      ]);
+    if (fail !== undefined && fail !== 0)
+      return err(fail, 'internal_error', 'Internal server error.');
+    const existing = fake.claims.get(body.id);
+    if (existing) return HttpResponse.json(existing, { status: 200 });
+    if (!fake.coverages.has(body.coverage_id))
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'coverage_id', issue: 'coverage does not exist' },
+      ]);
+    const x: WarrantyClaim = {
+      ...body,
+      cost_covered_minor: body.cost_covered_minor ?? null,
+      currency: body.currency || 'MYR',
+      notes: body.notes ?? null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    };
+    fake.claims.set(x.id, x);
+    return HttpResponse.json(x, { status: 201 });
+  }),
+  http.patch('*/api/v1/warranty-claims/:id', async ({ request, params }) => {
+    const x = fake.claims.get(String(params.id));
+    if (!x) return err(404, 'not_found', 'Claim not found.');
+    const updated = { ...x, ...((await request.json()) as object) };
+    fake.claims.set(x.id, updated);
+    return HttpResponse.json(updated);
+  }),
+  http.delete('*/api/v1/warranty-claims/:id', ({ params }) => {
+    const id = String(params.id);
+    fake.claimDeletes.push(id);
+    if (!fake.claims.delete(id)) return err(404, 'not_found', 'Claim not found.');
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.get('*/api/v1/warranty-templates', () => {
+    fake.warrantyTemplateGets += 1;
+    return HttpResponse.json({ items: fake.warrantyTemplates });
+  }),
+];
+
+export const server = setupServer(
+  ...handlers,
+  ...reminderHandlers,
+  ...expenseHandlers,
+  ...warrantyHandlers,
+);

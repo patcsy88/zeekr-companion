@@ -23,7 +23,8 @@ import {
   type OdometerBasis,
   type RemindersSnapshot,
 } from './reminders';
-import type { ReminderTemplate } from '../api/types';
+import type { ReminderTemplate, WarrantyTemplate } from '../api/types';
+import { readWarranty, readWarrantyTemplates, type WarrantySnapshot } from './warranty';
 
 export const useSession = () => useSyncExternalStore(subscribeSession, getSession);
 export const useConnectivity = () => useSyncExternalStore(subscribeConnectivity, getConnectivity);
@@ -63,8 +64,8 @@ export function useRecord(id: string): { view: RecordView | null } | undefined {
 export function useVehicle(): VehicleSnapshot | undefined {
   return useLocal(readVehicle, 'vehicle');
 }
-export function useQueueCounts(): { pending: number; failed: number } {
-  return useLocal(countQueue, 'counts') ?? { pending: 0, failed: 0 };
+export function useQueueCounts(): { pending: number; failed: number; blocked: number } {
+  return useLocal(countQueue, 'counts') ?? { pending: 0, failed: 0, blocked: 0 };
 }
 export function useLastSynced(): string | null {
   return useLocal(async () => (await getMeta<string>('last_synced_at')) ?? null, 'last') ?? null;
@@ -87,4 +88,11 @@ export function useReminder(
 }
 export function useTemplates(): { loaded: boolean; items: ReminderTemplate[] } | undefined {
   return useLocal(readTemplates, 'templates');
+}
+
+export function useWarranty(): WarrantySnapshot | undefined {
+  return useLocal(readWarranty, 'warranty');
+}
+export function useWarrantyTemplates(): { loaded: boolean; items: WarrantyTemplate[] } | undefined {
+  return useLocal(readWarrantyTemplates, 'warranty-templates');
 }

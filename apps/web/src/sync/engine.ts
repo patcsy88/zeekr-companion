@@ -1,6 +1,14 @@
 import { ApiError, NetworkError, request } from '../api/client';
 import { getVehicle } from '../api/endpoints';
-import type { Expense, Reminder, ServiceRecord, Vehicle } from '../api/types';
+import type {
+  Expense,
+  Reminder,
+  ServiceRecord,
+  Vehicle,
+  WarrantyClaim,
+  WarrantyClaimCreate,
+  WarrantyCoverage,
+} from '../api/types';
 import { getSession, requestLogin, subscribeSession } from '../auth/session';
 import {
   refreshRecords,
@@ -16,11 +24,26 @@ import {
   removeReminderFromCache,
   upsertReminderInCache,
 } from '../data/reminders';
+import {
+  refreshWarranty,
+  removeClaimFromCache,
+  removeCoverageFromCache,
+  upsertClaimInCache,
+  upsertCoverageInCache,
+  refreshWarrantyTemplates,
+} from '../data/warranty';
 import { isOnline } from '../lib/connectivity';
 import { notifyData } from '../lib/events';
 import { getMeta, setMeta } from '../storage/cache';
 import type { QueueEntry, QueueError } from '../storage/db';
-import { listQueue, removeEntry, resetSending, updateEntry } from '../storage/queue';
+import {
+  blockedClaimIds,
+  isBlockedEntry,
+  listQueue,
+  removeEntry,
+  resetSending,
+  updateEntry,
+} from '../storage/queue';
 
 export interface SyncStatus {
   flushing: boolean;
@@ -126,6 +149,20 @@ async function applySuccess(entry: QueueEntry, data: unknown): Promise<void> {
     case 'delete-expense':
       await removeExpenseFromCache(entry.record_id);
       break;
+    case 'create-coverage':
+    case 'edit-coverage':
+      await upsertCoverageInCache(data as WarrantyCoverage);
+      break;
+    case 'delete-coverage':
+      await removeCoverageFromCache(entry.record_id);
+      break;
+    case 'create-claim':
+    case 'edit-claim':
+      await upsertClaimInCache(data as WarrantyClaim);
+      break;
+    case 'delete-claim':
+      await removeClaimFromCache(entry.record_id);
+      break;
     case 'put-vehicle':
       await setVehicleInCache(data as Vehicle);
       if ((await getMeta<string>(IDENTITY_KEY)) === undefined)
@@ -154,7 +191,9 @@ async function send(entry: QueueEntry): Promise<Outcome> {
       }
       if (entry.method === 'DELETE' && e.status === 404) {
         // Already gone (for example a replayed DELETE): the goal is met.
-        if (entry.kind === 'delete-reminder') await removeReminderFromCache(entry.record_id);
+        if (entry.kind === 'delete-coverage') await removeCoverageFromCache(entry.record_id);
+        else if (entry.kind === 'delete-claim') await removeClaimFromCache(entry.record_id);
+        else if (entry.kind === 'delete-reminder') await removeReminderFromCache(entry.record_id);
         else if (entry.kind === 'delete-expense') await removeExpenseFromCache(entry.record_id);
         else await removeRecordFromCache(entry.record_id);
         await removeEntry(entry.seq);
@@ -186,15 +225,47 @@ async function send(entry: QueueEntry): Promise<Outcome> {
   }
 }
 
+/**
+ * Coverage creates go first (a stable reorder of the creates only): a claim create references its
+ * coverage, and the server answers 400 when the coverage does not exist yet.
+ */
+function sendOrder(queue: QueueEntry[]): QueueEntry[] {
+  return [
+    ...queue.filter((e) => e.kind === 'create-coverage'),
+    ...queue.filter((e) => e.kind !== 'create-coverage'),
+  ];
+}
+
 async function runFlush(force: boolean): Promise<void> {
   await resetSending();
   const blocked = new Set<string>();
+  /**
+   * Coverages whose create is in the queue and has not been sent in this run: failed (400/409),
+   * waiting for a retry time, or held. Their claim creates are not sent (AC-62). Held claims
+   * block only themselves, so everything else in the queue still flows.
+   */
+  const held = new Set<string>();
+  const initial = sendOrder(await listQueue());
+  const unsentCoverage = new Set(
+    initial.filter((e) => e.kind === 'create-coverage').map((e) => e.record_id),
+  );
   let stop = false;
   let identityChecked = false;
-  for (const entry of await listQueue()) {
+  for (const entry of initial) {
     if (stop) break;
+    if (entry.kind === 'create-coverage' && entry.status === 'failed') held.add(entry.record_id);
     if (entry.status === 'failed' || blocked.has(entry.record_id)) continue;
-    if (!force && entry.next_attempt_at > Date.now()) continue;
+    if (entry.kind === 'create-claim') {
+      const cov = (entry.body as WarrantyClaimCreate).coverage_id;
+      if (unsentCoverage.has(cov) && held.has(cov)) {
+        blocked.add(entry.record_id);
+        continue;
+      }
+    }
+    if (!force && entry.next_attempt_at > Date.now()) {
+      if (entry.kind === 'create-coverage') held.add(entry.record_id);
+      continue;
+    }
     if (!identityChecked) {
       const id = await checkIdentity();
       if (id === 'auth') {
@@ -206,8 +277,12 @@ async function runFlush(force: boolean): Promise<void> {
       identityChecked = true;
     }
     const outcome = await send(entry);
-    if (outcome === 'failed') blocked.add(entry.record_id);
-    else if (outcome === 'auth') {
+    if (outcome === 'done' && entry.kind === 'create-coverage')
+      unsentCoverage.delete(entry.record_id);
+    if (outcome === 'failed') {
+      blocked.add(entry.record_id);
+      if (entry.kind === 'create-coverage') held.add(entry.record_id);
+    } else if (outcome === 'auth') {
       requestLogin();
       setStatus({ paused: true });
       stop = true;
@@ -292,7 +367,8 @@ export async function syncAll(force = false): Promise<void> {
   await flush(force);
   if (!getSession().signedIn || !isOnline()) return;
   const queue = await listQueue();
-  const hasUnsent = queue.some((e) => e.status !== 'failed');
+  const blockedClaims = blockedClaimIds(queue);
+  const hasUnsent = queue.some((e) => e.status !== 'failed' && !isBlockedEntry(e, blockedClaims));
   if (hasUnsent) return; // do not refresh while writes are still waiting
   try {
     // One after the other: each guarded refresh moves the data epoch, and refreshes running side
@@ -300,6 +376,8 @@ export async function syncAll(force = false): Promise<void> {
     await refreshVehicle();
     await refreshRecords();
     await refreshReminders();
+    await refreshWarranty();
+    await refreshWarrantyTemplates().catch(() => undefined);
     await refreshExpenses();
     // The template is static: one fetch per sync is enough, and a failure here is not fatal.
     await refreshTemplates().catch(() => undefined);

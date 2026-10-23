@@ -683,7 +683,7 @@ describe('QA-W8 (fixed) also for service records and reminders', () => {
       notes: null,
     } as never);
     await markAttempted();
-    await enqueueEdit(RID, { description: 'y' } as never);
+    await enqueueEdit(RID, { description: 'y' });
     await enqueueDelete(RID);
     expect((await listQueue()).map((x) => x.kind)).toContain('delete-record');
   });
