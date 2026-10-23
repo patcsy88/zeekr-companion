@@ -1,6 +1,14 @@
 # Deploy plan: first deployment to the Ubuntu host
 
-- Status: **Proposed**. Needs owner approval before any step is run (deploying is an approval gate in `AGENTS.md`).
+- Status: **Approved by the owner on 2026-10-23, with the decisions below.** Phase 0 can run now. Each later phase still needs the owner to start it, and the push to GitHub needs a separate go-ahead when Phase 1 begins.
+
+## Owner decisions (2026-10-23)
+
+1. Code reaches the host by pushing `main` to GitHub and running `git clone` on the host (the recommended option). The push itself waits for a separate go-ahead.
+2. Local-only access first (`127.0.0.1:8080`). Tailscale (Phase 5) is later and optional.
+3. Backup disk: **nothing for now.** Phase 3 is deferred, the backup timer stays off, and NFR-5 stays outstanding. Until a backup and a tested restore exist, the host holds the only copy of the data, so do not enter records you cannot afford to lose.
+4. Machine name `app-1`, to be applied before any `tailscale serve`.
+5. Deploy with the current single password. ADR-006 replaces it afterwards.
 - Date: 2026-10-23
 - Scope: first deployment of Reminders, Expenses, Warranty and the vehicle/service-record slice to the standalone Ubuntu Server 24.04 host (ADR-004). Placeholders only: the real host name, tailnet name, LAN subnet, mount path and account details never go in this repo.
 - Not in scope: the ADR-006 account model (built after this plan), vehicle integrations, native clients.
@@ -45,7 +53,7 @@ Each phase ends with a check. Do not start the next phase until the check passes
 3. `docker compose up -d --build --wait`.
 - Check: `curl -s http://127.0.0.1:8080/health` returns `{"status":"ok"}`; `docker port` shows `127.0.0.1:8080` only; `ss -ltnp | grep 8080` shows loopback; `docker compose ps` shows all three healthy; the API log shows migrations reaching `0004`.
 
-### Phase 3: backup and a tested restore (owner, with an agent walking through it)
+### Phase 3: backup and a tested restore (owner, with an agent walking through it) — DEFERRED by the owner
 1. Mount the backup disk; configure and enable the systemd timer from `infra/backup/`.
 2. Run one backup by hand; confirm the `.sql.gz` file exists and is not empty.
 3. Restore it into a **throwaway** container (`infra/backup/RESTORE.md` step 1), compare row counts.
