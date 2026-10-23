@@ -45,6 +45,25 @@ function reset(entry: QueueEntry, body: unknown): QueueEntry {
 }
 
 /**
+ * A create the server certainly never stored: not yet attempted, or refused with a 4xx other than
+ * 409 (a 409 means the server holds a row with this id). Deleting such an item just cancels it.
+ */
+function neverStored(create: QueueEntry): boolean {
+  if (create.status === 'sending') return false;
+  if (create.attempts === 0) return true;
+  return create.status === 'failed' && create.last_error?.status !== 409;
+}
+
+/**
+ * Whether an edit may be folded into this create. Not after a lost response (status pending,
+ * attempts above 0): the server may hold the original content, and a replay with different content
+ * is a 409. A failed create is folded, because that is how the owner fixes a rejected item.
+ */
+function canFoldEdit(create: QueueEntry): boolean {
+  return create.status !== 'sending' && (create.attempts === 0 || create.status === 'failed');
+}
+
+/**
  * Like reset, but for a create: keeps `attempts`. A create that was sent once may have reached the
  * server (lost response), so a later delete must still send a DELETE rather than cancel it.
  */
@@ -348,7 +367,7 @@ export async function enqueueCoverageEdit(id: string, patch: CoverageEdit): Prom
   const db = await getDb();
   const tx = db.transaction('queue', 'readwrite');
   const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
-  const create = entries.find((e) => e.kind === 'create-coverage' && e.status !== 'sending');
+  const create = entries.find((e) => e.kind === 'create-coverage' && canFoldEdit(e));
   const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-coverage');
   if (create) {
     await tx.store.put(
@@ -395,12 +414,15 @@ export async function enqueueCoverageDelete(
   }
   const entries = await tx.store.index('by_record').getAll(id);
   const create = entries.find((e) => e.kind === 'create-coverage');
-  if (create && create.attempts === 0 && create.status !== 'sending') {
+  if (create && neverStored(create)) {
     for (const e of entries) await tx.store.delete(e.seq);
   } else {
     for (const e of entries) {
       if (e.kind === 'edit-coverage' && e.status !== 'sending') await tx.store.delete(e.seq);
     }
+    // A failed create would block the DELETE queued behind it (same record id); the DELETE removes
+    // whatever the server holds.
+    if (create && create.status === 'failed') await tx.store.delete(create.seq);
     if (!entries.some((e) => e.kind === 'delete-coverage')) {
       await tx.store.add(
         base(
@@ -438,7 +460,7 @@ export async function enqueueClaimEdit(id: string, patch: ClaimEdit): Promise<vo
   const db = await getDb();
   const tx = db.transaction('queue', 'readwrite');
   const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
-  const create = entries.find((e) => e.kind === 'create-claim' && e.status !== 'sending');
+  const create = entries.find((e) => e.kind === 'create-claim' && canFoldEdit(e));
   const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-claim');
   if (create) {
     await tx.store.put(resetCreate(create, { ...(create.body as WarrantyClaimCreate), ...patch }));
@@ -464,12 +486,13 @@ export async function enqueueClaimDelete(id: string): Promise<void> {
   const tx = db.transaction('queue', 'readwrite');
   const entries = await tx.store.index('by_record').getAll(id);
   const create = entries.find((e) => e.kind === 'create-claim');
-  if (create && create.attempts === 0 && create.status !== 'sending') {
+  if (create && neverStored(create)) {
     for (const e of entries) await tx.store.delete(e.seq);
   } else {
     for (const e of entries) {
       if (e.kind === 'edit-claim' && e.status !== 'sending') await tx.store.delete(e.seq);
     }
+    if (create && create.status === 'failed') await tx.store.delete(create.seq);
     if (!entries.some((e) => e.kind === 'delete-claim')) {
       await tx.store.add(
         base(

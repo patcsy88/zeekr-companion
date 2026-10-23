@@ -41,7 +41,10 @@ function open(path = '/expenses') {
 async function started() {
   await waitFor(() => {
     expect(fake.expenseGets).toBeGreaterThan(0);
+    expect(fake.templateGets).toBeGreaterThan(0); // the last request of the app-start sync
   });
+  // A response that lands after reportReachable(false) would mark the API reachable again.
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 const totals = () => screen.getByTestId('totals');
 

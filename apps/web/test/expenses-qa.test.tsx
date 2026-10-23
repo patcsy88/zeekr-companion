@@ -74,7 +74,9 @@ function open(path = '/expenses') {
 async function started() {
   await waitFor(() => {
     expect(fake.expenseGets).toBeGreaterThan(0);
+    expect(fake.templateGets).toBeGreaterThan(0); // the last request of the app-start sync
   });
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 const apiDown = () => server.use(http.all('*/api/v1/*', () => HttpResponse.error()));
 
