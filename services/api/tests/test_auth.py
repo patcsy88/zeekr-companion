@@ -98,7 +98,8 @@ def test_token_request_validation(client: TestClient) -> None:
 
 
 def test_password_hash_roundtrip() -> None:
-    stored = security.hash_password("abc", n=2**4)
-    assert security.verify_password("abc", stored)
-    assert not security.verify_password("abd", stored)
-    assert "abc" not in stored
+    # Not hex-only text, so the plaintext check below cannot match the random hex in the hash.
+    stored = security.hash_password("pw-xyz-roundtrip", n=2**4)
+    assert security.verify_password("pw-xyz-roundtrip", stored)
+    assert not security.verify_password("pw-xyz-roundtripX", stored)
+    assert "pw-xyz-roundtrip" not in stored
