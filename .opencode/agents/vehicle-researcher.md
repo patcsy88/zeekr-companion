@@ -1,6 +1,7 @@
 ---
 description: Establishes sourced facts about the Zeekr 7X, its supported interfaces and aftermarket equipment. Separates verified facts from assumptions.
 mode: subagent
+model: cliproxyapi/kimi-k2.7-code
 color: "#ca8a04"
 permissions:
   - action: edit
