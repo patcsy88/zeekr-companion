@@ -93,6 +93,6 @@ Not run: the test suites and the OpenAPI drift check (covered by the QA reports)
 |---|---|---|
 | SEC-W3 | **Fixed** | "Discard my change" on a failed coverage create now shows a notice naming how many unsent claims were dropped, and returns to the warranty list when any were. Test: `apps/web/test/warranty-sec.test.tsx` (fails without the fix). |
 | SEC-W4 | **Fixed** | The sign-out "unsent changes" count now includes blocked entries. Same test file. |
-| SEC-W1 | Open, owner decision | Owner-specific facts in `docs/research/vehicle-integrations.md`. The commit that added them is already on `origin/main`. |
-| SEC-W2 | Open, owner decision | Commit author address. |
+| SEC-W1 | Fixed going forward (owner chose option A) | O2 and O4 in `docs/research/vehicle-integrations.md` now say the details are held privately. M15 stays: it is public programme and press price information. History is not rewritten, so the earlier text remains in `origin/main`. |
+| SEC-W2 | Accepted (owner) | The owner chose to keep the gmail address in commits. |
 | SEC-W5, SEC-W6 | Open (Info) | CSP e2e does not visit a warranty page. Malformed JSON with no token returns 400, not 401. |
