@@ -101,3 +101,9 @@ Each phase ends with a check. Do not start the next phase until the check passes
 ## What I will not do without approval
 
 Push to GitHub, install anything on or connect to the host, create a Tailscale account or device, change DNS or the router, run a restore over live data, or enable the backup timer.
+
+## Deployment log
+
+- 2026-10-23, Phase 1 on the new Ubuntu 24.04.3 host: Docker 29.9.2 and Compose v5.6.1 installed and active; clone at `ff7c5e6`; `dist` copied from the development machine (11 files, checksum `3a9269e899c82cc3` matched, `check-dist.sh` ok). Only SSH and the local DNS resolver were listening before the stack started. **Firewall: unverified** (`ufw` not installed, no other firewall output seen).
+- 2026-10-23, Phase 2: the owner ran `docker compose up -d --build --wait` and the health, `docker compose ps`, loopback-binding and migration-head checks, and reported "findings as expected". **Owner-reported; the outputs were not shown to the agent.** Compose v5.6.1 raised no reported difference.
+- Phase 3 (backup and tested restore) is still deferred, so NFR-5 stays outstanding. Phases 4 and 5 are not yet run.
