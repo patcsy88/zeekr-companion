@@ -77,9 +77,9 @@ describe('queue', () => {
     await enqueueCreate(body(ID));
     const [e] = await listQueue();
     await updateEntry(e!.seq, { status: 'failed' });
-    expect(await countQueue()).toEqual({ pending: 0, failed: 1 });
+    expect(await countQueue()).toEqual({ pending: 0, failed: 1, blocked: 0 });
     await discardFailed(ID);
-    expect(await countQueue()).toEqual({ pending: 0, failed: 0 });
+    expect(await countQueue()).toEqual({ pending: 0, failed: 0, blocked: 0 });
   });
 
   it('overlay shows queued create as pending and hides deleted records', async () => {

@@ -4,6 +4,7 @@
  * client-side shapes that are not part of the contract. Type-only: nothing here exists at runtime.
  */
 import type {
+  components,
   ApiErrorCode,
   ApiErrorDetail,
   ApiErrorResponse,
@@ -88,4 +89,41 @@ export interface ReminderEdit {
   due_odometer?: number | null;
   notes?: string | null;
   completed_on?: string | null;
+}
+
+type Schemas = components['schemas'];
+export type WarrantyCoverage = Schemas['WarrantyCoverageOut'];
+export type WarrantyCoverageCreate = Schemas['WarrantyCoverageCreate'];
+export type WarrantyCoverageList = Schemas['WarrantyCoverageList'];
+export type WarrantyClaim = Schemas['WarrantyClaimOut'];
+export type WarrantyClaimCreate = Schemas['WarrantyClaimCreate'];
+export type WarrantyClaimList = Schemas['WarrantyClaimList'];
+export type WarrantyTemplate = Schemas['WarrantyTemplate'];
+export type WarrantyTemplateItem = Schemas['WarrantyTemplateItem'];
+export type WarrantyTemplateList = Schemas['WarrantyTemplateList'];
+export type ProviderType = WarrantyCoverage['provider_type'];
+export type VerificationStatus = WarrantyCoverage['verification_status'];
+export type WarrantyStatusValue = WarrantyCoverage['status'];
+export type ClaimStatus = WarrantyClaim['status'];
+
+/** What the coverage forms edit and the queue sends. `source_kind` and `template_ref` never change. */
+export interface CoverageEdit {
+  name?: string;
+  provider_type?: ProviderType;
+  start_date?: string;
+  end_date?: string | null;
+  km_limit?: number | null;
+  notes?: string | null;
+  verification_status?: VerificationStatus;
+  source_note?: string | null;
+}
+
+/** What the claim forms edit and the queue sends. `coverage_id` never changes. */
+export interface ClaimEdit {
+  date?: string;
+  odometer?: number;
+  description?: string;
+  status?: ClaimStatus;
+  cost_covered_minor?: number | null;
+  notes?: string | null;
 }

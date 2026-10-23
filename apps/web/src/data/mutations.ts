@@ -1,4 +1,8 @@
 import type {
+  ClaimEdit,
+  CoverageEdit,
+  WarrantyClaimCreate,
+  WarrantyCoverageCreate,
   ExpenseCreate,
   ExpenseEdit,
   ReminderCreate,
@@ -11,6 +15,12 @@ import { getSession } from '../auth/session';
 import { isOnline } from '../lib/connectivity';
 import { flush } from '../sync/engine';
 import {
+  enqueueClaimCreate,
+  enqueueClaimDelete,
+  enqueueClaimEdit,
+  enqueueCoverageCreate,
+  enqueueCoverageDelete,
+  enqueueCoverageEdit,
   enqueueCreate,
   enqueueDelete,
   enqueueEdit,
@@ -87,5 +97,49 @@ export async function removeExpense(id: string): Promise<void> {
  */
 export async function saveReminderBatch(items: ReminderCreate[]): Promise<void> {
   for (const body of items) await enqueueReminderCreate(body);
+  await afterEnqueue();
+}
+
+export async function saveNewCoverage(body: WarrantyCoverageCreate): Promise<void> {
+  await enqueueCoverageCreate(body);
+  await afterEnqueue();
+}
+
+export async function saveCoverageEdit(id: string, patch: CoverageEdit): Promise<void> {
+  await enqueueCoverageEdit(id, patch);
+  await afterEnqueue();
+}
+
+/** Returns how many unsent claim creates were dropped with the coverage (for the notice). */
+export async function removeCoverage(
+  id: string,
+  knownClaimIds: string[],
+): Promise<{ droppedClaimCreates: number }> {
+  const res = await enqueueCoverageDelete(id, knownClaimIds);
+  await afterEnqueue();
+  return res;
+}
+
+export async function saveNewClaim(body: WarrantyClaimCreate): Promise<void> {
+  await enqueueClaimCreate(body);
+  await afterEnqueue();
+}
+
+export async function saveClaimEdit(id: string, patch: ClaimEdit): Promise<void> {
+  await enqueueClaimEdit(id, patch);
+  await afterEnqueue();
+}
+
+export async function removeClaim(id: string): Promise<void> {
+  await enqueueClaimDelete(id);
+  await afterEnqueue();
+}
+
+/**
+ * Template accept: one ordinary coverage create per selected item, queued together and then
+ * sent. Items fail independently; nothing here creates a coverage the owner did not select.
+ */
+export async function saveCoverageBatch(items: WarrantyCoverageCreate[]): Promise<void> {
+  for (const body of items) await enqueueCoverageCreate(body);
   await afterEnqueue();
 }

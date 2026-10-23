@@ -64,7 +64,7 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
 
 /**
  * Only the contract's paths are allowed: /auth/token, /vehicle, /service-records, /reminders,
- * /reminder-templates, /expenses and the {uuid} forms of the three collections, lists with a plain query string. Anything else (traversal, encoded
+ * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and the {uuid} forms of the three collections, lists with a plain query string. Anything else (traversal, encoded
  * slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -79,10 +79,17 @@ export function assertContractPath(path: string): void {
         parts[1] === 'service-records' ||
         parts[1] === 'reminders' ||
         parts[1] === 'expenses' ||
+        parts[1] === 'warranty-coverages' ||
+        parts[1] === 'warranty-claims' ||
+        parts[1] === 'warranty-templates' ||
         parts[1] === 'reminder-templates')) ||
       (parts.length === 3 && parts[1] === 'auth' && parts[2] === 'token') ||
       (parts.length === 3 &&
-        (parts[1] === 'service-records' || parts[1] === 'reminders' || parts[1] === 'expenses') &&
+        (parts[1] === 'service-records' ||
+          parts[1] === 'reminders' ||
+          parts[1] === 'expenses' ||
+          parts[1] === 'warranty-coverages' ||
+          parts[1] === 'warranty-claims') &&
         isUuid(parts[2])));
   const fullOk =
     ok &&
