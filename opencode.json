@@ -1,6 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "engineering-lead",
+  "model": "cliproxyapi/kimi-k2.7-code",
+  "agents": {
+    "solution-architect": { "model": "cliproxyapi/claude-sonnet-5-5" },
+    "engineering-lead": { "model": "cliproxyapi/claude-sonnet-5-5" },
+    "security-engineer": { "model": "cliproxyapi/claude-sonnet-5-5" }
+  },
   "permissions": [
     { "action": "shell", "resource": "*", "effect": "ask" },
     { "action": "shell", "resource": "git status *", "effect": "allow" },
