@@ -13,6 +13,12 @@
 - Scope: first deployment of Reminders, Expenses, Warranty and the vehicle/service-record slice to the standalone Ubuntu Server 24.04 host (ADR-004). Placeholders only: the real host name, tailnet name, LAN subnet, mount path and account details never go in this repo.
 - Not in scope: the ADR-006 account model (built after this plan), vehicle integrations, native clients.
 
+## Host selection (2026-10-23)
+
+The first candidate host was checked read-only and rejected by the owner (option A). It runs Debian 12 on a NAS-style appliance with vendor services and several other containers on common ports (including 8080), and it has no firewall. That is the kind of host ADR-004 moved away from, and `ufw` could break its vendor services. Nothing was installed or changed on it, and no stack was started there.
+
+**Phase 1 waits for a suitable host:** a standalone Ubuntu Server 24.04 LTS machine or VM (ADR-004) with nothing else of value on it. Before Phase 1 the owner sends read-only output of `cat /etc/os-release | head -3`, `sudo ss -ltnp` and `docker compose version`. The agent checks that the port `WEB_PORT` will use (default 8080) is free, and that no firewall other than `ufw` is active. Host details (addresses, container names, hostnames) are not recorded in this repo.
+
 ## What already exists (no new work)
 
 | Piece | Where | Status |
