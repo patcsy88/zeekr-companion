@@ -235,6 +235,7 @@ describe('AC-24 / AC-25: offline', () => {
     await waitFor(() => {
       expect(fake.templateGets).toBeGreaterThan(0); // app-start sync has finished
     });
+    await new Promise((resolve) => setTimeout(resolve, 150)); // let the last response land first
     reportReachable(false);
     await user.type(await screen.findByLabelText('Title'), 'Offline made');
     await user.type(screen.getByLabelText('Due date'), '2027-05-05');
@@ -286,6 +287,7 @@ describe('AC-24 / AC-25: offline', () => {
     await waitFor(() => {
       expect(fake.templateGets).toBeGreaterThan(0); // app-start sync has finished
     });
+    await new Promise((resolve) => setTimeout(resolve, 150)); // let the last response land first
     reportReachable(false);
     await user.click(screen.getByText('Two actions'));
     await user.click(await screen.findByRole('button', { name: 'Mark complete' }));
