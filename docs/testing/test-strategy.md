@@ -81,6 +81,21 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-46 | `test_expenses.py` (no link to service records, service costs not in totals) |
 | AC-47 | `test_migrations.py` (migration `0003`) and all gates |
 
+| AC-48, AC-49, AC-50 | `services/api/tests/test_warranty.py`, `test_warranty_qa.py` (replay, conflict, each validation case, "end or km" rule after a patch, cascade delete). Web: `warranty.test.tsx`, `warranty-forms-qa.test.ts` |
+| AC-51, AC-52 | Shared vectors `packages/shared-types/test-vectors/warranty-status.json`, run by pytest and by `warranty-status.test.ts`; `warranty-status-qa.test.ts` (boundaries, date math). Backend test that reminders and warranty report the same current odometer |
+| AC-53, AC-66 | `warranty.test.tsx`, `warranty-qa.test.tsx` (wording scan, plain-text rendering with a script-like name) |
+| AC-54, AC-55, AC-56, AC-57 | `test_warranty.py` (template content, GET creates nothing, future-start extended coverage), `warranty.test.tsx` and `warranty-qa.test.tsx` (suggestion only, baseline required, one POST per selected item, cancel creates none), Playwright `e2e/warranty.spec.ts` |
+| AC-58, AC-59, AC-60 | `test_warranty.py`, `test_warranty_qa.py` (parent must exist, validation, `coverage_id` immutable, ordering, no expense side effect) |
+| AC-61, AC-62, AC-63 | `warranty-queue.test.ts`, `warranty-queue-qa.test.ts` (coalescing, dependency order, blocked claims, cancel with unsent coverage, exactly once, reload), `warranty.test.tsx`, Playwright offline create of a coverage and a claim |
+| AC-64 | `test_warranty.py`, `test_warranty_qa.py` (401 on every warranty route) |
+| AC-65 | Playwright `e2e/warranty.spec.ts` (second profile reads from the API). Manual iPhone check: **deferred, not run** |
+| AC-67 | Review checklist and a schema test that no provider, certificate or document field exists |
+| AC-68 | `test_migrations.py` (migration `0004`: apply, re-run, downgrade) and all gates |
+
+Warranty security review: `docs/security/review-2026-10-23-warranty.md`. SEC-W3 and SEC-W4 fixed (`warranty-sec.test.tsx`); SEC-W1, W2, W5, W6 open.
+
+Warranty independent QA: `docs/testing/qa-report-2026-10-23-warranty-backend.md` and `qa-report-2026-10-23-warranty-web.md`. Open limits: W1 (Info), WW4, WW5, WW6 (Low).
+
 Expenses independent QA: `docs/testing/qa-report-2026-10-22-expenses-backend.md` and `qa-report-2026-10-22-expenses-web.md`. Open limits: E2, E5, W3, W4, W6 (all Low or Info, accepted by the owner on 2026-10-23).
 
 Remote-access checks from ADR-003 (manual, owner holds the iPhone; reports use placeholder names only): HTTPS smoke from the iPhone on cellular; headers present exactly once; rate-limit keying behind Tailscale Serve and Caddy; Tailscale identity headers never reach the API; no public port and Funnel off.

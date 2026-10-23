@@ -11,8 +11,8 @@ import { clearAllLocalData } from '../storage/db';
  *   Unsent changes would be lost, so it asks first and says how many.
  */
 export function AccountMenu() {
-  const { pending, failed } = useQueueCounts();
-  const unsent = pending + failed;
+  const { pending, failed, blocked } = useQueueCounts();
+  const unsent = pending + failed + blocked;
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

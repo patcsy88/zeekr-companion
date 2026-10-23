@@ -164,7 +164,11 @@ function CoverageDetail({ id }: { id: string }) {
             <button
               type="button"
               onClick={() => {
-                void discardFailedCoverage(id);
+                void discardFailedCoverage(id).then(({ droppedClaimCreates: n }) => {
+                  if (n === 0) return;
+                  const notice = `Change discarded. ${n} ${n === 1 ? 'claim' : 'claims'} saved only on this device for this coverage ${n === 1 ? 'was' : 'were'} dropped and will not be sent.`;
+                  void nav('/warranty', { replace: true, state: { notice } });
+                });
               }}
             >
               Discard my change
