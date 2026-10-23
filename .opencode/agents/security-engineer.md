@@ -1,6 +1,7 @@
 ---
 description: Read-only security reviewer for authentication, secrets, permissions, API exposure and dependency risk.
 mode: subagent
+model: cliproxyapi/claude-sonnet-5-5
 color: "#dc2626"
 permissions:
   - action: edit

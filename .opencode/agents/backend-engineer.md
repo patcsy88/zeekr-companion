@@ -1,6 +1,7 @@
 ---
 description: Implements the FastAPI service, PostgreSQL persistence, migrations, business rules and integration adapters.
 mode: subagent
+model: cliproxyapi/kimi-k2.7-code
 color: "#16a34a"
 permissions:
   - action: edit

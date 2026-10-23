@@ -1,6 +1,7 @@
 ---
 description: Independently defines and runs tests, verifies acceptance criteria and can reject a build that fails required gates.
 mode: subagent
+model: cliproxyapi/kimi-k2.7-code
 color: "#ea580c"
 permissions:
   - action: edit

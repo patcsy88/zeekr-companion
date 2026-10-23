@@ -1,6 +1,7 @@
 ---
 description: Owns architecture, data model, API contracts and technical decision records. Does not write application code.
 mode: subagent
+model: cliproxyapi/claude-sonnet-5-5
 color: "#7c3aed"
 permissions:
   - action: edit

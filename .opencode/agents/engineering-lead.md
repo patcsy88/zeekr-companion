@@ -1,6 +1,7 @@
 ---
 description: Orchestrates delivery. Plans work, delegates to specialist agents, integrates results and reports verification evidence.
 mode: primary
+model: cliproxyapi/claude-sonnet-5-5
 color: "#2563eb"
 permissions:
   - action: subagent

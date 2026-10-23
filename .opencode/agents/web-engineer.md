@@ -1,6 +1,7 @@
 ---
 description: Builds the React + Vite + TypeScript mobile-responsive PWA client in apps/web against the documented API contract.
 mode: subagent
+model: cliproxyapi/kimi-k2.7-code
 color: "#0891b2"
 permissions:
   - action: edit
