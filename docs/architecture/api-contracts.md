@@ -52,16 +52,18 @@ Amended 2026-10-11 (owner-approved addition of 429 and documentation of existing
 
 `POST /api/v1/auth/token`
 
-Request: `{ "password": "string" }`
+Request: `{ "username": "string", "password": "string" }`
 Response `200`: `{ "access_token": "string", "expires_in": 3600 }`
 Response `401`: `unauthenticated`
 Response `429`: `rate_limited`, with a `Retry-After` header (seconds)
 
-Rate-limited. Failed attempts are logged without logging the password.
+Rate-limited. Failed attempts are logged without logging the password or the submitted username.
 
 After too many failed attempts within a sliding window, the endpoint returns `429 rate_limited` with a `Retry-After` header (seconds) and refuses every login attempt, even with the correct password, until the window allows another attempt. The lockout applies per client address and globally across all clients. The global limit is 4 times the per-client limit.
 
 Defaults (configurable by the operator, so not guaranteed): 5 failed attempts per client within 900 seconds (`LOGIN_MAX_FAILURES`, `LOGIN_WINDOW_SECONDS`). A successful login clears that client's failure count.
+
+The account is a single owner account stored in the database. It is created and reset by a server command (`python -m app.cli.set_owner`); there is no signup endpoint. If no account exists, the endpoint returns `401`.
 
 ### Vehicle
 

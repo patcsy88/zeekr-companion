@@ -1,6 +1,6 @@
 # ADR-006: Owner account with username and password login
 
-- Status: **Proposed** (owner chose the account model, Option B, on 2026-10-22; the details below need owner approval, then a contract re-approval, before any code)
+- Status: **Accepted** (owner decision on 2026-10-23; the contract amendment must be approved before implementation)
 - Date: 2026-10-23
 - Amends: the "Authentication" section of `docs/architecture/api-contracts.md` and the `OWNER_PASSWORD_HASH` setting (ADR-001 stack, `infra/.env.example`)
 
@@ -21,9 +21,8 @@ Nothing is deployed yet, so no existing login needs migrating.
    - `username`: trimmed, 3 to 64 characters, no control characters or NUL, compared case-insensitively (stored lower-case).
    - `password`: unchanged rules (1 to 1024 characters on login). `set_owner` requires at least 12 characters.
 5. **No account enumeration.** An unknown username and a wrong password return the same `401` with the same message. For an unknown username the server still runs one scrypt verification against a dummy hash, so timing does not reveal which usernames exist.
-6. **Lockout stays a hard lockout, in memory.** Keys:
+6. **Lockout stays a hard lockout, in memory, per client address and globally.** Per-account lockout is not implemented (owner decision); the username is a weak second factor only, and the tailnet access path already restricts exposure. Keys:
    - per client address (as today),
-   - per account (new): a limit on failures for the username, counted for unknown usernames too, so locking behaves the same either way,
    - global (as today, 4 times the per-client limit).
    A blocked attempt is refused with `429 rate_limited` even with the right password, as the contract already says.
 7. **Token claims.** `sub` stays `owner`. No username goes into the token.
@@ -38,15 +37,20 @@ Nothing is deployed yet, so no existing login needs migrating.
 
 ## Consequences
 
-- **Lockout can be used against the owner.** Anyone who can reach the API and knows or guesses the username can fill the per-account limit and lock the owner out for the window (15 minutes by default). The global limiter already has this property. Per-account lockout adds protection against a slow guessing attack spread over many addresses, but makes this lock-out easier to cause. The Security Engineer is asked to confirm per-account lockout is worth building. The fallback is to keep only per-client and global limits and rely on the username being a second secret. Because the app is reachable only over the tailnet (ADR-003), the exposure is small either way.
+- **Per-account lockout is intentionally omitted.** The username is a weak second factor only. Lockout is per client address and global, as today. This is acceptable because the app is reachable only over the tailnet (ADR-003).
 - The username is a weak second factor only; it is not secret.
 - The lockout state is lost on restart (unchanged from today). Acceptable for one owner behind the tailnet.
 - Work needed after approval: migration `0005`, `set_owner` command, auth service and schema changes, `POST /auth/token` contract section, web login form, tests (unknown user, wrong password, timing path taken, lockout per account, reset, no-account state), infra docs and `.env.example`, a security review.
 - Not changed: token lifetime, memory-only token, Bearer scheme, the 401 and 429 shapes, every other endpoint.
 
+## Owner decisions
+
+1. ✅ Store the account in the database, not the environment.
+2. ✅ Minimum password length of 12 on `set_owner`.
+3. ✅ Keep only per-client and global lockout; no per-account lockout.
+4. ✅ Sequence: build after the remaining MVP items and the deploy plan.
+
 ## Open questions for the owner
 
-1. Approve storing the account in the database (proposed) rather than the environment?
-2. Minimum password length of 12 on `set_owner`: accept?
-3. Per-account lockout: build it, or keep only per-client and global limits? (The Security Engineer's view will be added before you decide.)
-4. Sequence: build this after the remaining MVP items and the deploy plan, as agreed on 2026-10-22?
+- Approve the contract amendment below.
+- Approve implementation once the deploy plan and any earlier MVP items are done.
