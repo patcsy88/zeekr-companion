@@ -100,6 +100,11 @@ class WarrantyCoverageRepository:
         for name, value in changes.items():
             setattr(row, name, value)
         row.updated_at = dt.datetime.now(dt.UTC)
+        # Load the final values inside the transaction and detach the row, so the commit cannot
+        # expire it and a delete racing in afterwards cannot turn the response into a 500.
+        self._session.flush()
+        self._session.refresh(row)
+        self._session.expunge(row)
         self._session.commit()
         return row
 
