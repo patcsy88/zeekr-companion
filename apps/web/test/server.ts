@@ -205,12 +205,12 @@ export const err = (
 
 export const handlers = [
   http.post('*/api/v1/auth/token', async ({ request }) => {
-    const body = (await request.json()) as { password: string };
-    if (body.password === 'correct-horse') {
+    const body = (await request.json()) as { username: string; password: string };
+    if (body.username === 'owner' && body.password === 'correct-horse') {
       fake.tokenIssued = 'tok-test';
       return HttpResponse.json({ access_token: 'tok-test', expires_in: 3600 });
     }
-    return err(401, 'unauthenticated', 'Invalid password.');
+    return err(401, 'unauthenticated', 'Invalid credentials.');
   }),
   http.get('*/api/v1/vehicle', () =>
     fake.vehicle

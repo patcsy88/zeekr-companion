@@ -125,6 +125,7 @@ describe('D2: the indicator in the UI', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText('Online');
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'whatever');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByTestId('offline-indicator')).toBeInTheDocument();
@@ -138,6 +139,7 @@ describe('D2: the indicator in the UI', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText('Online');
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'whatever');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByTestId('offline-indicator')).toBeInTheDocument();

@@ -13,13 +13,11 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.main import create_app
-from app.security import hash_password
 
 
 def build_schema() -> dict[str, Any]:
     settings = Settings(
         database_url=SecretStr("postgresql+psycopg://unused:unused@localhost/unused"),
-        owner_password_hash=SecretStr(hash_password("unused", n=2**4)),
         token_secret=SecretStr("Unused0Schema1Export2Only3Key4Zz"),
     )
     return create_app(settings).openapi()

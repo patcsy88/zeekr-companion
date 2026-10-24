@@ -21,7 +21,7 @@ import pytest
 import uvicorn
 
 from app.main import create_app
-from tests.conftest import API_ROOT, PASSWORD, make_settings
+from tests.conftest import API_ROOT, PASSWORD, USERNAME, make_settings, seed_owner
 
 ENTRYPOINT = API_ROOT / "docker-entrypoint.sh"
 
@@ -35,7 +35,8 @@ def _free_port() -> int:
 
 @contextmanager
 def _server(database_url: str, password_hash: str, trusted: str) -> Iterator[str]:
-    app = create_app(make_settings(database_url, password_hash, login_max_failures=3))
+    seed_owner(database_url, password_hash)
+    app = create_app(make_settings(database_url, login_max_failures=3))
     port = _free_port()
     config = uvicorn.Config(
         app,
@@ -63,7 +64,10 @@ def _server(database_url: str, password_hash: str, trusted: str) -> Iterator[str
 def _login(base: str, password: str, forwarded_for: str | None) -> httpx.Response:
     headers = {"X-Forwarded-For": forwarded_for} if forwarded_for else {}
     return httpx.post(
-        f"{base}/api/v1/auth/token", json={"password": password}, headers=headers, timeout=10
+        f"{base}/api/v1/auth/token",
+        json={"username": USERNAME, "password": password},
+        headers=headers,
+        timeout=10,
     )
 
 

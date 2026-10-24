@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { App } from '../src/App';
 import { RecordForm } from '../src/components/RecordForm';
@@ -14,6 +14,7 @@ describe('SignIn', () => {
   it('signs in and never stores the password', async () => {
     const user = userEvent.setup();
     render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => {
@@ -30,6 +31,7 @@ describe('SignIn', () => {
     );
     const user = userEvent.setup();
     render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'x');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -45,17 +47,19 @@ describe('SignIn', () => {
     );
     const user = userEvent.setup();
     render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'x');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again in 2 minutes');
   });
 
-  it('says wrong password on 401', async () => {
+  it('says wrong username or password on 401', async () => {
     const user = userEvent.setup();
     render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'nope');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username or password.');
   });
 });
 
@@ -214,5 +218,52 @@ describe('App flows', () => {
     expect(await screen.findByTestId('sync-pending')).toBeInTheDocument();
     expect(screen.getByTestId('pending-count')).toHaveTextContent('1 waiting to sync');
     expect(fake.posts).toHaveLength(0);
+  });
+});
+
+describe('SignIn username', () => {
+  it('asks for a username and a password, and disables Sign in until both are filled', async () => {
+    const user = userEvent.setup();
+    render(<SignIn />);
+    const button = screen.getByRole('button', { name: 'Sign in' });
+    expect(screen.getByLabelText('Username')).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText('Username'), '   ');
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    expect(button).toBeEnabled();
+  });
+
+  it('sends the username and password, and keeps neither in storage', async () => {
+    let sent: unknown = null;
+    server.use(
+      http.post('*/api/v1/auth/token', async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ access_token: 'tok-test', expires_in: 3600 });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => {
+      expect(sent).toEqual({ username: 'owner', password: 'correct-horse' });
+    });
+    const dump = JSON.stringify({ ...localStorage, ...sessionStorage });
+    expect(dump).not.toContain('correct-horse');
+    expect(dump).not.toContain('"owner"');
+  });
+
+  it('gives one message for a wrong username or a wrong password', async () => {
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'someone-else');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username or password.');
   });
 });

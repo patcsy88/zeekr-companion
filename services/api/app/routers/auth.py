@@ -16,4 +16,4 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 def create_token(body: TokenRequest, request: Request, auth: AuthServiceDep) -> TokenResponse:
     client = request.client.host if request.client else "unknown"
-    return auth.login(body.password, client)
+    return auth.login(body.username, body.password, client)

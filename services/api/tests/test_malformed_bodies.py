@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import PASSWORD
+from tests.conftest import PASSWORD, USERNAME
 
 JSON = {"content-type": "application/json"}
 
@@ -49,5 +49,5 @@ def test_bad_body_response_is_still_no_store(client: TestClient) -> None:
 
 
 def test_good_body_unaffected(client: TestClient) -> None:
-    response = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+    response = client.post("/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD})
     assert response.status_code == 200

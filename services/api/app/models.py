@@ -37,6 +37,33 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+class OwnerAccount(Base):
+    """The single owner login (ADR-006). `singleton` + a unique constraint allows one row."""
+
+    __tablename__ = "owner_account"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    singleton: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), unique=True
+    )
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(300), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("singleton", name="singleton_true"),
+        CheckConstraint(
+            "char_length(username) BETWEEN 3 AND 64 AND username = lower(username)",
+            name="username_valid",
+        ),
+    )
+
+
 class Vehicle(Base):
     """The single vehicle profile. `singleton` + a unique constraint allows at most one row."""
 

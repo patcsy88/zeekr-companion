@@ -9,6 +9,7 @@ import json
 import secrets
 import threading
 import time
+import unicodedata
 
 # OWASP minimum for scrypt: N=2^17, r=8, p=1 (about 128 MiB per hash).
 SCRYPT_N = 2**17
@@ -73,6 +74,20 @@ def verify_password(password: str, stored: str) -> bool:
             encoded, salt=salt, n=n, r=r, p=p, maxmem=_SCRYPT_MAXMEM, dklen=len(expected)
         )
     return hmac.compare_digest(actual, expected)
+
+
+USERNAME_MIN = 3
+USERNAME_MAX = 64
+
+
+def normalise_username(raw: str) -> str:
+    """Trim and lower-case a username (ADR-006). Raises ValueError when it is not acceptable."""
+    name = raw.strip().lower()
+    if not USERNAME_MIN <= len(name) <= USERNAME_MAX:
+        raise ValueError(f"username must be {USERNAME_MIN} to {USERNAME_MAX} characters")
+    if not name.isascii() or any(unicodedata.category(ch).startswith("C") for ch in name):
+        raise ValueError("username must use plain ASCII characters, no control characters")
+    return name
 
 
 def _b64(data: bytes) -> str:

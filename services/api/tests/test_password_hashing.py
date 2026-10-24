@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from app import security
-from app.cli import hash_password as cli
 
 
 def test_default_cost_meets_owasp_minimum() -> None:
@@ -35,14 +32,6 @@ def test_legacy_parameters_still_verify() -> None:
 def test_non_utf8_password_is_not_an_error() -> None:
     stored = security.hash_password("pw", n=2**4)
     assert security.verify_password("\ud800", stored) is False  # lone surrogate: UnicodeError
-
-
-def test_cli_emits_current_cost_hash(monkeypatch: pytest.MonkeyPatch, capsys) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(cli.getpass, "getpass", lambda _prompt: "twelve chars ok!")
-    assert cli.main() == 0
-    out = capsys.readouterr().out.strip()
-    assert out.startswith(f"scrypt:{2**17}:8:1:")
-    assert security.verify_password("twelve chars ok!", out)
 
 
 def test_verify_latency_is_acceptable() -> None:

@@ -14,10 +14,9 @@ def test_cors_default_allows_no_origin(client: TestClient) -> None:
     assert "access-control-allow-origin" not in response.headers
 
 
-def test_cors_configured_origin(database_url: str, password_hash: str) -> None:
+def test_cors_configured_origin(database_url: str) -> None:
     settings = make_settings(
         database_url,
-        password_hash,
         cors_allowed_origins="https://app.example, http://localhost:5173/",
     )
     app = create_app(settings)
@@ -39,13 +38,13 @@ def test_cors_configured_origin(database_url: str, password_hash: str) -> None:
     app.state.engine.dispose()
 
 
-def test_wildcard_origin_rejected(database_url: str, password_hash: str) -> None:
+def test_wildcard_origin_rejected(database_url: str) -> None:
     with pytest.raises(ValidationError):
-        make_settings(database_url, password_hash, cors_allowed_origins="*")
+        make_settings(database_url, cors_allowed_origins="*")
 
 
 def test_settings_require_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("DATABASE_URL", "OWNER_PASSWORD_HASH", "TOKEN_SECRET"):
+    for name in ("DATABASE_URL", "TOKEN_SECRET"):
         monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValidationError):
         Settings(_env_file=None)  # type: ignore[call-arg]
@@ -55,6 +54,5 @@ def test_settings_reject_weak_values(database_url: str) -> None:
     with pytest.raises(ValidationError):
         Settings(
             database_url=database_url,
-            owner_password_hash=SecretStr("plaintext"),
             token_secret=SecretStr("short"),
         )

@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import security
-from tests.conftest import PASSWORD, TOKEN_SECRET
+from tests.conftest import PASSWORD, TOKEN_SECRET, USERNAME
 
 ZERO = str(uuid.UUID(int=0))
 
@@ -61,7 +61,7 @@ def test_unknown_path_uses_error_shape(client: TestClient) -> None:
 
 
 def test_token_success(client: TestClient) -> None:
-    response = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+    response = client.post("/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD})
     assert response.status_code == 200
     body = response.json()
     assert body["expires_in"] == 3600
@@ -75,7 +75,9 @@ def test_wrong_password_is_401_and_not_logged(
 ) -> None:
     secret_attempt = "hunter2-very-secret"
     with caplog.at_level(logging.INFO):
-        response = client.post("/api/v1/auth/token", json={"password": secret_attempt})
+        response = client.post(
+            "/api/v1/auth/token", json={"username": USERNAME, "password": secret_attempt}
+        )
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "unauthenticated"
     assert "failed login attempt" in caplog.text
@@ -84,8 +86,13 @@ def test_wrong_password_is_401_and_not_logged(
 
 def test_rate_limit_after_repeated_failures(client: TestClient) -> None:
     for _ in range(3):
-        assert client.post("/api/v1/auth/token", json={"password": "bad"}).status_code == 401
-    blocked = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+        assert (
+            client.post(
+                "/api/v1/auth/token", json={"username": USERNAME, "password": "bad"}
+            ).status_code
+            == 401
+        )
+    blocked = client.post("/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD})
     assert blocked.status_code == 429
     assert int(blocked.headers["Retry-After"]) >= 1
     assert blocked.json()["error"]["code"] == "rate_limited"
