@@ -8,7 +8,6 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from app.config import Settings
-from app.security import hash_password
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 GOOD_SECRET = "Qx7vN2mPz9LrT4wYb8KcD1sFh6JgA3eU0oXiV5nM"  # test-only fixture, not a real secret
@@ -17,7 +16,6 @@ GOOD_SECRET = "Qx7vN2mPz9LrT4wYb8KcD1sFh6JgA3eU0oXiV5nM"  # test-only fixture, n
 def _settings(database_url: str, **overrides: object) -> Settings:
     values: dict[str, object] = {
         "database_url": database_url,
-        "owner_password_hash": SecretStr(hash_password("pw-for-tests", n=2**4)),
         "token_secret": SecretStr(GOOD_SECRET),
     }
     values.update(overrides)
@@ -45,18 +43,6 @@ def test_weak_or_placeholder_token_secret_rejected(database_url: str, secret: st
     assert secret not in str(info.value)
 
 
-def test_placeholder_password_hash_rejected(database_url: str) -> None:
-    # Structurally valid shape, but it is the placeholder from an old .env.example.
-    placeholder = "scrypt:16384:8:1:aabbccdd:change-me"
-    with pytest.raises(ValidationError):
-        _settings(database_url, owner_password_hash=SecretStr(placeholder))
-    with pytest.raises(ValidationError):
-        _settings(
-            database_url,
-            owner_password_hash=SecretStr("scrypt:16384:8:1:00ff00ff:00ff00ff00ff00ff-change-me"),
-        )
-
-
 def _env_example() -> dict[str, str]:
     values: dict[str, str] = {}
     for line in (REPO / "infra" / ".env.example").read_text().splitlines():
@@ -66,14 +52,14 @@ def _env_example() -> dict[str, str]:
     return values
 
 
-@pytest.mark.parametrize("key", ["TOKEN_SECRET", "OWNER_PASSWORD_HASH", "POSTGRES_PASSWORD"])
+@pytest.mark.parametrize("key", ["TOKEN_SECRET", "POSTGRES_PASSWORD"])
 def test_env_example_secrets_are_empty(key: str) -> None:
     assert _env_example()[key] == ""
 
 
 def test_compose_requires_all_secrets() -> None:
     compose = (REPO / "infra" / "docker-compose.yml").read_text()
-    for key in ("POSTGRES_PASSWORD", "OWNER_PASSWORD_HASH", "TOKEN_SECRET"):
+    for key in ("POSTGRES_PASSWORD", "TOKEN_SECRET"):
         assert f"${{{key}:?" in compose
     # DATABASE_URL interpolates POSTGRES_PASSWORD; it must use the required form too.
     assert "zeekr:${POSTGRES_PASSWORD}@" not in compose

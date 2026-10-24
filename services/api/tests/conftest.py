@@ -26,6 +26,7 @@ from app.security import hash_password
 
 API_ROOT = pathlib.Path(__file__).resolve().parents[1]
 PASSWORD = "correct horse battery staple"
+USERNAME = "owner-test"
 TOKEN_SECRET = "Zk3pW8rQv1LmX6dNt9BcYh2FsJ5aGe7U"  # test-only, diverse
 
 
@@ -94,10 +95,25 @@ def password_hash() -> str:
     return hash_password(PASSWORD, n=2**4)  # cheap cost factor, tests only
 
 
-def make_settings(database_url: str, password_hash: str, **overrides: object) -> Settings:
+def seed_owner(database_url: str, password_hash: str, username: str = USERNAME) -> None:
+    """Replace the owner account in a test database."""
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("TRUNCATE owner_account"))
+            conn.execute(
+                text(
+                    "INSERT INTO owner_account (id, username, password_hash) VALUES (:id, :u, :h)"
+                ),
+                {"id": uuid.uuid4(), "u": username, "h": password_hash},
+            )
+    finally:
+        engine.dispose()
+
+
+def make_settings(database_url: str, **overrides: object) -> Settings:
     values: dict[str, object] = {
         "database_url": database_url,
-        "owner_password_hash": SecretStr(password_hash),
         "token_secret": SecretStr(TOKEN_SECRET),
         "cors_allowed_origins": "",
         "login_max_failures": 3,
@@ -108,7 +124,8 @@ def make_settings(database_url: str, password_hash: str, **overrides: object) ->
 
 @pytest.fixture
 def client(database_url: str, password_hash: str) -> Iterator[TestClient]:
-    app = create_app(make_settings(database_url, password_hash))
+    seed_owner(database_url, password_hash)
+    app = create_app(make_settings(database_url))
     with app.state.engine.begin() as conn:
         conn.execute(
             text(
@@ -123,7 +140,7 @@ def client(database_url: str, password_hash: str) -> Iterator[TestClient]:
 
 @pytest.fixture
 def auth_headers(client: TestClient) -> dict[str, str]:
-    response = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+    response = client.post("/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD})
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 

@@ -11,11 +11,18 @@ import {
 
 test.describe.configure({ mode: 'serial' });
 
-test('sign in with a wrong password is refused, correct password works', async ({ page }) => {
+test('sign in with a wrong password or username is refused, correct login works', async ({
+  page,
+}) => {
   await page.goto('/');
+  await page.getByLabel('Username').fill(process.env.E2E_USERNAME ?? 'e2e-owner');
   await page.getByLabel('Password').fill('definitely-not-the-password');
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('alert')).toContainText('Wrong password');
+  await expect(page.getByRole('alert')).toContainText('Wrong username or password');
+  await page.getByLabel('Username').fill('someone-else');
+  await page.getByLabel('Password').fill(process.env.E2E_PASSWORD ?? '');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('alert')).toContainText('Wrong username or password');
   await signIn(page);
 });
 
@@ -212,7 +219,10 @@ test('cursor paging loads older records', async ({ page, browser, baseURL }) => 
   // Seed 22 records straight through the API so the first page (20) has a next cursor.
   const ctx = await browser.newContext({ baseURL });
   const tok = await ctx.request.post('/api/v1/auth/token', {
-    data: { password: process.env.E2E_PASSWORD },
+    data: {
+      username: process.env.E2E_USERNAME ?? 'e2e-owner',
+      password: process.env.E2E_PASSWORD,
+    },
   });
   const { access_token } = (await tok.json()) as { access_token: string };
   const tag = unique('PG');

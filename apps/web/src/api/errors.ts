@@ -16,7 +16,7 @@ export function describeError(e: unknown, opts: DescribeOptions = {}): string {
   }
   if (e instanceof ApiError) {
     if (e.status === 429) return rateLimitMessage(e.retryAfterSeconds);
-    if (e.status === 401) return 'The password was not accepted.';
+    if (e.status === 401) return 'The username or password was not accepted.';
     if (e.status >= 500) {
       return opts.saved
         ? `The server had a problem. ${SAVED}`

@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from app.clock import today_kl
+from app.security import normalise_username
 
 # Sanity bounds so out-of-range numbers are a 400 rather than a database error.
 MAX_MONEY_MINOR = 10**12
@@ -94,7 +95,13 @@ class TokenRequest(BaseModel):
     # Whitespace is significant in passwords, so no stripping here.
     model_config = ConfigDict(extra="forbid")
 
+    username: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=1024, repr=False)
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, value: str) -> str:
+        return normalise_username(value)
 
 
 class TokenResponse(BaseModel):

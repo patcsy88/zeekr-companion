@@ -6,7 +6,6 @@ from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.dburl import normalise_database_url
-from app.security import is_valid_hash
 
 _MIN_DISTINCT_CHARS = 12
 
@@ -19,7 +18,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", hide_input_in_errors=True)
 
     database_url: SecretStr
-    owner_password_hash: SecretStr
     token_secret: SecretStr
     cors_allowed_origins: str = ""
     token_ttl_seconds: int = Field(default=3600, ge=60, le=86_400)
@@ -30,16 +28,6 @@ class Settings(BaseSettings):
     @classmethod
     def _normalise_database_url(cls, value: SecretStr) -> SecretStr:
         return SecretStr(normalise_database_url(value.get_secret_value()))
-
-    @field_validator("owner_password_hash")
-    @classmethod
-    def _check_hash(cls, value: SecretStr) -> SecretStr:
-        if _is_placeholder(value.get_secret_value()) or not is_valid_hash(value.get_secret_value()):
-            raise ValueError(
-                "OWNER_PASSWORD_HASH is not a valid hash; create one with "
-                "`python -m app.cli.hash_password`"
-            )
-        return value
 
     @field_validator("token_secret")
     @classmethod

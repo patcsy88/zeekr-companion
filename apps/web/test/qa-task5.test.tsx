@@ -58,6 +58,7 @@ describe('429 in the sign-in UI', () => {
     signInWith429('899');
     const user = userEvent.setup();
     render(<App />);
+    await user.type(await screen.findByLabelText('Username'), 'owner');
     await user.type(await screen.findByLabelText('Password'), 'x');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(
@@ -70,6 +71,7 @@ describe('429 in the sign-in UI', () => {
     signInWith429('30');
     const user = userEvent.setup();
     render(<App />);
+    await user.type(await screen.findByLabelText('Username'), 'owner');
     await user.type(await screen.findByLabelText('Password'), 'x');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(

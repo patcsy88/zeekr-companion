@@ -27,11 +27,11 @@ import type {
   VehicleInput,
 } from './types';
 
-export async function login(password: string): Promise<TokenResponse> {
+export async function login(username: string, password: string): Promise<TokenResponse> {
   const { data } = await request<TokenResponse>({
     method: 'POST',
     path: '/auth/token',
-    body: { password },
+    body: { username, password },
     auth: false,
   });
   return data;

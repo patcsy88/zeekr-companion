@@ -1,6 +1,7 @@
 import { expect, type Browser, type Page } from '@playwright/test';
 
 export const PASSWORD = process.env.E2E_PASSWORD ?? '';
+export const USERNAME = process.env.E2E_USERNAME ?? 'e2e-owner';
 export const API_PORT = Number(process.env.E2E_API_PORT ?? 18765);
 
 /** A date that is valid on the server's Asia/Kuala_Lumpur rule at any time of day. */
@@ -21,6 +22,7 @@ export function unique(prefix: string): string {
 }
 
 export async function signIn(page: Page): Promise<void> {
+  await page.getByLabel('Username').fill(USERNAME);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('button', { name: 'Sign out, keep local data' })).toBeVisible();
@@ -45,7 +47,9 @@ export async function serverRecords(
 ): Promise<{ id: string; description: string; cost_minor: number }[]> {
   const ctx = await browser.newContext({ baseURL });
   try {
-    const tok = await ctx.request.post('/api/v1/auth/token', { data: { password: PASSWORD } });
+    const tok = await ctx.request.post('/api/v1/auth/token', {
+      data: { username: USERNAME, password: PASSWORD },
+    });
     expect(tok.status()).toBe(200);
     const { access_token } = (await tok.json()) as { access_token: string };
     const res = await ctx.request.get('/api/v1/service-records?limit=100', {

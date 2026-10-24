@@ -25,6 +25,9 @@
 * {
   box-sizing: border-box;
 }
+a {
+  color: var(--brand);
+}
 body {
   margin: 0;
   background: var(--bg);

@@ -102,6 +102,8 @@ Remote-access checks from ADR-003 (manual, owner holds the iPhone; reports use p
 
 Additional checks from ADR-002: auth rate limit keys on the real client address behind the proxy; security headers and CSP present; the service worker never caches `/api/*`.
 
+Owner account login (ADR-006): `services/api/tests/test_owner_account.py` covers username trimming and case-insensitivity, validation (length, control characters), identical 401 for an unknown username and a wrong password, one scrypt check on the unknown-username path, no username in failure logs, unknown usernames counting towards lockout, the no-account 401 and warning, reset without restart, tokens surviving a reset until expiry, the single-row and username constraints, and `set_owner` (create, reset, bad input, no password in output). Web: three SignIn tests in `components.test.tsx`. E2E: wrong username and wrong password are both refused. `infra/smoke.sh` seeds the account in the real Compose stack. The smoke check "api not reachable from host" is skipped when another process holds port 8000.
+
 Date rule (owner decision 2026-10-22): calendar-date checks use the Asia/Kuala_Lumpur date. Covered by `test_service_records.py`, `default-date.test.tsx`, `qa-task5.test.tsx` and the Playwright default-date test.
 
 ## Not yet covered

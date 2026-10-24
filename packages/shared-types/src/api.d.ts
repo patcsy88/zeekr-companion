@@ -726,6 +726,8 @@ export interface components {
         TokenRequest: {
             /** Password */
             password: string;
+            /** Username */
+            username: string;
         };
         /** TokenResponse */
         TokenResponse: {

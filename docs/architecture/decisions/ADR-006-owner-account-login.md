@@ -1,6 +1,6 @@
 # ADR-006: Owner account with username and password login
 
-- Status: **Accepted** (owner decision on 2026-10-23; the contract amendment must be approved before implementation)
+- Status: **Accepted and implemented in the working tree on 2026-10-24** (migration `0005`, `set_owner`, web login, tests). Not yet deployed; security review pending.
 - Date: 2026-10-23
 - Amends: the "Authentication" section of `docs/architecture/api-contracts.md` and the `OWNER_PASSWORD_HASH` setting (ADR-001 stack, `infra/.env.example`)
 
@@ -8,11 +8,11 @@
 
 Today the API has one secret, `OWNER_PASSWORD_HASH`, set in the environment. `POST /api/v1/auth/token` takes `{ "password" }` and returns a one-hour Bearer token. The web client keeps that token in memory only. Failed logins are limited per client address and globally, in memory, per process.
 
-The owner chose Option B: still one owner and no registration, but login uses a **username and a password**. Password reset is a **server command**. The session stays a one-hour, memory-only Bearer token. Lockout is per account and per client address.
+The owner chose Option B: still one owner and no registration, but login uses a **username and a password**. Password reset is a **server command**. The session stays a one-hour, memory-only Bearer token. Lockout stays per client address and global only, with no per-account lockout (an attacker could otherwise lock the owner out by naming the account).
 
 Nothing is deployed yet, so no existing login needs migrating.
 
-## Decision (proposed)
+## Decision
 
 1. **One owner account, stored in the database.** A single-row table `owner_account` holds `username`, `password_hash` (the existing scrypt format) and `updated_at`. A database constraint allows at most one row. There is no signup endpoint and no endpoint that creates or changes the account.
 2. **Server commands manage the account.** `python -m app.cli.set_owner` creates the account, or resets the username and password if one exists. It prompts for the password (never as an argument, so it stays out of shell history and process lists). Reset takes effect on the next login without a restart. It does not revoke tokens already issued; they expire within one hour. Rotating `TOKEN_SECRET` and restarting revokes them at once.

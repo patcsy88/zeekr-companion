@@ -5,8 +5,7 @@
 # everything it created (containers, network, its own volume and images it built) on exit. It never
 # touches the real "zeekr-companion" project or its pgdata volume.
 #
-# Needs: docker compose, curl, and a Python with the API installed (services/api/.venv or $PYTHON)
-# to create a throwaway password hash.
+# Needs: docker compose, curl, and a Python with the API installed (services/api/.venv or $PYTHON).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -17,7 +16,8 @@ envfile="$here/.env.smoke-$project"
 port="${SMOKE_PORT:-18080}"
 subnet="172.29.$((RANDOM % 200 + 20)).0/24"
 proxy_ip="${subnet%.0/24}.10"
-pass="smoke-test-password-$RANDOM"
+pass="smoke-$(openssl rand -hex 12)"
+user="smoke-owner"
 fail=0
 
 compose() { docker compose -p "$project" --env-file "$envfile" -f "$here/docker-compose.yml" "$@"; }
@@ -35,10 +35,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-hash="$(cd "$api_dir" && "$python" -c "import sys; from app.security import hash_password; print(hash_password(sys.argv[1], n=2**14))" "$pass")"
 cat > "$envfile" <<EOF
 POSTGRES_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
-OWNER_PASSWORD_HASH=$hash
 TOKEN_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48)
 WEB_PORT=$port
 WEB_SUBNET=$subnet
@@ -49,6 +47,8 @@ if [ -n "${SMOKE_WEB_DIST_DIR:-}" ]; then echo "WEB_DIST_DIR=$SMOKE_WEB_DIST_DIR
 
 echo "project=$project subnet=$subnet proxy_ip=$proxy_ip port=$port"
 compose up -d --build --wait --wait-timeout 180 >/dev/null
+# Create the owner account the way the operator does (ADR-006), without a TTY prompt.
+printf '%s\n%s\n' "$user" "$pass" | compose exec -T api python -c 'import sys; from app.config import Settings; from app.db import create_db_engine, create_session_factory; from app.repositories.owner_account import OwnerAccountRepository; from app.security import hash_password; e = create_db_engine(Settings().database_url.get_secret_value()); OwnerAccountRepository(create_session_factory(e)()).upsert(sys.stdin.readline().strip(), hash_password(sys.stdin.readline().strip()))'
 
 base="http://127.0.0.1:$port"
 hdr() { curl -s -o /dev/null -D - "$@" | tr -d '\r'; }
@@ -65,7 +65,7 @@ check "/health through proxy" 200 "$(code "$base/health")"
 check "/health body" '{"status":"ok"}' "$(curl -s "$base/health")"
 check "GET /api/v1/vehicle without token" 401 "$(code "$base/api/v1/vehicle")"
 check "401 body code" unauthenticated "$(curl -s "$base/api/v1/vehicle" | "$python" -c 'import json,sys; print(json.load(sys.stdin)["error"]["code"])')"
-check "wrong password" 401 "$(code -X POST -H 'content-type: application/json' -d '{"password":"nope"}' "$base/api/v1/auth/token")"
+check "wrong password" 401 "$(code -X POST -H 'content-type: application/json' -d '{"username":"smoke-owner","password":"nope"}' "$base/api/v1/auth/token")"
 check "SPA fallback serves index" 200 "$(code "$base/some/client/route")"
 
 echo "--- served client"
@@ -99,7 +99,7 @@ check "/api Cache-Control value is exactly no-store" "cache-control: no-store" "
 for u in "$base/api/v1/vehicle" "$base/api/v1/nope"; do
   check "Cache-Control single no-store on $u" "cache-control: no-store" "$(hdr "$u" | grep -i '^cache-control:' | tr 'A-Z' 'a-z')"
 done
-check "401 login Cache-Control single no-store" "cache-control: no-store" "$(curl -s -o /dev/null -D - -X POST -H 'content-type: application/json' -d '{"password":"nope"}' "$base/api/v1/auth/token" | tr -d '\r' | grep -i '^cache-control:' | tr 'A-Z' 'a-z')"
+check "401 login Cache-Control single no-store" "cache-control: no-store" "$(curl -s -o /dev/null -D - -X POST -H 'content-type: application/json' -d '{"username":"smoke-owner","password":"nope"}' "$base/api/v1/auth/token" | tr -d '\r' | grep -i '^cache-control:' | tr 'A-Z' 'a-z')"
 check "413-style oversize body Cache-Control single no-store" "cache-control: no-store" "$(curl -s -o /dev/null -D - -X POST -H 'content-type: application/json' --data-binary "{$(head -c 70000 /dev/zero | tr '\0' ' ')}" "$base/api/v1/auth/token" | tr -d '\r' | grep -i '^cache-control:' | tr 'A-Z' 'a-z')"
 has "/api CSP" "^content-security-policy:" "$h"
 has "/api nosniff" "^x-content-type-options: nosniff" "$h"
@@ -113,7 +113,7 @@ big="$(head -c 70000 /dev/zero | tr '\0' ' ')"
 out="$(curl -s -w '\n%{http_code}' -X POST -H 'content-type: application/json' --data-binary "{$big}" "$base/api/v1/auth/token")"
 check "70 KB body status" 400 "$(printf '%s' "$out" | tail -n1)"
 check "70 KB body code" validation_error "$(printf '%s' "$out" | head -n1 | "$python" -c 'import json,sys; print(json.load(sys.stdin)["error"]["code"])')"
-check "64 KiB-or-less body reaches the API (401)" 401 "$(code -X POST -H 'content-type: application/json' -d '{"password":"nope"}' "$base/api/v1/auth/token")"
+check "64 KiB-or-less body reaches the API (401)" 401 "$(code -X POST -H 'content-type: application/json' -d '{"username":"smoke-owner","password":"nope"}' "$base/api/v1/auth/token")"
 
 echo "--- image"
 check "no stale build/ or egg-info in the api image" "" "$(docker exec "$(compose ps -q api)" sh -c 'ls -d /srv/api/build /srv/api/*.egg-info 2>/dev/null' | tr -d '\n')"
@@ -131,7 +131,11 @@ api_cid="$(compose ps -q api)"; web_cid="$(compose ps -q web)"; db_cid="$(compos
 check "api published ports" "" "$(docker port "$api_cid" 2>/dev/null | tr -d '\n')"
 check "db published ports" "" "$(docker port "$db_cid" 2>/dev/null | tr -d '\n')"
 check "web published port" "127.0.0.1:$port" "$(docker port "$web_cid" 8080/tcp | grep -v '::' | tr -d '\n')"
-check "api not reachable from host" 000 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:8000/health" || true)"
+if lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "SKIP  api not reachable from host (port 8000 is in use by another process; the published-ports checks above still apply)"
+else
+  check "api not reachable from host" 000 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:8000/health" || true)"
+fi
 
 echo "--- real client address behind the proxy (two client containers, separate buckets)"
 net="${project}_backend"
@@ -145,7 +149,7 @@ client() { # client <container> <forwarded-for-or-empty> <password> -> HTTP stat
   docker exec "$1" python -c '
 import sys, urllib.request, urllib.error, json
 xff, pw = sys.argv[1], sys.argv[2]
-req = urllib.request.Request("http://web:8080/api/v1/auth/token", data=json.dumps({"password": pw}).encode(), method="POST", headers={"content-type": "application/json"})
+req = urllib.request.Request("http://web:8080/api/v1/auth/token", data=json.dumps({"username": "smoke-owner", "password": pw}).encode(), method="POST", headers={"content-type": "application/json"})
 if xff:
     req.add_header("X-Forwarded-For", xff)
 try:
@@ -173,9 +177,10 @@ echo "--- host-side requests (how Tailscale Serve on the host will arrive): one 
 edge_gw="$(docker network inspect -f '{{(index .IPAM.Config 0).Gateway}}' "${project}_edge")"
 hs=(-H 'Tailscale-User-Login: placeholder@example.invalid' -H 'Tailscale-User-Name: Placeholder')
 for i in 1 2 3 4 5; do
-  curl -s -o /dev/null -X POST -H 'content-type: application/json' -H "X-Forwarded-For: 198.51.100.$((100 + i))" "${hs[@]}" -d '{"password":"wrong"}' "$base/api/v1/auth/token"
+  curl -s -o /dev/null -X POST -H 'content-type: application/json' -H "X-Forwarded-For: 198.51.100.$((100 + i))" "${hs[@]}" -d '{"username":"smoke-owner","password":"wrong"}' "$base/api/v1/auth/token"
 done
-check "host-side login with a new spoofed X-Forwarded-For is still locked out" 429 "$(code -X POST -H 'content-type: application/json' -H 'X-Forwarded-For: 203.0.113.250' "${hs[@]}" -d "{\"password\":\"$pass\"}" "$base/api/v1/auth/token")"
+login_body="{\"username\":\"$user\",\"password\":\"$pass\"}"
+check "host-side login with a new spoofed X-Forwarded-For is still locked out" 429 "$(code -X POST -H 'content-type: application/json' -H 'X-Forwarded-For: 203.0.113.250' "${hs[@]}" -d "$login_body" "$base/api/v1/auth/token")"
 host_clients="$(compose logs api 2>&1 | grep -E 'failed login attempt|blocked by rate limit|login succeeded' | sed -n 's/.*client=\([^ ]*\).*/\1/p' | grep -vxF -e "$a_ip" -e "$b_ip" | sort -u | tr '\n' ' ' | sed 's/ $//')"
 echo "      client address(es) the API saw for host-side requests: $host_clients (edge gateway: $edge_gw)"
 check "host-side requests share exactly one client address" 1 "$(printf '%s\n' "$host_clients" | wc -w | tr -d ' ')"

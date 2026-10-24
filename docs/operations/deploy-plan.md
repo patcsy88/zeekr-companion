@@ -93,7 +93,7 @@ Each phase ends with a check. Do not start the next phase until the check passes
 | `ufw`, Tailscale and restore steps have never run on a real host | Each has a check above; failures are reported as failures, not passed |
 | Login lockout is one shared bucket behind Tailscale Serve (accepted); anyone on the tailnet can lock the owner out for 15 minutes | Accepted by the owner earlier; the tailnet policy limits who can reach the app |
 | Lockout state resets on restart | Accepted |
-| Password reset is not available until ADR-006 | Until then change `OWNER_PASSWORD_HASH` in `.env` and restart `api` |
+| Forgotten password | Run `docker compose exec api python -m app.cli.set_owner` on the host (ADR-006, once deployed). Until the ADR-006 redeploy, change `OWNER_PASSWORD_HASH` in `.env` and restart `api` |
 | Backups on a local disk do not protect against losing the host site | Accepted in ADR-004; offsite would need a new approval |
 | The public repo history includes the SEC-W1 text | Accepted (option A) |
 | The `pgdata` volume has no encryption at rest | Out of scope; rely on the host's disk encryption if the owner enables it |
@@ -110,3 +110,13 @@ Push to GitHub, install anything on or connect to the host, create a Tailscale a
 - 2026-10-24, Phase 4 (owner-run, screenshots and `docker compose ps` output seen): records for vehicle, service, reminder, expense and coverage were entered and displayed consistently. Offline write test passed (API stopped: "Server unreachable", "1 waiting to sync", total counted offline; API started: Online, one expense added once, no duplicate). `docker compose restart` and a host reboot both kept the data; all three containers came back healthy on their own; `web` publishes `127.0.0.1:8080` only. The owner mentioned 4 containers; `ps` lists 3, so this was probably a miscount (to be confirmed with `docker ps`).
 - Still open: firewall unverified (`ufw` not installed); Phase 3 backup and restore deferred (NFR-5 outstanding); Phase 5 remote access and the iPhone checks not run.
 - Cosmetic finding: the "Suggested service schedule" and "Suggested factory warranty terms" links use the browser's default link colours.
+- 2026-10-24, ADR-006 built locally, not deployed: owner account in the database (migration `0005`), `python -m app.cli.set_owner`, username field on sign-in, link-colour fix. Local gates green (API 1639 passed, web 505 passed, e2e 37 passed, smoke 59 passed with one skip, drift and gitleaks clean). `npm audit fix` changed the web lockfile only (4 indirect dev packages). The host still runs `ff7c5e6` with the single password. Redeploy needs the owner's go-ahead for the push and the deploy; remove `OWNER_PASSWORD_HASH` from the host `.env` afterwards.
+
+### ADR-006 redeploy checklist (in this order, owner approves the push and the deploy)
+
+1. Push `main`; on the host `git pull`.
+2. Copy the rebuilt `dist` from the development machine, compare the checksum, run `infra/check-dist.sh`.
+3. `docker compose up -d --build --wait`; confirm migration head is `0005`. Sign-in returns 401 until step 4.
+4. `docker compose exec api python -m app.cli.set_owner`. The owner types the username and password; nothing goes into chat.
+5. Delete the `OWNER_PASSWORD_HASH` line from the host `.env` (it is ignored, but should not linger).
+6. Sign in through the tunnel with the new login; check that the data from Phase 4 is still there.

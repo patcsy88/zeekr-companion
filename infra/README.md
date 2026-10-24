@@ -3,8 +3,9 @@
 Docker Compose stack: `db` (PostgreSQL), `api` (FastAPI) and `web` (Caddy: static client + reverse proxy).
 
 ```
-cp .env.example .env     # fill in POSTGRES_PASSWORD, OWNER_PASSWORD_HASH, TOKEN_SECRET
+cp .env.example .env     # fill in POSTGRES_PASSWORD and TOKEN_SECRET
 docker compose up --build
+docker compose exec api python -m app.cli.set_owner    # create the owner login (prompts)
 ```
 
 - Only `web` publishes a port: `${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}`. Never default it to `0.0.0.0`. `api` and `db` have no `ports`.
@@ -31,16 +32,15 @@ Placeholders only. Never write the real tailnet name, machine name, account emai
 
 > **WARNING.** The certificate Tailscale issues is recorded in public Certificate Transparency logs **with the machine name**, and a name already issued stays there. Before the first `tailscale serve`, check the machine name is neutral (for example `app-1`): no `zeekr`, no personal name, no registration, no city. The machine has not been renamed yet. Rename it in the admin console (Machines page) and confirm with `tailscale status`; also choose the tailnet DNS name before enabling HTTPS certificates. Both become permanent once the PWA is installed on the phone (the origin is `https://<host>.<tailnet>.ts.net`).
 
-### 1. Secrets (three, kept only in `infra/.env`, which is gitignored)
+### 1. Secrets (two, kept only in `infra/.env`, which is gitignored) and the owner login
 
 ```
 cd infra && cp .env.example .env
 python3 -c "import secrets; print(secrets.token_urlsafe(24))"   # POSTGRES_PASSWORD
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # TOKEN_SECRET
-cd ../services/api && python -m app.cli.hash_password           # OWNER_PASSWORD_HASH (prompts; stores no password)
 ```
 
-Paste each value into `infra/.env`. Leave `WEB_BIND_ADDRESS=127.0.0.1`, `WEB_PORT=8080`, `WEB_HSTS=off`.
+Paste each value into `infra/.env`. The owner login is not a secret in `.env`: once the stack is up (step 3), create it with `docker compose exec api python -m app.cli.set_owner`. It prompts for a username (3 to 64 characters, not case-sensitive) and a password (at least 12 characters, typed twice, never echoed or stored in plain text). Run the same command to reset a forgotten password; it takes effect on the next sign-in with no restart. Tokens already issued stay valid for up to an hour; to end them at once, change `TOKEN_SECRET` and run `docker compose up -d`. Until `set_owner` has run, every sign-in returns 401 and the API log says so. Leave `WEB_BIND_ADDRESS=127.0.0.1`, `WEB_PORT=8080`, `WEB_HSTS=off`.
 
 ### 2. Build the client and point the stack at it
 

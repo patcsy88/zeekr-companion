@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { PASSWORD, klDate, signIn, unique, waitForServiceWorker } from './helpers';
+import { PASSWORD, USERNAME, klDate, signIn, unique, waitForServiceWorker } from './helpers';
 
 interface ServerExpense {
   id: string;
@@ -13,7 +13,9 @@ interface ServerExpense {
 async function serverExpenses(browser: Browser, baseURL: string): Promise<ServerExpense[]> {
   const ctx = await browser.newContext({ baseURL });
   try {
-    const tok = await ctx.request.post('/api/v1/auth/token', { data: { password: PASSWORD } });
+    const tok = await ctx.request.post('/api/v1/auth/token', {
+      data: { username: USERNAME, password: PASSWORD },
+    });
     expect(tok.status()).toBe(200);
     const { access_token } = (await tok.json()) as { access_token: string };
     const res = await ctx.request.get('/api/v1/expenses?limit=100', {

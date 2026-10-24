@@ -12,7 +12,7 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import PASSWORD
+from tests.conftest import PASSWORD, USERNAME
 
 LOGIN = "placeholder-owner@example.invalid"
 NAME = "Placeholder Owner Name"
@@ -32,7 +32,7 @@ def _identity(n: int) -> dict[str, str]:
 
 def _post(client: TestClient, password: str, headers: dict[str, str]) -> int:
     return client.post(
-        "/api/v1/auth/token", json={"password": password}, headers=headers
+        "/api/v1/auth/token", json={"username": USERNAME, "password": password}, headers=headers
     ).status_code
 
 

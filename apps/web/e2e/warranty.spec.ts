@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { PASSWORD, klDate, signIn, unique, waitForServiceWorker } from './helpers';
+import { PASSWORD, USERNAME, klDate, signIn, unique, waitForServiceWorker } from './helpers';
 
 interface ServerCoverage {
   id: string;
@@ -23,7 +23,9 @@ async function serverWarranty(
 ): Promise<{ coverages: ServerCoverage[]; claims: ServerClaim[] }> {
   const ctx = await browser.newContext({ baseURL });
   try {
-    const tok = await ctx.request.post('/api/v1/auth/token', { data: { password: PASSWORD } });
+    const tok = await ctx.request.post('/api/v1/auth/token', {
+      data: { username: USERNAME, password: PASSWORD },
+    });
     expect(tok.status()).toBe(200);
     const { access_token } = (await tok.json()) as { access_token: string };
     const headers = { Authorization: `Bearer ${access_token}` };

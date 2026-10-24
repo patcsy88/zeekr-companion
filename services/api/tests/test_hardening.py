@@ -11,8 +11,14 @@ from pydantic import SecretStr, ValidationError
 
 from app.config import Settings
 from app.db import create_db_engine
-from app.security import hash_password
-from tests.conftest import PASSWORD, TOKEN_SECRET, make_settings, record_body
+from tests.conftest import (
+    PASSWORD,
+    TOKEN_SECRET,
+    USERNAME,
+    make_settings,
+    record_body,
+    seed_owner,
+)
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 API = REPO / "services" / "api"
@@ -49,14 +55,12 @@ def test_validation_errors_never_print_database_password(url: str) -> None:
     with pytest.raises(ValidationError) as info:
         Settings(
             database_url=url,
-            owner_password_hash=SecretStr("not-a-hash"),
             token_secret=SecretStr("short"),
         )
     assert DB_PASSWORD not in str(info.value)
     assert DB_PASSWORD not in repr(info.value)
     settings = Settings(
         database_url=url.replace("mysql://", "postgresql://"),
-        owner_password_hash=SecretStr(hash_password("pw-for-tests", n=2**4)),
         token_secret=SecretStr(TOKEN_SECRET),
     )
     assert DB_PASSWORD not in repr(settings)
@@ -71,7 +75,7 @@ def test_api_responses_are_no_store(client: TestClient, auth_headers: dict[str, 
     unauth = client.get("/api/v1/vehicle")
     missing = client.get("/api/v1/vehicle", headers=auth_headers)
     bad = client.post("/api/v1/auth/token", json={})
-    token = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+    token = client.post("/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD})
     unknown = client.get("/api/v1/nope")
     for response in (ok, unauth, missing, bad, token, unknown):
         assert response.headers["cache-control"] == "no-store", response.url
@@ -81,7 +85,9 @@ def test_successful_login_logged_at_info_without_token(
     client: TestClient, caplog: pytest.LogCaptureFixture
 ) -> None:
     with caplog.at_level(logging.INFO):
-        response = client.post("/api/v1/auth/token", json={"password": PASSWORD})
+        response = client.post(
+            "/api/v1/auth/token", json={"username": USERNAME, "password": PASSWORD}
+        )
     token = response.json()["access_token"]
     assert "login succeeded" in caplog.text
     assert token not in caplog.text
@@ -147,12 +153,17 @@ def test_entrypoint_limits_concurrency() -> None:
 # --- L8: lone surrogate counts as a failed attempt; settings are bounded -----------------------
 
 
-def test_unencodable_password_counts_as_failed_attempt(password_hash: str) -> None:
+def test_unencodable_password_counts_as_failed_attempt(
+    database_url: str, password_hash: str
+) -> None:
+    from app.db import create_db_engine, create_session_factory
     from app.errors import RateLimited, Unauthenticated
     from app.services.auth import AuthService
 
+    seed_owner(database_url, password_hash)
+    engine = create_db_engine(database_url)
     service = AuthService(
-        password_hash=password_hash,
+        session_factory=create_session_factory(engine),
         token_secret=TOKEN_SECRET,
         token_ttl_seconds=3600,
         max_failures=3,
@@ -160,9 +171,10 @@ def test_unencodable_password_counts_as_failed_attempt(password_hash: str) -> No
     )
     for _ in range(3):
         with pytest.raises(Unauthenticated):
-            service.login("\ud800", "client-a")  # lone surrogate cannot be UTF-8 encoded
+            service.login(USERNAME, "\ud800", "client-a")  # lone surrogate cannot be UTF-8 encoded
     with pytest.raises(RateLimited):
-        service.login(PASSWORD, "client-a")
+        service.login(USERNAME, PASSWORD, "client-a")
+    engine.dispose()
 
 
 def test_lone_surrogate_over_http_is_not_a_500(client: TestClient) -> None:
@@ -186,11 +198,9 @@ def test_lone_surrogate_over_http_is_not_a_500(client: TestClient) -> None:
         ("login_window_seconds", 10**9),
     ],
 )
-def test_unbounded_settings_rejected(
-    database_url: str, password_hash: str, name: str, value: int
-) -> None:
+def test_unbounded_settings_rejected(database_url: str, name: str, value: int) -> None:
     with pytest.raises(ValidationError):
-        make_settings(database_url, password_hash, **{name: value})
+        make_settings(database_url, **{name: value})
 
 
 # --- L2: .dockerignore ---------------------------------------------------------------------

@@ -12,7 +12,6 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from app.config import Settings
-from app.security import hash_password
 from tests.conftest import API_ROOT, TOKEN_SECRET
 
 # Contains both '@' and ':' (and is not percent-encoded, which is how the mistake happens).
@@ -43,7 +42,6 @@ def test_settings_error_does_not_echo_password(url: str) -> None:
     with pytest.raises(ValidationError) as info:
         Settings(
             database_url=SecretStr(url),
-            owner_password_hash=SecretStr(hash_password("pw-for-tests", n=2**4)),
             token_secret=SecretStr(TOKEN_SECRET),
         )
     exc = info.value
@@ -61,7 +59,6 @@ def test_app_startup_does_not_echo_password(url: str) -> None:
         cwd=API_ROOT,
         env=_env(
             DATABASE_URL=url,
-            OWNER_PASSWORD_HASH=hash_password("pw-for-tests", n=2**4),
             TOKEN_SECRET=TOKEN_SECRET,
         ),
         capture_output=True,
@@ -109,7 +106,6 @@ def test_percent_encoded_password_is_accepted() -> None:
     url = f"postgresql://zeekr:{quote(PASSWORD, safe='')}@db:5432/zeekr"
     settings = Settings(
         database_url=SecretStr(url),
-        owner_password_hash=SecretStr(hash_password("pw-for-tests", n=2**4)),
         token_secret=SecretStr(TOKEN_SECRET),
     )
     assert settings.database_url.get_secret_value().startswith("postgresql+psycopg://")

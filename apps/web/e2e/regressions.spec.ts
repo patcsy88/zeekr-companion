@@ -66,6 +66,7 @@ test('D2: browser online but the proxy answers 502 -> "Server unreachable"', asy
   );
   await page.goto('/');
   await expect(page.getByTestId('offline-indicator')).toHaveText('Server unreachable');
+  await page.getByLabel('Username').fill('anyone');
   await page.getByLabel('Password').fill('anything');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toContainText('The server is unavailable');
