@@ -1,0 +1,12 @@
+# Zeekr Companion: daily schedule for zeekr-companion-offsite-export.service.
+# TEMPLATE. See the install commands at the top of the .service file.
+[Unit]
+Description=Daily encrypted database export for Zeekr Companion
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

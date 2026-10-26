@@ -1,0 +1,34 @@
+# Zeekr Companion: nightly encrypted dump for the off-machine copy (ADR-004, owner decision 2026-10-27).
+#
+# This is a TEMPLATE. It is not installed by this repo. The host only writes encrypted files to a
+# staging directory; the owner's Mac pulls them with infra/backup/pull_backup.sh.
+#
+#   sudo apt install age
+#   sudo cp infra/backup/zeekr-companion-offsite-export.service /etc/systemd/system/
+#   sudo cp infra/backup/zeekr-companion-offsite-export.timer   /etc/systemd/system/
+#   (edit the copies: replace <path-to-repo> and <reader-user>)
+#   sudo systemctl daemon-reload
+#   sudo systemctl start zeekr-companion-offsite-export.service    # run once, read the journal
+#   sudo systemctl enable --now zeekr-companion-offsite-export.timer
+#
+# infra/.env on the host must contain AGE_RECIPIENT=age1... (the PUBLIC key only; never the private
+# key). Never commit real paths or user names back into this file.
+[Unit]
+Description=Zeekr Companion: encrypted database export for the off-machine copy
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=<path-to-repo>/infra
+EnvironmentFile=<path-to-repo>/infra/.env
+# The account the Mac logs in as over SSH; the encrypted files are handed to it so rsync can read them.
+Environment=READER_USER=<reader-user>
+Environment=BACKUP_DIR=/var/backups/zeekr-companion
+ExecStart=<path-to-repo>/infra/backup/offsite_export.sh
+# Hardening is deliberately minimal: ProtectSystem=strict has not been tested with docker compose.
+# Add it only after a manual run succeeds, with ReadWritePaths=/var/backups/zeekr-companion.
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
