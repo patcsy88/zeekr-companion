@@ -104,3 +104,20 @@ that pre-restore dump file instead.
 - The owner/QA should, on the real host: run `pg_dump.sh` once manually, then perform a full step-1
   restore of the resulting file into a throwaway container, before relying on the systemd timer in
   production. Only after that should NFR-5 be marked satisfied.
+
+## Off-machine backup (owner decision 2026-10-27: no local backup disk)
+
+The only backup is an encrypted copy pulled to the owner's Mac. The host holds the public `age` key only, so it cannot read what it writes.
+
+**One-time setup**
+1. Mac: `brew install age`, then `age-keygen -o <private-key-file>`. Keep the private key on the Mac and **back it up somewhere other than the host** (for example a password manager). If it is lost, every backup is unreadable. Never paste it into chat or copy it to the host. Only the public key (starts `age1`) goes to the host.
+2. Host: `sudo apt install age`, `git pull`, then add `AGE_RECIPIENT=age1...` to `infra/.env`.
+3. Host: run once by hand: `cd ~/zeekr-companion/infra && sudo env AGE_RECIPIENT=age1... BACKUP_DIR=/var/backups/zeekr-companion ./backup/offsite_export.sh`. It writes `zeekr-companion-*.sql.gz.age`, removes the plaintext and prunes files older than `RETENTION_DAYS` (14).
+4. Mac: `REMOTE=<user>@<host>:/var/backups/zeekr-companion AGE_IDENTITY=<private-key-file> VERIFY_RESTORE=1 infra/backup/pull_backup.sh`. SSH must be key-based (`BatchMode`). It copies new files (never deletes), checks the newest is under `MAX_AGE_HOURS` (36) old, decrypts, and restores into a throwaway container. Counts are not compared with the live database in this mode, so also run `restore_check.sh` on a fresh host dump.
+5. Once step 4 passes, install the timer templates `zeekr-companion-offsite-export.service` and `.timer` (instructions are in the service file), and run `pull_backup.sh` from a launchd job or by hand. A stopped host timer shows up as a "too old" failure on the Mac.
+
+**Restoring from an off-machine copy:** decrypt on the Mac with `age -d -i <private-key-file> -o dump.sql.gz <file>.age`, copy `dump.sql.gz` to the host, then follow the steps above.
+
+Dumps contain the owner password hash and the owner's records. Treat both the encrypted and decrypted files as sensitive.
+
+Status: the scripts were tested on a development machine with throwaway data. They have **not** yet run on the real host.
