@@ -111,7 +111,8 @@ The only backup is an encrypted copy pulled to the owner's Mac. The host holds t
 
 **One-time setup**
 1. Mac: `brew install age`, then `age-keygen -o <private-key-file>`. Keep the private key on the Mac and **back it up somewhere other than the host** (for example a password manager). If it is lost, every backup is unreadable. Never paste it into chat or copy it to the host. Only the public key (starts `age1`) goes to the host.
-2. Host: `sudo apt install age`, `git pull`, then add `AGE_RECIPIENT=age1...` to `infra/.env`.
+2. Host: `sudo apt install age rsync` (rsync must exist on both ends), `git pull`, then add `AGE_RECIPIENT=age1...` to `infra/.env`.
+   The Mac also needs key-based SSH to the host (`ssh-keygen -t ed25519`, then `ssh-copy-id`). This is a different key from the age key. Test with `ssh -o BatchMode=yes <user>@<host> true`.
 3. Host: run once by hand: `cd ~/zeekr-companion/infra && sudo env AGE_RECIPIENT=age1... BACKUP_DIR=/var/backups/zeekr-companion ./backup/offsite_export.sh`. It writes `zeekr-companion-*.sql.gz.age`, removes the plaintext and prunes files older than `RETENTION_DAYS` (14).
 4. Mac: `REMOTE=<user>@<host>:/var/backups/zeekr-companion AGE_IDENTITY=<private-key-file> VERIFY_RESTORE=1 infra/backup/pull_backup.sh`. SSH must be key-based (`BatchMode`). It copies new files (never deletes), checks the newest is under `MAX_AGE_HOURS` (36) old, decrypts, and restores into a throwaway container. Counts are not compared with the live database in this mode, so also run `restore_check.sh` on a fresh host dump.
 5. Once step 4 passes, install the timer templates `zeekr-companion-offsite-export.service` and `.timer` (instructions are in the service file), and run `pull_backup.sh` from a launchd job or by hand. A stopped host timer shows up as a "too old" failure on the Mac.
@@ -120,4 +121,4 @@ The only backup is an encrypted copy pulled to the owner's Mac. The host holds t
 
 Dumps contain the owner password hash and the owner's records. Treat both the encrypted and decrypted files as sensitive.
 
-Status: the scripts were tested on a development machine with throwaway data. They have **not** yet run on the real host.
+Status: first real run 2026-10-27 (owner-run). The host export wrote an encrypted file, the Mac pulled it, decrypted it and restored it into a throwaway database with the expected counts. The comparison against a fresh host dump (`restore_check.sh`) and the nightly timer are still to do.
