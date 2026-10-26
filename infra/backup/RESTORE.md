@@ -21,6 +21,8 @@ second local disk or external USB drive mounted at a fixed path on the Ubuntu ho
 
 ## 1. (Recommended first) Restore into a throwaway instance to verify the dump
 
+**Scripted version:** `infra/backup/restore_check.sh [dump-file]` does this whole step. It restores into a throwaway container with no network, stops at the first SQL error, removes the container on exit, and compares each table's row count with the live database. Exit 0 is a pass, 1 is a failure or a mismatch, 2 means the restore worked but the counts were not compared (not a full pass). With no argument it uses the newest dump in `BACKUP_DIR`. It was tested on a development machine against throwaway Postgres containers (good dump, changed live data, corrupt gzip, empty and missing files, valid gzip with bad SQL). It has not yet run on the real host. The manual commands below remain as the fallback.
+
 This proves the dump is valid and restorable without touching the real `zeekr-companion_pgdata`
 volume or the running `db` container.
 
