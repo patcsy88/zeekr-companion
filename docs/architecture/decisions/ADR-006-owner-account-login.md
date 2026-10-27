@@ -1,6 +1,6 @@
 # ADR-006: Owner account with username and password login
 
-- Status: **Accepted and implemented in the working tree on 2026-10-24** (migration `0005`, `set_owner`, web login, tests). Not yet deployed; security review pending.
+- Status: **Accepted on 2026-10-24, implemented, security-reviewed (no Critical or High findings, see `docs/security/review-2026-10-24-owner-login.md`) and deployed on the Ubuntu host on 2026-10-27** (migration `0005`, `set_owner`, web login). Deployment details are in `docs/operations/deploy-plan.md`.
 - Date: 2026-10-23
 - Amends: the "Authentication" section of `docs/architecture/api-contracts.md` and the `OWNER_PASSWORD_HASH` setting (ADR-001 stack, `infra/.env.example`)
 
