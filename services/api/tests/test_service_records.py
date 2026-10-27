@@ -281,7 +281,22 @@ def test_cursor_stable_when_record_deleted_mid_walk(
     assert [i["id"] for i in second["items"]] == expected[3:]
 
 
-@pytest.mark.parametrize("params", [{"limit": 0}, {"limit": 101}, {"limit": "x"}])
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"limit": 0},
+        {"limit": 101},
+        {"limit": "x"},
+        {"limit": "-1"},
+        {"limit": ""},
+        {"limit": "1.0"},
+        {"limit": "2.5"},
+        {"limit": "1e1"},
+        {"limit": " 5"},
+        {"limit": "+5"},
+        {"limit": "\u0665"},
+    ],
+)
 def test_bad_limit_is_400(
     client: TestClient, auth_headers: dict[str, str], params: dict[str, object]
 ) -> None:
