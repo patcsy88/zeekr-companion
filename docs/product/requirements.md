@@ -27,7 +27,7 @@ Status: **confirmed**, **proposed** or **unverified**. Each requirement has an I
 | NFR-2 | Offline writes are queued and synced when connectivity returns, with visible sync state | proposed |
 | NFR-3 | No secrets or personal identifiers in source control | confirmed |
 | NFR-4 | All schema changes use migrations | confirmed |
-| NFR-5 | Backend can be backed up and restored, and a restore has been tested | proposed |
+| NFR-5 | Backend can be backed up and restored, and a restore has been tested | satisfied 2026-10-28 (owner-run; see deploy plan log). Off-machine only, until a second copy exists |
 | NFR-6 | The API is not exposed directly to the public internet | proposed |
 | NFR-7 | Money stored as integer minor units, timestamps in UTC | proposed |
 
