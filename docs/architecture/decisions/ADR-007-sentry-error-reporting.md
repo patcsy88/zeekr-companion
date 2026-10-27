@@ -24,10 +24,14 @@ The owner wants crash and error reports for the API and the PWA. Sentry is a new
 - Reports go to Sentry's servers. The owner chooses the data region when creating the organisation.
 - A `before_send` bug could leak data, so both scrubbers have tests with fake secrets.
 
+## Provenance
+
+The Sentry setup in steps 1 and 2 below (project creation, rate limits and the setup-check event) was run from Claude, outside the session that wrote the code, and is not logged in that session. The owner confirmed on 2026-10-28 that it was run from Claude and chose to keep it as is. The commits that record it (`90e1fcb`, `ca61ba4`) carry the owner's git identity. The session that wrote the code did not run these steps and cannot verify them. The state of the Sentry projects, their rate limits and the test issue has not been checked from this repository.
+
 ## Owner steps
 
-1. Done 2026-10-28 (agent, at the owner's request): projects `zeekr-companion-api` (FastAPI) and `zeekr-companion-web` (React) created under team `unlimited-limited`.
-2. Done 2026-10-28: inbound rate limit of 50 events per hour on each project's default key.
+1. Done 2026-10-28 (run from Claude, at the owner's request; see Provenance): projects `zeekr-companion-api` (FastAPI) and `zeekr-companion-web` (React) created under team `unlimited-limited`.
+2. Done 2026-10-28 (run from Claude, see Provenance): inbound rate limit of 50 events per hour on each project's default key.
    A setup check sent one test exception from the API scrubber to `zeekr-companion-api` from the owner's Mac (environment `setup-check`); it arrived as issue `ZEEKR-COMPANION-API-1` titled only `RuntimeError`, with the message stripped.
 3. Put the API DSN in the host `infra/.env` as `SENTRY_DSN_API`, recreate the API container.
 4. Build the web client on the Mac with `VITE_SENTRY_DSN` set, copy `dist` to the host as usual.
