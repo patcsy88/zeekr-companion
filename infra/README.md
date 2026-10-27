@@ -17,7 +17,7 @@ docker compose exec api python -m app.cli.set_owner    # create the owner login 
 - **Tailscale headers:** Caddy deletes every `Tailscale-*` request header (identity headers carry the account email) before any handler. `infra/smoke.sh` proves it against an echo upstream; the API ignores and never logs them (`services/api/tests/test_tailscale_headers.py`).
 - **Networks:** `backend` is `internal: true` (no route out) and holds `db`, `api` and `web`; `edge` holds only `web` and carries the published port. `web` is the only service on both.
 - **Post-build check:** after `npm run build` in `apps/web`, run `infra/check-dist.sh ../apps/web/dist`. It fails if `dist` has no `index.html`, or contains dotfiles or `.map` files. The proxy also answers 404 for any path with a dotfile segment or ending `.map`. `infra/smoke.sh` fails if `WEB_DIST_DIR` is set but `/` is still the placeholder: `SMOKE_WEB_DIST_DIR=../apps/web/dist infra/smoke.sh` tests the real build.
-- **CSP** also has `form-action 'self'`. `Permissions-Policy` denies camera, microphone, geolocation, payment and USB, and `Cross-Origin-Opener-Policy: same-origin` is set; the real build was loaded in Chromium under these headers and signed in with no violations.
+- **CSP** also has `form-action 'self'` and `connect-src 'self' https://*.sentry.io` (the only outbound allowance, for optional error reporting, ADR-007; nothing is sent unless a DSN is set). `Permissions-Policy` denies camera, microphone, geolocation, payment and USB, and `Cross-Origin-Opener-Policy: same-origin` is set; the real build was loaded in Chromium under these headers and signed in with no violations.
 - **`Cache-Control` on `/api/*`:** the API sets `no-store`; Caddy adds it only if the response lacks one, so it is never duplicated.
 - **Trusted proxies:** `FORWARDED_ALLOW_IPS` must be single addresses or networks no wider than IPv4 /24 or IPv6 /120; `0.0.0.0`, `0.0.0.0/0`, `::/0` and `*` stop the container at start (exit 64).
 - **Smoke test:** `infra/smoke.sh` (unique project name, throwaway env and secrets, removes everything it created; never touches `zeekr-companion_pgdata`).
@@ -137,3 +137,7 @@ Never add `--volumes` or run `docker volume rm zeekr-companion_pgdata` unless yo
 ### Rate-limit behaviour you should expect
 
 Serve connects to the loopback port on the host, so the API sees one address (the Docker gateway) for every request. Five wrong passwords lock login for everyone, including you, for 15 minutes (`429` with `Retry-After`). This is the accepted single shared bucket.
+
+## Optional error reporting (ADR-007)
+
+Set `SENTRY_DSN_API` in `infra/.env` to turn on API error reporting; leave it empty to send nothing. The web client reports only if `VITE_SENTRY_DSN` was set when it was built. Events are scrubbed to the exception type, stack frames and the URL path. See `docs/architecture/decisions/ADR-007-sentry-error-reporting.md`.

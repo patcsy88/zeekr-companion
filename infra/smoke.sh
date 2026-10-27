@@ -81,7 +81,7 @@ fi
 
 echo "--- headers on index.html"
 h="$(hdr "$base/")"
-has "CSP" "^content-security-policy: default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'\$" "$h"
+has "CSP" "^content-security-policy: default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; connect-src 'self' https://\*\.sentry\.io\$" "$h"
 has "nosniff" "^x-content-type-options: nosniff" "$h"
 has "referrer-policy" "^referrer-policy: no-referrer" "$h"
 has "permissions-policy" "^permissions-policy: " "$h"

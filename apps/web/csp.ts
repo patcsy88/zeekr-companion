@@ -4,7 +4,7 @@
  * production policy. test/csp-drift.test.ts fails if infra/Caddyfile changes and this does not.
  */
 export const PRODUCTION_CSP =
-  "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+  "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; connect-src 'self' https://*.sentry.io";
 
 export const PRODUCTION_HEADERS: Record<string, string> = {
   'Content-Security-Policy': PRODUCTION_CSP,

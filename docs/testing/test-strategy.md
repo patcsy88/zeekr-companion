@@ -109,3 +109,9 @@ Date rule (owner decision 2026-10-22): calendar-date checks use the Asia/Kuala_L
 ## Not yet covered
 
 Performance, backup restore, push notification delivery, and CSP/XSS testing beyond header checks. Accessibility is covered only by `jsx-a11y` lint until a fuller check is added.
+
+## Error reporting (ADR-007)
+
+- API: `services/api/tests/test_observability.py` checks that the scrubber removes fake secrets (password, token, username, amount, plate, host name, local path) and keeps the exception type and frames, that nothing starts without a DSN, and that the SDK is started with privacy-safe options.
+- Web: `apps/web/test/observability.test.ts` does the same for the browser scrubber. `test/csp-drift.test.ts` and `infra/smoke.sh` pin the CSP including the `connect-src` allowance.
+- Not tested: delivery to a real Sentry project. That needs a DSN and is an owner-run check (see the ADR).

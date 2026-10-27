@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     token_ttl_seconds: int = Field(default=3600, ge=60, le=86_400)
     login_max_failures: int = Field(default=5, ge=1, le=100)
     login_window_seconds: int = Field(default=900, ge=10, le=86_400)
+    sentry_dsn: SecretStr | None = None
+    sentry_environment: str = Field(default="production", max_length=32)
+
+    @field_validator("sentry_dsn", mode="before")
+    @classmethod
+    def _empty_dsn_is_off(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("database_url")
     @classmethod

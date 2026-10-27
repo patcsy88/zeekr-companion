@@ -15,6 +15,7 @@ from app.config import Settings
 from app.db import create_db_engine, create_session_factory
 from app.errors import AppError, Conflict, InvalidInput, NotFound, RateLimited, Unauthenticated
 from app.middleware import BodyLimitMiddleware, NoStoreMiddleware
+from app.observability import init_sentry
 from app.openapi_docs import install as install_openapi_docs
 from app.routers import auth, expenses, reminders, service_records, vehicle, warranty
 from app.services.auth import AuthService
@@ -102,6 +103,10 @@ async def _on_unexpected(_: Request, exc: Exception) -> JSONResponse:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
+    init_sentry(
+        settings.sentry_dsn.get_secret_value() if settings.sentry_dsn else None,
+        settings.sentry_environment,
+    )
     engine = create_db_engine(settings.database_url.get_secret_value())
 
     app = FastAPI(
