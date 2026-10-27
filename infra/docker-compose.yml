@@ -35,6 +35,8 @@ services:
       DATABASE_URL: postgresql+psycopg://zeekr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}@db:5432/zeekr
       TOKEN_SECRET: ${TOKEN_SECRET:?set TOKEN_SECRET in infra/.env}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Optional error reporting (ADR-007). Empty means off.
+      SENTRY_DSN: ${SENTRY_DSN_API:-}
       # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
       # Never '*': the entrypoint refuses it.
       FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}

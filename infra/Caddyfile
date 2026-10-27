@@ -18,7 +18,7 @@
 
 (security_headers) {
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; connect-src 'self' https://*.sentry.io"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
 		# The app uses no camera, microphone, location, payment or USB features (checked in apps/web/src).
