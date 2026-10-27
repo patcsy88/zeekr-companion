@@ -1,6 +1,6 @@
 # ADR-007: Optional Sentry error reporting
 
-Status: accepted by the owner on 2026-10-28; code written and tested, **not yet deployed and no Sentry project has a DSN configured in the app**.
+Status: accepted by the owner on 2026-10-28; code written and tested; Sentry projects created 2026-10-28 (org `unlimited-limited`, EU region `de.sentry.io`). **Not yet deployed: no DSN is configured on the host or in a web build.**
 
 ## Context
 
@@ -24,10 +24,11 @@ The owner wants crash and error reports for the API and the PWA. Sentry is a new
 - Reports go to Sentry's servers. The owner chooses the data region when creating the organisation.
 - A `before_send` bug could leak data, so both scrubbers have tests with fake secrets.
 
-## Owner steps (not done by an agent)
+## Owner steps
 
-1. Create projects `zeekr-companion-api` (FastAPI) and `zeekr-companion-web` (React) in the owner's organisation. Skip the SDK wizard.
-2. Set an inbound rate limit on both projects.
+1. Done 2026-10-28 (agent, at the owner's request): projects `zeekr-companion-api` (FastAPI) and `zeekr-companion-web` (React) created under team `unlimited-limited`.
+2. Done 2026-10-28: inbound rate limit of 50 events per hour on each project's default key.
+   A setup check sent one test exception from the API scrubber to `zeekr-companion-api` from the owner's Mac (environment `setup-check`); it arrived as issue `ZEEKR-COMPANION-API-1` titled only `RuntimeError`, with the message stripped.
 3. Put the API DSN in the host `infra/.env` as `SENTRY_DSN_API`, recreate the API container.
 4. Build the web client on the Mac with `VITE_SENTRY_DSN` set, copy `dist` to the host as usual.
-5. Trigger a test error and confirm it arrives with no request data or message.
+5. After deploying, trigger a test error and confirm it arrives with no request data or message.
