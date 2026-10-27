@@ -15,6 +15,7 @@ from app.openapi_docs import (
 )
 from app.routers.deps import ServiceRecordServiceDep, require_auth
 from app.schemas import (
+    PageLimit,
     ServiceRecordCreate,
     ServiceRecordOut,
     ServiceRecordPage,
@@ -51,7 +52,7 @@ def create_record(
 )
 def list_records(
     service: ServiceRecordServiceDep,
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[PageLimit, Query(json_schema_extra={"minimum": 1, "maximum": 100})] = 50,
     cursor: Annotated[str | None, Query(max_length=512)] = None,
 ) -> ServiceRecordPage:
     return service.list(limit, cursor)
