@@ -1,6 +1,6 @@
 # ADR-008: Read-only telemetry adapter and advisory agents
 
-- Status: **Partly accepted on 2026-10-29. No code exists.** The owner accepted advisory-only agents (decision 5) and the first conditions (below). The owner chose a hosted model from the start, which replaces the rules-first order in decision 7. **That part is not approved yet:** the provider and the fields allowed to leave the host are still to be named by the owner (see "Owner decisions").
+- Status: **Accepted for design on 2026-10-29. No code exists and no model has been called.** The owner accepted advisory-only agents (decision 5), the first conditions, a hosted model from the start (replacing the rules-first order in decision 7), Anthropic as the provider with a monthly cap of USD 10.00, the derived-values-only field list, host logging, and LangChain, LangGraph and LangSmith (free tier, with conditions). The owner still has to set and check the cap in the Anthropic console and create the keys (see "Owner approvals").
 - Date: 2026-10-29
 - Related: `docs/research/vehicle-integrations.md` (R1, M29, M30, M42), AGENTS.md principles 5 to 7 and the approval gates, ADR-005.
 
@@ -60,10 +60,50 @@ Not selected for now: a plain "odometer is near a service or warranty km limit" 
 
 The owner chose **Anthropic, with a spending cap**. The monthly cap amount is not yet set. The API key is created by the owner in their own Anthropic account, with the cap set there, and goes only into the host `infra/.env`. It is never pasted into chat or committed. Data retention and training terms for API traffic have not been checked from this repo; the owner should read Anthropic's current terms before approving the fields below.
 
+### Anthropic data terms (read by the agent on 2026-10-29 from public pages; the owner has not independently confirmed them)
+
+- **Training:** the Commercial Terms say Anthropic may not train models on Customer Content from the Services, and the customer keeps rights to inputs and owns outputs. Training happens only if the owner opts in (for example the Development Partner Program). Source: Commercial Terms of Service, section B; the Anthropic privacy centre.
+- **Retention:** the privacy centre (article dated 1 July 2026) says API inputs and outputs are deleted from Anthropic's backend within 30 days, except where a service has longer retention, where a zero-data-retention agreement exists, where needed to enforce the Usage Policy, or where the law requires it. Content flagged as a Usage Policy violation can be kept for up to 2 years. The API data-retention page says content is not retained by default, but that "Covered Models" (named there as Fable 5.1, Mythos 5.1, Fable 5 and Mythos 5) require 30-day retention. **The two pages describe retention differently, so assume up to 30 days.**
+- **Zero data retention** exists, but only by agreement through Anthropic's sales team. It is not available to this project by default.
+- **Not checked:** the data-processing addendum, where API traffic is processed (region), and how the spending limit behaves. The cap must be confirmed in the owner's Anthropic account (see below).
+- **Consequence:** the fields sent are limited to derived values, so a retained prompt holds nothing that identifies the owner or the car.
+
+## Frameworks and tracing (owner decision 2026-10-29)
+
+The owner approved **LangChain, LangGraph and LangSmith**. The agent had recommended using none of them for the first build; this is the owner's call and is recorded as approved. Conditions that come with the approval:
+
+- **LangChain and LangGraph (free libraries, new dependencies).** Added only when the build starts, pinned exactly, and covered by `pip-audit` and the licence check like every other dependency. The model call still goes through the internal `ReasoningModel` interface, so the provider and the framework stay swappable. The Anthropic integration package is added only if needed.
+- **LangSmith (new external service).** Free Developer plan only, with a spend limit and no paid upgrade. Facts from LangSmith's public pages, read by the agent on 2026-10-29 and not confirmed by the owner:
+  - The Developer plan is $0 per seat for 1 seat and includes 5,000 base traces a month, then pay-as-you-go. A spend limit must be set so it cannot go beyond the free allowance.
+  - Base traces are kept 14 days. Extended traces are kept 180 days and cost extra; do not use them.
+  - LangSmith says it does not train on customer data and that traces remain private to the organisation.
+  - The region is chosen when the account is created: US, EU (stored in the Netherlands), APAC or AWS US. Pricing and terms are the same. Data cannot be migrated between regions later. Region does not matter to the owner; the suggested default is EU, to match the Sentry choice. The owner picks at sign-up.
+  - Some trace metadata may be kept indefinitely for analytics and billing.
+  - Not checked: LangSmith's Terms of Service and data-processing terms.
+- **What may be traced.** The same limit as decision 7. A trace holds a prompt and a reply, so it may contain only the approved derived values. No notes, names, VIN, plate, certificate numbers, GPS, usernames, tokens or free text.
+  - Tracing is **off by default** and is switched on only by an explicit setting in the host `infra/.env`. Tests and local runs trace nothing.
+  - Client-side scrubbing runs before anything is sent, and a test with fake secrets proves it, as with the Sentry scrubbers.
+  - Engine and other LangSmith features that read trace data or connect to GitHub stay off.
+- **The LangSmith key** is created by the owner and goes only into the host `infra/.env`. It is never pasted into chat or committed.
+- **Host logs stay the primary audit record.** LangSmith is a second copy for debugging, not the record of what left the host.
+- **Second third party.** With LangSmith, derived values reach two companies (Anthropic and LangChain), each with its own retention. This is accepted by the owner.
+
+## Owner approvals (2026-10-29)
+
+- **Provider and plan:** Anthropic, prepaid or pay-as-you-go with a **monthly cap of 10.00**. The currency was not stated; Anthropic bills in US dollars as far as the agent knows, so the owner should confirm that the cap is 10.00 USD in the console. The owner sets the cap in the Anthropic console and checks that it is applied before the key goes on the host. The app also keeps its own call counter and stops calling the model once a configurable monthly call limit is reached, so the cap is not the only guard.
+- **Fields allowed to leave the host:** derived values only: the condition name, km to a limit, days to expiry, cost per kWh and the recent average, and a date. Not allowed: notes, names, VIN, plate, certificate numbers, GPS, usernames, tokens, free text of any kind, or whole records.
+- **Logging:** prompts and replies are logged on the host for audit. Agreed.
+- **Region:** does not matter to the owner.
+- **Terms:** checked by the agent (above). The owner asked for the check; the owner's own reading of the terms is still the owner's call.
+- **API key:** the owner creates it and puts it only in the host `infra/.env`. It is never pasted into chat or committed.
+
+With these approvals the model part of decision 7 is accepted for design. **No model is called, and no key is requested, until the build exists and the owner has put the key on the host.**
+
 ## Still needed from the owner before any model is called
 
-- The monthly spending cap amount.
-- Written approval of the exact fields that may be sent, from the minimum list in decision 7.
+- The cap amount is **confirmed by the owner as USD 10.00 per month (2026-10-29)**. Still to do by the owner: set it in the Anthropic console and check that it is active before the key goes on the host.
+- LangSmith: choose the region and set a spend limit when creating the account, then create a key (host `infra/.env` only).
+- (Superseded by the approvals above, kept for the record) Written approval of the exact fields that may be sent, from the minimum list in decision 7.
 - Agreement that prompts and replies are logged on the host.
 - Whether the data region matters, as it did for Sentry.
 
