@@ -107,9 +107,9 @@ Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty" 
 - Web: cache keys for coverages and claims, queue kinds for both entities with a dependency rule (a claim create waits on its coverage create), a pure `warrantyStatus` function with shared vectors, a template screen modelled on `ReminderTemplatePage`. Service worker unchanged.
 - Known limit: `km_limit` is compared with the odometer reading, not with km since the start date (Q13).
 
-### Advisory agents data model (DRAFT 2026-10-29, awaiting owner review; ADR-008)
+### Advisory agents data model (APPROVED by the owner, 2026-10-29; ADR-008)
 
-Contract: "Advisory agents" in `api-contracts.md`. Nothing here is built.
+Approved as drafted, including the `energy_wh` amendment to Expenses, the check thresholds and the default limit of 60 model calls a month. Contract: "Advisory agents" in `api-contracts.md`. Nothing here is built yet.
 
 **Telemetry port (code, not a table).** `VehicleTelemetryProvider` is a Python `Protocol` with read methods only (`read_odometer`, and later state of charge, charging state and tyre pressure). Each returns `Reading[T]`: `value` (nullable), `source` (string) and `observed_at` (UTC timestamp, nullable). There is no method that writes or commands. A test inspects the Protocol and fails if any method name is outside an allow-list of `read_*` names.
 - `RecordsTelemetryProvider` (the only real provider): odometer from the latest service record (the same read reminders and warranty use), `source = "latest_service_record"`. Every other reading is `None`.

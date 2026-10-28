@@ -520,9 +520,9 @@ Points the contract left open; the backend chose the reading below. Flagged for 
 
 None proposed. The only shared code is the current-odometer read already used by Reminders, reused unchanged. If the owner prefers an owner-entered odometer (reminders Q1 alternative), that would affect Reminders and Warranty together and is not proposed.
 
-## Advisory agents (DRAFT 2026-10-29, awaiting owner review)
+## Advisory agents (APPROVED by the owner, 2026-10-29)
 
-Drafted by the Engineering Lead for ADR-008. **Not approved. No code until the owner approves this section and the data model.** Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code.
+Drafted by the Engineering Lead for ADR-008. **Approved by the owner on 2026-10-29 ("approve"), together with the data model and the `energy_wh` amendment to Expenses. Changing it now needs the owner to be told first.** No code existed at approval. Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code.
 
 ### Change to the approved Expenses part
 
