@@ -1,6 +1,6 @@
 # ADR-008: Read-only telemetry adapter and advisory agents
 
-- Status: **Proposed on 2026-10-29. Not accepted: the owner has not reviewed it. No code exists.**
+- Status: **Partly accepted on 2026-10-29. No code exists.** The owner accepted advisory-only agents (decision 5) and the first conditions (below). The owner chose a hosted model from the start, which replaces the rules-first order in decision 7. **That part is not approved yet:** the provider and the fields allowed to leave the host are still to be named by the owner (see "Owner decisions").
 - Date: 2026-10-29
 - Related: `docs/research/vehicle-integrations.md` (R1, M29, M30, M42), AGENTS.md principles 5 to 7 and the approval gates, ADR-005.
 
@@ -23,14 +23,23 @@ The project rules are to prefer documented interfaces, never invent vehicle capa
 4. **If a live provider is ever approved, it is read-only by construction.** It would call only the client's `get_*` methods through a wrapper that exposes nothing else, and it would use a second Zeekr account with the car shared to it, as the client's author advises. Credentials and keys would live only in the host environment, never in the repo, logs or Sentry events. Trip history would be reduced to odometer, distance and energy before storing. GPS coordinates would be dropped on arrival.
 5. **Agents are advisory.** The "reason and act" loop is: observe a snapshot, evaluate rules or a model against it, and propose. A proposal is a suggested reminder, a flag or a notification. It is stored as `proposed` and does nothing until the owner accepts it, as with the service-schedule and warranty templates. An agent can never create a reminder directly, edit a record, delete anything or touch the vehicle.
 6. **Every proposal is explainable.** It records which readings and which rule or prompt produced it, so the owner can see why it appeared.
-7. **No owner data to external model services without approval.** If a hosted model is used for reasoning, that is a new external service and an approval gate (AGENTS.md). Rule-based checks need no external service and come first.
+7. **A hosted model does the reasoning (owner decision 2026-10-29, replacing "rules first").** This is a new external service and an approval gate (AGENTS.md), and it sends owner data off the host. It is therefore **blocked until the owner approves, in writing in this ADR, (a) the provider and plan, and (b) the exact fields that may be sent.** Until then no agent calls any model. Whatever is approved, these limits apply:
+   - Send the minimum: derived values (for example "km to limit", "days to expiry", "cost per kWh versus the recent average"), not whole records, notes, names, the VIN, plate, certificate numbers, GPS or credentials.
+   - The model's output is text and a structured suggestion only. It cannot call tools that write data. Code validates the suggestion, then stores it as `proposed` (decision 5).
+   - Free tier or a spending cap set by the owner. The API key lives only in the host `infra/.env`, never in the repo, logs or Sentry events.
+   - The app must work with the model unreachable or switched off: the checks still run and list their findings without an explanation.
+   - Prompts, the fields sent and the model's reply are logged on the host, so the owner can audit what left.
 
-## Examples of conditions (illustrative, not a commitment)
+## Conditions
 
-- Odometer within a set distance of a service or warranty km limit.
-- Warranty or reminder due date approaching while the recorded odometer suggests the km limit will be reached first.
-- Charging cost per kWh drifting from the owner's recent average.
-- With a live provider only: low state of charge, charging not started when a plan expected it, a tyre pressure reading outside the owner's own range.
+Chosen by the owner on 2026-10-29 for the first build, using data the app already holds:
+
+1. A warranty or reminder due date approaching while the recorded odometer suggests the km limit will be reached first.
+2. Charging cost per kWh drifting from the owner's recent average.
+
+Held until a live data source exists: low state of charge, charging not started when a plan expected it, a tyre pressure reading outside the owner's own range.
+
+Not selected for now: a plain "odometer is near a service or warranty km limit" check. It overlaps with condition 1 and can be added later.
 
 ## Consequences
 
@@ -40,12 +49,19 @@ The project rules are to prefer documented interfaces, never invent vehicle capa
 - Advisory-only agents cannot fix anything by themselves. The owner is in the loop every time. That is intended.
 - Unknown risks of unofficial access stay out of the codebase until the owner has the answers.
 
-## Open questions for the owner
+## Owner decisions
 
-1. Does "act" mean advisory proposals only, as set out here? Commands to the car are out of scope for this ADR.
-2. Rule-based checks first, with a hosted model considered later only after approval?
-3. Which conditions matter most? That sets the first build.
-4. Zeekr Malaysia's answer on supported data access and the warranty effect (see `docs/operations/zeekr-malaysia-enquiry.md`).
+1. "Act" means advisory proposals only. Commands to the car are out of scope. **Answered yes, 2026-10-29.**
+2. Reasoning by a hosted model from the start, not rules first. **Answered 2026-10-29; the provider and the fields that may leave the host are not yet named, so the model part is not approved.**
+3. First conditions: the two listed above. **Agreed, 2026-10-29.**
+4. Zeekr Malaysia's answer on supported data access and the warranty effect (see `docs/operations/zeekr-malaysia-enquiry.md`). **Open. It does not block the work above.**
+
+## Still needed from the owner before any model is called
+
+- Provider and plan (free tier or a spending cap).
+- Written approval of the exact fields that may be sent, from the minimum list in decision 7.
+- Agreement that prompts and replies are logged on the host.
+- Whether the data region matters, as it did for Sentry.
 
 ## Not decided
 
