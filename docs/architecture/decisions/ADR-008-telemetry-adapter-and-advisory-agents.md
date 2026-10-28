@@ -56,9 +56,13 @@ Not selected for now: a plain "odometer is near a service or warranty km limit" 
 3. First conditions: the two listed above. **Agreed, 2026-10-29.**
 4. Zeekr Malaysia's answer on supported data access and the warranty effect (see `docs/operations/zeekr-malaysia-enquiry.md`). **Open. It does not block the work above.**
 
+## Provider (owner decision 2026-10-29)
+
+The owner chose **Anthropic, with a spending cap**. The monthly cap amount is not yet set. The API key is created by the owner in their own Anthropic account, with the cap set there, and goes only into the host `infra/.env`. It is never pasted into chat or committed. Data retention and training terms for API traffic have not been checked from this repo; the owner should read Anthropic's current terms before approving the fields below.
+
 ## Still needed from the owner before any model is called
 
-- Provider and plan (free tier or a spending cap).
+- The monthly spending cap amount.
 - Written approval of the exact fields that may be sent, from the minimum list in decision 7.
 - Agreement that prompts and replies are logged on the host.
 - Whether the data region matters, as it did for Sentry.
