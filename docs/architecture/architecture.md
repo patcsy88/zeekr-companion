@@ -107,6 +107,70 @@ Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty" 
 - Web: cache keys for coverages and claims, queue kinds for both entities with a dependency rule (a claim create waits on its coverage create), a pure `warrantyStatus` function with shared vectors, a template screen modelled on `ReminderTemplatePage`. Service worker unchanged.
 - Known limit: `km_limit` is compared with the odometer reading, not with km since the start date (Q13).
 
+### Advisory agents data model (DRAFT 2026-10-29, awaiting owner review; ADR-008)
+
+Contract: "Advisory agents" in `api-contracts.md`. Nothing here is built.
+
+**Telemetry port (code, not a table).** `VehicleTelemetryProvider` is a Python `Protocol` with read methods only (`read_odometer`, and later state of charge, charging state and tyre pressure). Each returns `Reading[T]`: `value` (nullable), `source` (string) and `observed_at` (UTC timestamp, nullable). There is no method that writes or commands. A test inspects the Protocol and fails if any method name is outside an allow-list of `read_*` names.
+- `RecordsTelemetryProvider` (the only real provider): odometer from the latest service record (the same read reminders and warranty use), `source = "latest_service_record"`. Every other reading is `None`.
+- `FixtureTelemetryProvider` (tests only).
+- Snapshots are computed on demand and **not stored** in the first build. A snapshot table is added with the first live provider, in its own ADR.
+
+**Expense change (amends the approved Expenses model).**
+
+| Table | Change |
+|---|---|
+| `expense` | add `energy_wh` integer null (watt-hours, so no floating point; the UI shows kWh) |
+
+- Check: `energy_wh IS NULL OR (category = 'charging' AND energy_wh BETWEEN 1 AND 1000000)`.
+- Existing rows stay `NULL` and are ignored by the charging check.
+- Migration `0006`, with a downgrade.
+
+**New tables (migration `0007`, with a downgrade).**
+
+| Table | Fields |
+|---|---|
+| `advisory_proposal` | `id` uuid PK (server generated), `condition` varchar(40), `dedupe_key` varchar(100), `status` varchar(20), `inputs` jsonb, `source_refs` jsonb, `explanation` text null, `explanation_status` varchar(20), `urgency` varchar(10) null, `suggestion` jsonb null, `rule_version` integer, `prompt_version` integer null, `model_id` varchar(100) null, `created_at`, `updated_at`, `decided_at` timestamptz null |
+| `advisory_model_call` | `id` uuid PK, `proposal_id` uuid null FK ON DELETE SET NULL, `called_at` timestamptz, `model_id` varchar(100), `request_text` text, `response_text` text null, `input_tokens` integer null, `output_tokens` integer null, `outcome` varchar(20) |
+
+- `condition IN ('date_vs_km_warranty','date_vs_km_service','charging_cost_drift')`.
+- `status IN ('proposed','accepted','dismissed')`. `explanation_status IN ('model','unavailable','disabled','limit_reached','invalid_output')`. `outcome IN ('ok','error','invalid_output')`. `urgency IN ('low','normal','high')`.
+- `inputs` holds **exactly** the derived values sent to the model and nothing else (list below). `source_refs` holds local record ids (for example a reminder id) so the screen can link to the record. Ids are never sent to the model.
+- Unique index on `dedupe_key` for every row: one proposal per key, ever. A dismissed key is not proposed again until the key changes (see keys below). Row cap: 2,000 proposals.
+- `advisory_model_call` keeps the full prompt and reply for audit (owner decision: host logging). It also drives the app's monthly call count: calls with `called_at` in the current Asia/Kuala_Lumpur month, any outcome. Rows older than 13 months are deleted by the check run.
+- Neither table stores notes, names, VIN, plate, certificate numbers, GPS, usernames or tokens. Dumps will contain these rows; they hold derived numbers and model text only.
+
+**The two checks (rule code, versioned by `rule_version`).** All dates are Asia/Kuala_Lumpur calendar dates.
+
+1. `date_vs_km_warranty` and `date_vs_km_service`: the date will pass after the km limit is reached.
+   - Subjects: a warranty coverage with both `end_date` and `km_limit` that is not expired, and an incomplete `service` reminder with both `due_date` and `due_odometer`.
+   - Pace: from service records with `date` in the last 180 days. Needs at least 2 records spanning at least 30 days, else no finding. Pace = (latest odometer − earliest odometer in the window) / days between them. Pace must be above 0.
+   - Projected limit date = today + (limit − current odometer) / pace, rounded up to a whole day. If the current odometer is already past the limit the item is already expired or overdue and the check skips it.
+   - Finding when the projected limit date is before the date (`end_date` or `due_date`) and within 365 days of today.
+   - Key: `condition:subject_id`. A warranty or reminder edited later keeps the same key, so a dismissed finding stays dismissed.
+2. `charging_cost_drift`: the latest priced charging session is far from the recent average.
+   - Cost per kWh (sen) = `amount_minor * 1000 / energy_wh`, rounded to the nearest sen. Rows without `energy_wh` are ignored.
+   - Latest = the newest such expense by `date`, `created_at`, `id`. Recent average = the mean of the 10 such expenses before it (or fewer, at least 5, else no finding), rounded to the nearest sen.
+   - Finding when the latest differs from the average by 20% or more, in either direction.
+   - Key: `charging_cost_drift:<expense id>`. Each new charging expense can raise at most one proposal.
+
+All thresholds (180, 30, 365, 10, 5, 20%) are named constants, proposed values for the owner to change.
+
+**What leaves the host, per condition (the owner-approved list, nothing more).**
+
+| Condition | Fields sent |
+|---|---|
+| `date_vs_km_*` | condition name, `km_to_limit`, `days_to_expiry`, `projected_limit_date` |
+| `charging_cost_drift` | condition name, `latest_cost_per_kwh_sen`, `average_cost_per_kwh_sen`, `latest_date` |
+
+The pace is **not** sent (it is not on the approved list); the projected date carries the same information. The subject's name is not sent, because names are free text.
+
+**Model call.** One call per new finding, through `ReasoningModel.explain(inputs) -> Explanation`. The model returns only `{ "explanation": "<=500 chars plain text", "urgency": "low|normal|high" }`. **Code, not the model, builds the suggestion** (for example "add or review a reminder" with a title and values from fixed templates), so the model cannot invent a record. Invalid JSON, wrong types or over-length text means `explanation_status = invalid_output` and the finding is stored without an explanation. If the model is off, unreachable, errors, or the monthly call limit is reached, the finding is still stored with `explanation_status` `disabled` or `unavailable` or `limit_reached`. The app works fully with no model.
+
+**Settings (host `infra/.env`, none in the repo):** `ADVISORY_MODEL_ENABLED` (default false), `ANTHROPIC_API_KEY`, `ADVISORY_MODEL_ID`, `ADVISORY_MONTHLY_CALL_LIMIT` (default 60), and the LangSmith switch and key (tracing off by default, ADR-008).
+
+**Web.** Online only in the first build: proposals are not cached offline and decisions are not queued. A new Advisory screen lists proposals with their inputs, explanation and "why" (rule version, model id), and Accept/Dismiss buttons. Accept opens the ordinary create-reminder form prefilled with the suggestion; saving it is a normal `POST /reminders` made by the owner, then the proposal is marked accepted. The service worker is unchanged.
+
 ## Offline and sync (proposed, see ADR-002)
 
 - The service worker caches the app shell only. Data lives in IndexedDB, not Cache Storage.
