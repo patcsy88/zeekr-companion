@@ -520,6 +520,86 @@ Points the contract left open; the backend chose the reading below. Flagged for 
 
 None proposed. The only shared code is the current-odometer read already used by Reminders, reused unchanged. If the owner prefers an owner-entered odometer (reminders Q1 alternative), that would affect Reminders and Warranty together and is not proposed.
 
+## Advisory agents (DRAFT 2026-10-29, awaiting owner review)
+
+Drafted by the Engineering Lead for ADR-008. **Not approved. No code until the owner approves this section and the data model.** Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code.
+
+### Change to the approved Expenses part
+
+`energy_wh`: integer or `null`, in watt-hours, in the expense object, `POST` and `PATCH`.
+- Strict integer, 1 to 1,000,000. Only allowed when `category` is `charging`; otherwise `400 validation_error` on `energy_wh`. Changing `category` away from `charging` while `energy_wh` is set is rejected.
+- Included in idempotent replay comparison. Omitted on create means `null`. `PATCH` may set it to `null`.
+- Existing responses gain the field (`null` for old rows). Summary totals are unchanged.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/advisory/checks` | Runs both checks now. Safe to repeat: findings already stored (by `dedupe_key`) are not duplicated. `200` |
+| `GET` | `/api/v1/advisory/proposals` | Query: `status` (`proposed` default, `accepted`, `dismissed`, `all`), `limit` (1 to 200, default 50, strict). Newest first (`created_at`, `id` descending) |
+| `GET` | `/api/v1/advisory/proposals/{id}` | |
+| `PATCH` | `/api/v1/advisory/proposals/{id}` | Body `{ "status": "accepted" \| "dismissed" }`, nothing else (`extra=forbid`) |
+| `GET` | `/api/v1/advisory/model-calls` | Audit view of prompts and replies. Query: `limit` (1 to 100, default 20). Newest first |
+| `GET` | `/api/v1/advisory/status` | Model switch and the month's call count |
+
+There is no endpoint that creates, edits or deletes a reminder, expense, warranty or service record on behalf of a proposal, and none that sends anything to the car. Proposals are created only by the server's checks, never by a client request body.
+
+### Proposal object
+
+```json
+{
+  "id": "uuid",
+  "condition": "date_vs_km_warranty | date_vs_km_service | charging_cost_drift",
+  "status": "proposed | accepted | dismissed",
+  "inputs": { "km_to_limit": 0, "days_to_expiry": 0, "projected_limit_date": "YYYY-MM-DD" },
+  "source_refs": [ { "kind": "warranty_coverage | reminder | expense", "id": "uuid" } ],
+  "explanation": "string|null",
+  "explanation_status": "model | unavailable | disabled | limit_reached | invalid_output",
+  "urgency": "low | normal | high | null",
+  "suggestion": { "kind": "review_reminder", "title": "string", "due_date": "YYYY-MM-DD|null", "due_odometer": 0 },
+  "provenance": { "rule_version": 1, "prompt_version": 1, "model_id": "string|null" },
+  "created_at": "timestamp",
+  "updated_at": "timestamp",
+  "decided_at": "timestamp|null"
+}
+```
+
+- `inputs` has the fields for its condition only: `km_to_limit`, `days_to_expiry`, `projected_limit_date` for the two date-versus-km conditions; `latest_cost_per_kwh_sen`, `average_cost_per_kwh_sen`, `latest_date` for charging drift. These are exactly the values sent to the model.
+- `suggestion` is `null` for `charging_cost_drift` (it only informs). For the date-versus-km conditions it is built by code from fixed text. Its title never contains owner free text.
+- `explanation` is model text, shown as the model's opinion, never as fact. `prompt_version` and `model_id` are `null` when no model was used.
+- Nothing is computed on read. A proposal is a stored record of what was observed when it was raised.
+
+### Run response (`POST /advisory/checks`)
+
+```json
+{
+  "created": [ { "...proposal": "..." } ],
+  "unchanged": 0,
+  "skipped": [ { "condition": "string", "reason": "not_enough_data" } ],
+  "model": { "status": "used | disabled | unavailable | limit_reached", "calls_this_month": 0, "monthly_limit": 60 }
+}
+```
+
+`skipped` explains why a check found nothing to evaluate (for example fewer than 2 service records in the window), so silence is never ambiguous. One model call is made per new finding at most, and none when `model.status` is not `used`.
+
+### Decide (`PATCH`)
+
+Only a `proposed` item can be decided. Repeating the same decision returns `200` with the item. A different decision on an already decided item returns `409 conflict`. Unknown id: `404 not_found`. A body with any other field or value: `400 validation_error`. Deciding changes only the proposal; accepting does not create a reminder (the client does that with an ordinary `POST /reminders`).
+
+### Status and audit
+
+`GET /advisory/status` returns `200 { "model_enabled": false, "model_id": "string|null", "calls_this_month": 0, "monthly_limit": 60, "month": "YYYY-MM" }`. It never returns the key or whether one is set beyond `model_enabled`.
+
+`GET /advisory/model-calls` returns `{ "items": [ { "id", "proposal_id", "called_at", "model_id", "request_text", "response_text", "input_tokens", "output_tokens", "outcome" } ] }`. This is the owner's audit of what left the host.
+
+### Errors
+
+As for Reminders. Additionally, the model being off, unreachable or over its limit is **not** an error: the run succeeds and reports it under `model.status`.
+
+### Offline
+
+Online only in the first build. Proposals and decisions are not cached or queued offline. The rest of the app is unaffected when this screen is unavailable.
+
 ## Not yet specified
 
 Tyres and attachments. They are specified when their increment starts. Reminders are specified above and approved. Expenses and Warranty are drafted above and not yet approved.
