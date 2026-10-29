@@ -26,6 +26,7 @@ dev = [
     "mypy>=1.13",
     "pip-audit>=2.7",
     "certifi>=2026.10.19",  # PYSEC-2026-4320; transitive via httpx and pip-audit
+    "filelock>=4.2.1",  # 17 advisories fixed in 4.2.1; transitive dev-tool dependency
 ]
 
 [tool.setuptools.packages.find]
