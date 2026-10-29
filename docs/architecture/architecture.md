@@ -109,7 +109,7 @@ Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty" 
 
 ### Advisory agents data model (APPROVED by the owner, 2026-10-29; ADR-008)
 
-Approved as drafted, including the `energy_wh` amendment to Expenses, the check thresholds and the default limit of 60 model calls a month. Contract: "Advisory agents" in `api-contracts.md`. Nothing here is built yet.
+Approved as drafted, including the `energy_wh` amendment to Expenses, the check thresholds and the default limit of 60 model calls a month. Contract: "Advisory agents" in `api-contracts.md`. Build status: step 1 (`energy_wh`, migration `0006`) is built; the port, checks, proposals and model call are not.
 
 **Telemetry port (code, not a table).** `VehicleTelemetryProvider` is a Python `Protocol` with read methods only (`read_odometer`, and later state of charge, charging state and tyre pressure). Each returns `Reading[T]`: `value` (nullable), `source` (string) and `observed_at` (UTC timestamp, nullable). There is no method that writes or commands. A test inspects the Protocol and fails if any method name is outside an allow-list of `read_*` names.
 - `RecordsTelemetryProvider` (the only real provider): odometer from the latest service record (the same read reminders and warranty use), `source = "latest_service_record"`. Every other reading is `None`.

@@ -17,7 +17,14 @@ from app.schemas import (
 )
 from app.services.service_records import decode_cursor, encode_cursor
 
-_CONTENT_FIELDS = ("date", "category", "amount_minor", "currency", "notes")
+_CONTENT_FIELDS = ("date", "category", "amount_minor", "currency", "notes", "energy_wh")
+
+
+def check_energy_rule(category: str, energy_wh: int | None) -> list[FieldIssue]:
+    """Cross-field rule shared by create and patch: energy only on charging expenses."""
+    if energy_wh is not None and category != "charging":
+        return [FieldIssue("energy_wh", "is only allowed for charging expenses")]
+    return []
 
 
 class ExpenseService:
@@ -37,6 +44,9 @@ class ExpenseService:
 
     def create(self, data: ExpenseCreate) -> tuple[ExpenseOut, bool]:
         """Idempotent on id. Returns (expense, created)."""
+        issues = check_energy_rule(data.category, data.energy_wh)
+        if issues:
+            raise InvalidInput("Request failed validation.", issues)
         values = data.model_dump()
         for _ in range(2):
             existing = self._repo.get(data.id)
@@ -111,6 +121,12 @@ class ExpenseService:
         if row is None:
             self._repo.release()
             raise NotFound("Expense not found.")
+        issues = check_energy_rule(
+            changes.get("category", row.category), changes.get("energy_wh", row.energy_wh)
+        )
+        if issues:
+            self._repo.release()
+            raise InvalidInput("Request failed validation.", issues)
         return ExpenseOut.model_validate(self._repo.apply(row, changes))
 
     def delete(self, expense_id: uuid.UUID) -> None:

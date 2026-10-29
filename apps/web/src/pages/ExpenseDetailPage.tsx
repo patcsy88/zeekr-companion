@@ -6,6 +6,7 @@ import { useExpense } from '../data/hooks';
 import { removeExpense } from '../data/mutations';
 import { formatDate, formatTimestamp } from '../lib/dates';
 import { CATEGORY_LABELS } from '../lib/expenseText';
+import { formatKwh } from '../lib/energy';
 import { formatMyr } from '../lib/money';
 import { isUuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
@@ -93,6 +94,12 @@ function ExpenseDetail({ id }: { id: string }) {
         <dd>{CATEGORY_LABELS[x.category]}</dd>
         <dt>Amount</dt>
         <dd>{formatMyr(x.amount_minor)}</dd>
+        {x.energy_wh != null ? (
+          <>
+            <dt>Energy</dt>
+            <dd>{formatKwh(x.energy_wh)}</dd>
+          </>
+        ) : null}
         <dt>Notes</dt>
         <dd className="prewrap">{x.notes ?? '—'}</dd>
         <dt>Last updated</dt>

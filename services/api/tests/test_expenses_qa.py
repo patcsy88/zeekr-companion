@@ -974,10 +974,12 @@ def test_response_object_shape_and_timestamps(
         "amount_minor",
         "currency",
         "notes",
+        "energy_wh",
         "created_at",
         "updated_at",
     }
     assert e["notes"] is None
+    assert e["energy_wh"] is None
     assert e["created_at"].endswith("Z")
     assert e["updated_at"].endswith("Z")
     assert type(e["amount_minor"]) is int
@@ -1023,6 +1025,7 @@ def test_openapi_expense_schemas_match_contract(schema: dict[str, Any]) -> None:
         "amount_minor",
         "currency",
         "notes",
+        "energy_wh",
         "created_at",
         "updated_at",
     }

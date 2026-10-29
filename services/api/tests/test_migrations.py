@@ -29,7 +29,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0005"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0006"
             )
     finally:
         engine.dispose()
@@ -145,4 +145,45 @@ def test_ac68_warranty_migration_downgrades_and_reapplies(fresh_database_url: st
     fk = insp.get_foreign_keys("warranty_claim")[0]
     assert fk["referred_table"] == "warranty_coverage"
     assert fk["options"]["ondelete"] == "CASCADE"
+    engine.dispose()
+
+
+def test_adr008_energy_migration_downgrades_keeps_rows_and_reapplies(
+    fresh_database_url: str,
+) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO expense (id, date, category, amount_minor, energy_wh) "
+                "VALUES (gen_random_uuid(), DATE '2026-09-01', 'charging', 1000, 5000)"
+            )
+        )
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0005")
+        assert "energy_wh" not in {c["name"] for c in inspect(engine).get_columns("expense")}
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT count(*) FROM expense")).scalar_one() == 1
+            assert (
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0005"
+            )
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    columns = {c["name"] for c in inspect(engine).get_columns("expense")}
+    assert "energy_wh" in columns
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM expense")).scalar_one() == 1
+        assert conn.execute(text("SELECT energy_wh FROM expense")).scalar_one() is None
     engine.dispose()

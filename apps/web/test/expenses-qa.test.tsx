@@ -47,6 +47,7 @@ function exp(n: number, over: Partial<Expense> = {}): Expense {
     amount_minor: 1000,
     currency: 'MYR',
     notes: null,
+    energy_wh: null,
     created_at: STAMP,
     updated_at: STAMP,
     ...over,

@@ -188,6 +188,7 @@ class Expense(Base):
     amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="MYR")
     notes: Mapped[str | None] = mapped_column(Text)
+    energy_wh: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -199,6 +200,10 @@ class Expense(Base):
         CheckConstraint(
             "category IN (" + ", ".join(f"'{c}'" for c in EXPENSE_CATEGORIES) + ")",
             name="category_valid",
+        ),
+        CheckConstraint(
+            "energy_wh IS NULL OR (category = 'charging' AND energy_wh BETWEEN 1 AND 1000000)",
+            name="energy_valid",
         ),
         CheckConstraint("amount_minor BETWEEN 1 AND 1000000000000", name="amount_range"),
         CheckConstraint("currency = 'MYR'", name="currency_myr"),

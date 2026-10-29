@@ -530,6 +530,7 @@ Drafted by the Engineering Lead for ADR-008. **Approved by the owner on 2026-10-
 - Strict integer, 1 to 1,000,000. Only allowed when `category` is `charging`; otherwise `400 validation_error` on `energy_wh`. Changing `category` away from `charging` while `energy_wh` is set is rejected.
 - Included in idempotent replay comparison. Omitted on create means `null`. `PATCH` may set it to `null`.
 - Existing responses gain the field (`null` for old rows). Summary totals are unchanged.
+- **Implemented 2026-10-29 (build step 1):** migration `0006`, `energy_wh` on the model, schemas and service (one shared cross-field check for create and `PATCH`, as for reminders), and a database check constraint. Web: the form shows an optional "Energy (kWh)" field only for charging, parses kWh to integer watt-hours without floating point (`lib/energy.ts`, up to 3 decimals, 0.001 to 1000 kWh), sends `null` when blank or when the category is not charging, and the detail page shows the energy when recorded. The offline queue and overlay carry the field. The expense list, summary and totals are unchanged.
 
 ### Endpoints
 

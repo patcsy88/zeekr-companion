@@ -683,6 +683,7 @@ def test_ac37_nothing_is_stored(client: TestClient) -> None:
         "amount_minor",
         "currency",
         "notes",
+        "energy_wh",
         "created_at",
         "updated_at",
     }
@@ -812,3 +813,96 @@ def test_notes_are_stored_literally(client: TestClient, auth_headers: dict[str, 
     e = post(client, auth_headers, notes=notes)
     assert client.get(f"{URL}/{e['id']}", headers=auth_headers).json()["notes"] == notes
     assert client.get(SUMMARY, headers=auth_headers).json()["count"] == 1
+
+
+# --- ADR-008: optional energy_wh on charging expenses ---------------------------------------
+
+
+def test_energy_defaults_to_null_and_round_trips(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    assert post(client, auth_headers)["energy_wh"] is None
+    e = post(client, auth_headers, energy_wh=42500)
+    assert e["energy_wh"] == 42500
+    assert client.get(f"{URL}/{e['id']}", headers=auth_headers).json()["energy_wh"] == 42500
+
+
+@pytest.mark.parametrize("bad", [0, -1, 1_000_001, 1.5, 100.0, "100", True, []])
+def test_energy_must_be_a_strict_integer_in_range(
+    client: TestClient, auth_headers: dict[str, str], bad: Any
+) -> None:
+    r = client.post(URL, json=body(energy_wh=bad), headers=auth_headers)
+    assert r.status_code == 400
+    assert fields(r) == ["energy_wh"]
+
+
+@pytest.mark.parametrize("value", [1, 1_000_000])
+def test_energy_bounds_are_accepted(
+    client: TestClient, auth_headers: dict[str, str], value: int
+) -> None:
+    assert client.post(URL, json=body(energy_wh=value), headers=auth_headers).status_code == 201
+
+
+def test_energy_only_for_charging(client: TestClient, auth_headers: dict[str, str]) -> None:
+    r = client.post(URL, json=body(category="parking", energy_wh=100), headers=auth_headers)
+    assert r.status_code == 400
+    assert fields(r) == ["energy_wh"]
+
+
+def test_energy_patch_rules(client: TestClient, auth_headers: dict[str, str]) -> None:
+    e = post(client, auth_headers, energy_wh=1000)
+    url = f"{URL}/{e['id']}"
+    assert (
+        client.patch(url, json={"energy_wh": 2000}, headers=auth_headers).json()["energy_wh"]
+        == 2000
+    )
+    bad_cat = client.patch(url, json={"category": "tolls"}, headers=auth_headers)
+    assert bad_cat.status_code == 400
+    assert fields(bad_cat) == ["energy_wh"]
+    both = client.patch(url, json={"category": "tolls", "energy_wh": None}, headers=auth_headers)
+    assert both.status_code == 200
+    assert both.json()["energy_wh"] is None
+    plain = post(client, auth_headers, category="tolls")
+    r = client.patch(f"{URL}/{plain['id']}", json={"energy_wh": 5}, headers=auth_headers)
+    assert r.status_code == 400
+    switched = client.patch(
+        f"{URL}/{plain['id']}", json={"category": "charging", "energy_wh": 5}, headers=auth_headers
+    )
+    assert switched.status_code == 200
+    assert switched.json()["energy_wh"] == 5
+    bad_range = client.patch(
+        url.replace(e["id"], plain["id"]), json={"energy_wh": 0}, headers=auth_headers
+    )
+    assert bad_range.status_code == 400
+
+
+def test_energy_is_part_of_replay_comparison(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    b = body(energy_wh=1000)
+    assert client.post(URL, json=b, headers=auth_headers).status_code == 201
+    assert client.post(URL, json=b, headers=auth_headers).status_code == 200
+    assert client.post(URL, json={**b, "energy_wh": 1001}, headers=auth_headers).status_code == 409
+    assert client.post(URL, json={**b, "energy_wh": None}, headers=auth_headers).status_code == 409
+
+
+def test_energy_database_check_rejects_non_charging(client: TestClient) -> None:
+    from sqlalchemy.exc import IntegrityError
+
+    engine = client.app.state.engine  # type: ignore[attr-defined]
+    sql = text(
+        "INSERT INTO expense (id, date, category, amount_minor, energy_wh) "
+        "VALUES (gen_random_uuid(), DATE '2026-09-01', :c, 100, :e)"
+    )
+    for category, energy in (("parking", 5), ("charging", 0), ("charging", 1_000_001)):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            conn.execute(sql, {"c": category, "e": energy})
+
+
+def test_energy_does_not_change_summary_totals(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    post(client, auth_headers, amount_minor=1000, energy_wh=5000)
+    post(client, auth_headers, amount_minor=500)
+    s = client.get(SUMMARY, headers=auth_headers).json()
+    assert (s["total_minor"], s["count"]) == (1500, 2)

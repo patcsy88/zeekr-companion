@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import type { Expense, ExpenseCategory } from '../api/types';
 import { DEFAULT_DATE_HINT, isIsoDate, klToday } from '../lib/dates';
 import { CATEGORIES, CATEGORY_LABELS } from '../lib/expenseText';
+import { parseKwhToWh, whToInput } from '../lib/energy';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
 import { TextArea, TextField } from './Field';
@@ -12,6 +13,7 @@ export interface ExpenseFormValues {
   category: ExpenseCategory;
   amount_minor: number;
   notes: string | null;
+  energy_wh: number | null;
 }
 
 interface Props {
@@ -23,14 +25,19 @@ interface Props {
   serverIssues?: Record<string, string>;
 }
 
-type Errors = Partial<Record<'date' | 'category' | 'amount' | 'notes' | 'form', string>>;
+type Errors = Partial<Record<'date' | 'category' | 'amount' | 'energy' | 'notes' | 'form', string>>;
 
 /** Checks the same rules as the server so most mistakes never leave the device. */
 export function validateExpense(
-  v: { date: string; category: string; amount: string; notes: string },
+  v: { date: string; category: string; amount: string; notes: string; energy?: string },
   today: string = klToday(),
-): Errors & { minor?: number } {
-  const e: Errors & { minor?: number } = {};
+): Errors & { minor?: number; wh?: number | null } {
+  const e: Errors & { minor?: number; wh?: number | null } = {};
+  if (v.category === 'charging') {
+    const energy = parseKwhToWh(v.energy ?? '');
+    if (!energy.ok) e.energy = energy.error;
+    else e.wh = energy.wh;
+  } else e.wh = null;
   if (!isIsoDate(v.date) || v.date < '2000-01-01') e.date = 'Enter a valid date from 2000.';
   else if (v.date > today) e.date = 'The date cannot be in the future (Malaysia date).';
   if (!(CATEGORIES as string[]).includes(v.category)) e.category = 'Choose a category.';
@@ -46,13 +53,16 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
   const [date, setDate] = useState(initial?.date ?? klToday());
   const [category, setCategory] = useState<ExpenseCategory>(initial?.category ?? 'charging');
   const [amount, setAmount] = useState(initial ? senToInput(initial.amount_minor) : '');
+  const [energy, setEnergy] = useState(
+    initial?.energy_wh != null ? whToInput(initial.energy_wh) : '',
+  );
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const { minor, ...next } = validateExpense({ date, category, amount, notes });
+    const { minor, wh, ...next } = validateExpense({ date, category, amount, notes, energy });
     setErrors(next);
     if (Object.keys(next).length > 0 || minor === undefined) return;
     setBusy(true);
@@ -62,6 +72,7 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
         category,
         amount_minor: minor,
         notes: notes.trim() === '' ? null : notes.trim(),
+        energy_wh: wh ?? null,
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
@@ -70,6 +81,7 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
           date: i.date,
           category: i.category,
           amount: i.amount_minor,
+          energy: i.energy_wh,
           notes: i.notes,
           form: err.message,
         });
@@ -141,6 +153,20 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
         }}
         error={errors.amount ?? si.amount_minor}
       />
+      {category === 'charging' ? (
+        <TextField
+          id="energy"
+          label="Energy (kWh), optional"
+          hint="Energy added, for example 42.5. Lets the app compare cost per kWh."
+          inputMode="decimal"
+          autoComplete="off"
+          value={energy}
+          onChange={(e) => {
+            setEnergy(e.target.value);
+          }}
+          error={errors.energy ?? si.energy_wh}
+        />
+      ) : null}
       <TextArea
         id="notes"
         label="Notes"
