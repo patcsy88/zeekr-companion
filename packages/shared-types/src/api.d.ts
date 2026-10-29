@@ -382,6 +382,8 @@ export interface components {
              * Format: date
              */
             date: string;
+            /** Energy Wh */
+            energy_wh?: number | null;
             /**
              * Id
              * Format: uuid
@@ -420,6 +422,8 @@ export interface components {
              * Format: date
              */
             date: string;
+            /** Energy Wh */
+            energy_wh: number | null;
             /**
              * Id
              * Format: uuid
@@ -453,6 +457,8 @@ export interface components {
             currency?: "MYR" | null;
             /** Date */
             date?: string | null;
+            /** Energy Wh */
+            energy_wh?: number | null;
             /** Notes */
             notes?: string | null;
         };

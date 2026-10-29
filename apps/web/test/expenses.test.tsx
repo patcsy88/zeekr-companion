@@ -24,6 +24,7 @@ function exp(n: number, over: Partial<Expense> = {}): Expense {
     amount_minor: 1000,
     currency: 'MYR',
     notes: null,
+    energy_wh: null,
     created_at: STAMP,
     updated_at: STAMP,
     ...over,
@@ -620,5 +621,83 @@ describe('AC-40: offline writes', () => {
     expect(await screen.findByTestId('sync-failed')).toBeInTheDocument();
     expect(await listQueue()).toHaveLength(1);
     expect((await listQueue())[0]?.last_error?.status).toBe(409);
+  });
+});
+
+describe('ADR-008: optional energy (kWh) on charging expenses', () => {
+  it('shows the kWh field only for charging and sends integer watt-hours', async () => {
+    const user = open('/expenses/new');
+    render(<App />);
+    await started();
+    expect(await screen.findByLabelText(/Energy \(kWh\)/)).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Category'), 'parking');
+    expect(screen.queryByLabelText(/Energy \(kWh\)/)).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Category'), 'charging');
+    await user.type(screen.getByLabelText('Amount (MYR)'), '25.50');
+    await user.type(screen.getByLabelText(/Energy \(kWh\)/), '42.5');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(fake.expensePosts).toHaveLength(1);
+    });
+    expect(fake.expensePosts[0]).toMatchObject({ category: 'charging', energy_wh: 42500 });
+    expect((await screen.findAllByText(/42\.5 kWh|RM 25\.50/)).length).toBeGreaterThan(0);
+  });
+
+  it('sends null when the field is blank, and never sends energy for another category', async () => {
+    const user = open('/expenses/new');
+    render(<App />);
+    await started();
+    await user.type(await screen.findByLabelText('Amount (MYR)'), '5');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(fake.expensePosts).toHaveLength(1);
+    });
+    expect(fake.expensePosts[0]).toMatchObject({ energy_wh: null });
+  });
+
+  it('keeps a typed kWh value out of the request after switching away from charging', async () => {
+    const user = open('/expenses/new');
+    render(<App />);
+    await started();
+    await user.type(await screen.findByLabelText(/Energy \(kWh\)/), '10');
+    await user.selectOptions(screen.getByLabelText('Category'), 'tolls');
+    await user.type(screen.getByLabelText('Amount (MYR)'), '3');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(fake.expensePosts).toHaveLength(1);
+    });
+    expect(fake.expensePosts[0]).toMatchObject({ category: 'tolls', energy_wh: null });
+  });
+
+  it('blocks a bad kWh value before anything is sent', async () => {
+    const user = open('/expenses/new');
+    render(<App />);
+    await started();
+    await user.type(await screen.findByLabelText('Amount (MYR)'), '5');
+    await user.type(screen.getByLabelText(/Energy \(kWh\)/), '1.2345');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/at most 3 decimals/)).toBeInTheDocument();
+    expect(fake.expensePosts).toHaveLength(0);
+  });
+
+  it('loads the saved value into the edit form and can clear it', async () => {
+    seed(exp(1, { energy_wh: 42500 }));
+    const user = open(`/expenses/${id(1)}/edit`);
+    render(<App />);
+    await started();
+    const field = await screen.findByLabelText(/Energy \(kWh\)/);
+    expect(field).toHaveValue('42.5');
+    await user.clear(field);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(fake.expenses.get(id(1))?.energy_wh).toBeNull();
+    });
+  });
+
+  it('shows the energy on the detail page only when it is recorded', async () => {
+    seed(exp(1, { energy_wh: 7125 }), exp(2, { energy_wh: null }));
+    open(`/expenses/${id(1)}`);
+    render(<App />);
+    expect(await screen.findByText('7.125 kWh')).toBeInTheDocument();
   });
 });

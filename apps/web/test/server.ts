@@ -378,7 +378,8 @@ const sameContent = (a: Expense, b: Expense) =>
   a.date === b.date &&
   a.category === b.category &&
   a.amount_minor === b.amount_minor &&
-  (a.notes ?? null) === (b.notes ?? null);
+  (a.notes ?? null) === (b.notes ?? null) &&
+  (a.energy_wh ?? null) === (b.energy_wh ?? null);
 
 /** Fake of /expenses following the contract: newest first, cursor paging, filters AND-ed. */
 export const expenseHandlers = [
@@ -424,6 +425,7 @@ export const expenseHandlers = [
       ...body,
       currency: body.currency || 'MYR',
       notes: body.notes ?? null,
+      energy_wh: body.energy_wh ?? null,
       created_at: STAMP,
       updated_at: STAMP,
     };

@@ -32,6 +32,7 @@ function definedOnly(patch: ExpenseEdit | ExpenseCreate): Partial<Expense> {
   if (patch.amount_minor != null) out.amount_minor = patch.amount_minor;
   if ('currency' in patch && patch.currency != null) out.currency = patch.currency;
   if (patch.notes !== undefined) out.notes = patch.notes;
+  if (patch.energy_wh !== undefined) out.energy_wh = patch.energy_wh;
   return out;
 }
 
@@ -52,6 +53,7 @@ export function overlayExpenses(cached: Expense[], queue: QueueEntry[]): Expense
             amount_minor: body.amount_minor,
             currency: body.currency ?? 'MYR',
             notes: body.notes ?? null,
+            energy_wh: body.energy_wh ?? null,
             created_at: e.created_at,
             updated_at: e.created_at,
           };

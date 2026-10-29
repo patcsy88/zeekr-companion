@@ -79,6 +79,7 @@ export interface ExpenseEdit {
   category?: ExpenseCategory;
   amount_minor?: number;
   notes?: string | null;
+  energy_wh?: number | null;
 }
 
 /** What the reminder forms edit and the queue sends. Required fields are never null. */

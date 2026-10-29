@@ -357,6 +357,8 @@ ExpenseCategory = Literal[
 MIN_EXPENSE_DATE = dt.date(2000, 1, 1)
 MAX_EXPENSES = 5000
 ExpenseAmount = Annotated[int, Field(strict=True, ge=1, le=MAX_MONEY_MINOR)]
+MAX_ENERGY_WH = 1_000_000
+EnergyWh = Annotated[int, Field(strict=True, ge=1, le=MAX_ENERGY_WH)]
 
 
 def _expense_date(value: dt.date | None) -> dt.date | None:
@@ -377,6 +379,7 @@ class ExpenseCreate(_Input):
     amount_minor: ExpenseAmount
     currency: Currency = "MYR"
     notes: str | None = Field(default=None, max_length=5000)
+    energy_wh: EnergyWh | None = None
 
     _check_date = field_validator("date")(_expense_date)
     _blank_notes = field_validator("notes")(_blank_to_none)
@@ -390,6 +393,7 @@ class ExpensePatch(_Input):
     amount_minor: ExpenseAmount | None = None
     currency: Currency | None = None
     notes: str | None = Field(default=None, max_length=5000)
+    energy_wh: EnergyWh | None = None
 
     _check_date = field_validator("date")(_expense_date)
     _blank_notes = field_validator("notes")(_blank_to_none)
@@ -409,6 +413,7 @@ class ExpenseOut(_Output):
     amount_minor: int
     currency: str
     notes: str | None
+    energy_wh: int | None
     created_at: UtcDateTime
     updated_at: UtcDateTime
 
