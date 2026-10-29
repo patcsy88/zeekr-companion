@@ -17,7 +17,7 @@ from app.errors import AppError, Conflict, InvalidInput, NotFound, RateLimited, 
 from app.middleware import BodyLimitMiddleware, NoStoreMiddleware
 from app.observability import init_sentry
 from app.openapi_docs import install as install_openapi_docs
-from app.routers import auth, expenses, reminders, service_records, vehicle, warranty
+from app.routers import advisory, auth, expenses, reminders, service_records, vehicle, warranty
 from app.services.auth import AuthService
 
 logger = logging.getLogger("zeekr.api")
@@ -158,6 +158,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         reminders.router,
         expenses.router,
         warranty.router,
+        advisory.router,
     ):
         app.include_router(router, prefix="/api/v1")
     return app

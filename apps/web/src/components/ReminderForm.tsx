@@ -16,6 +16,7 @@ export interface ReminderFormValues {
 
 interface Props {
   initial?: Reminder;
+  prefill?: Partial<Pick<ReminderFormValues, 'title' | 'due_date' | 'due_odometer'>>;
   submitLabel: string;
   onSubmit: (values: ReminderFormValues) => Promise<void>;
   onCancel: () => void;
@@ -52,13 +53,19 @@ export function validateReminder(v: {
   return e;
 }
 
-export function ReminderForm({ initial, submitLabel, onSubmit, onCancel, serverIssues }: Props) {
+export function ReminderForm({
+  initial,
+  prefill,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  serverIssues,
+}: Props) {
   const [kind, setKind] = useState<ReminderKind>(initial?.kind ?? 'service');
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [dueDate, setDueDate] = useState(initial?.due_date ?? '');
-  const [dueKm, setDueKm] = useState(
-    initial?.due_odometer != null ? String(initial.due_odometer) : '',
-  );
+  const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? '');
+  const [dueDate, setDueDate] = useState(initial?.due_date ?? prefill?.due_date ?? '');
+  const startKm = initial?.due_odometer ?? prefill?.due_odometer ?? null;
+  const [dueKm, setDueKm] = useState(startKm != null ? String(startKm) : '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);

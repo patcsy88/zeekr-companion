@@ -38,6 +38,12 @@ export type ExpenseCategoryTotal = Schemas["ExpenseCategoryTotal"];
 export type ExpenseMonthTotal = Schemas["ExpenseMonthTotal"];
 export type ExpenseCategory = Expense["category"];
 
+export type AdvisoryProposal = Schemas["AdvisoryProposalOut"];
+export type AdvisoryProposalList = Schemas["AdvisoryProposalList"];
+export type AdvisoryRun = Schemas["AdvisoryRunOut"];
+export type AdvisoryStatus = Schemas["AdvisoryStatusOut"];
+export type AdvisoryModelCallList = Schemas["AdvisoryModelCallList"];
+
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];
 export type ApiError = Schemas["ErrorBody"];

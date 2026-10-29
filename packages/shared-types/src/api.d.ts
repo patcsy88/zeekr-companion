@@ -6,6 +6,98 @@
  */
 
 export interface paths {
+    "/api/v1/advisory/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Checks
+         * @description Runs both checks now. Reads records and stores proposals; changes nothing else.
+         */
+        post: operations["run_checks_api_v1_advisory_checks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/advisory/model-calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Model Calls */
+        get: operations["list_model_calls_api_v1_advisory_model_calls_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/advisory/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Proposals */
+        get: operations["list_proposals_api_v1_advisory_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/advisory/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Proposal */
+        get: operations["get_proposal_api_v1_advisory_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Decide Proposal
+         * @description Records the owner's decision on the proposal only. It creates no reminder.
+         */
+        patch: operations["decide_proposal_api_v1_advisory_proposals__proposal_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/advisory/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Advisory Status */
+        get: operations["advisory_status_api_v1_advisory_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/token": {
         parameters: {
             query?: never;
@@ -304,6 +396,185 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdvisoryDecision */
+        AdvisoryDecision: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "dismissed";
+        };
+        /** AdvisoryModelCallList */
+        AdvisoryModelCallList: {
+            /** Items */
+            items: components["schemas"]["AdvisoryModelCallOut"][];
+        };
+        /** AdvisoryModelCallOut */
+        AdvisoryModelCallOut: {
+            /**
+             * Called At
+             * Format: date-time
+             */
+            called_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Model Id */
+            model_id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "ok" | "error" | "invalid_output";
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Proposal Id */
+            proposal_id: string | null;
+            /** Request Text */
+            request_text: string;
+            /** Response Text */
+            response_text: string | null;
+        };
+        /** AdvisoryModelRun */
+        AdvisoryModelRun: {
+            /** Calls This Month */
+            calls_this_month: number;
+            /** Monthly Limit */
+            monthly_limit: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "used" | "disabled" | "unavailable" | "limit_reached";
+        };
+        /** AdvisoryProposalList */
+        AdvisoryProposalList: {
+            /** Items */
+            items: components["schemas"]["AdvisoryProposalOut"][];
+        };
+        /** AdvisoryProposalOut */
+        AdvisoryProposalOut: {
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Explanation */
+            explanation: string | null;
+            /**
+             * Explanation Status
+             * @enum {string}
+             */
+            explanation_status: "model" | "unavailable" | "disabled" | "limit_reached" | "invalid_output";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Inputs */
+            inputs: {
+                [key: string]: number | string;
+            };
+            provenance: components["schemas"]["AdvisoryProvenance"];
+            /** Source Refs */
+            source_refs: components["schemas"]["AdvisorySourceRef"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "accepted" | "dismissed";
+            suggestion: components["schemas"]["AdvisorySuggestion"] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Urgency */
+            urgency: ("low" | "normal" | "high") | null;
+        };
+        /** AdvisoryProvenance */
+        AdvisoryProvenance: {
+            /** Model Id */
+            model_id: string | null;
+            /** Prompt Version */
+            prompt_version: number | null;
+            /** Rule Version */
+            rule_version: number;
+        };
+        /** AdvisoryRunOut */
+        AdvisoryRunOut: {
+            /** Created */
+            created: components["schemas"]["AdvisoryProposalOut"][];
+            model: components["schemas"]["AdvisoryModelRun"];
+            /** Skipped */
+            skipped: components["schemas"]["AdvisorySkipped"][];
+            /** Unchanged */
+            unchanged: number;
+        };
+        /** AdvisorySkipped */
+        AdvisorySkipped: {
+            /**
+             * Condition
+             * @enum {string}
+             */
+            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift";
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "not_enough_data";
+        };
+        /** AdvisorySourceRef */
+        AdvisorySourceRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "warranty_coverage" | "reminder" | "expense";
+        };
+        /** AdvisoryStatusOut */
+        AdvisoryStatusOut: {
+            /** Calls This Month */
+            calls_this_month: number;
+            /** Model Enabled */
+            model_enabled: boolean;
+            /** Model Id */
+            model_id: string | null;
+            /** Month */
+            month: string;
+            /** Monthly Limit */
+            monthly_limit: number;
+        };
+        /** AdvisorySuggestion */
+        AdvisorySuggestion: {
+            /** Due Date */
+            due_date: string | null;
+            /** Due Odometer */
+            due_odometer: number | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "review_reminder";
+            /** Title */
+            title: string;
+        };
         /** CurrentOdometer */
         CurrentOdometer: {
             /**
@@ -1118,6 +1389,319 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    run_checks_api_v1_advisory_checks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryRunOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_model_calls_api_v1_advisory_model_calls_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryModelCallList"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_proposals_api_v1_advisory_proposals_get: {
+        parameters: {
+            query?: {
+                status?: "proposed" | "accepted" | "dismissed" | "all";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryProposalList"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_proposal_api_v1_advisory_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryProposalOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decide_proposal_api_v1_advisory_proposals__proposal_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdvisoryDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryProposalOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    advisory_status_api_v1_advisory_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdvisoryStatusOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     create_token_api_v1_auth_token_post: {
         parameters: {
             query?: never;

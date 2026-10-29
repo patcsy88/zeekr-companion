@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     login_window_seconds: int = Field(default=900, ge=10, le=86_400)
     sentry_dsn: SecretStr | None = None
     sentry_environment: str = Field(default="production", max_length=32)
+    advisory_model_enabled: bool = False
+    advisory_model_id: str | None = Field(default=None, max_length=100)
+    advisory_monthly_call_limit: int = Field(default=60, ge=1, le=1000)
+
+    @field_validator("advisory_model_id", mode="before")
+    @classmethod
+    def _empty_model_id_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("sentry_dsn", mode="before")
     @classmethod

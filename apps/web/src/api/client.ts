@@ -70,6 +70,20 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
 export function assertContractPath(path: string): void {
   const [pathname = '', query, ...extra] = path.split('?');
   const parts = pathname.split('/');
+  if (parts[1] === 'advisory') {
+    // Advisory (ADR-008): online only. Queries are allowed on the two lists.
+    const sub = parts[2];
+    const advisoryOk =
+      extra.length === 0 &&
+      parts[0] === '' &&
+      ((parts.length === 3 && (sub === 'checks' || sub === 'status') && query === undefined) ||
+        (parts.length === 3 &&
+          (sub === 'proposals' || sub === 'model-calls') &&
+          (query === undefined || QUERY_RE.test(query))) ||
+        (parts.length === 4 && sub === 'proposals' && isUuid(parts[3]) && query === undefined));
+    if (!advisoryOk) throw new ClientError('Refused a request outside the API contract.');
+    return;
+  }
   const ok =
     extra.length === 0 &&
     parts[0] === '' &&

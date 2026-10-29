@@ -29,7 +29,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0006"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0007"
             )
     finally:
         engine.dispose()
@@ -186,4 +186,29 @@ def test_adr008_energy_migration_downgrades_keeps_rows_and_reapplies(
     with engine.connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM expense")).scalar_one() == 1
         assert conn.execute(text("SELECT energy_wh FROM expense")).scalar_one() is None
+    engine.dispose()
+
+
+def test_adr008_advisory_migration_downgrades_and_reapplies(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    engine = create_engine(fresh_database_url)
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0006")
+        tables = set(inspect(engine).get_table_names())
+        assert not {"advisory_proposal", "advisory_model_call"} & tables
+        assert "expense" in tables
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    assert {"advisory_proposal", "advisory_model_call"} <= set(inspect(engine).get_table_names())
     engine.dispose()

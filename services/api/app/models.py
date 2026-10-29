@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -22,6 +23,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -209,6 +211,79 @@ class Expense(Base):
         CheckConstraint("currency = 'MYR'", name="currency_myr"),
         CheckConstraint("date >= DATE '2000-01-01'", name="date_min"),
         Index("ix_expense_history", desc("date"), desc("created_at"), desc("id")),
+    )
+
+
+class AdvisoryProposal(Base):
+    """A stored finding of an advisory check (ADR-008). Derived numbers and model text only."""
+
+    __tablename__ = "advisory_proposal"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    condition: Mapped[str] = mapped_column(String(40), nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    source_refs: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    explanation: Mapped[str | None] = mapped_column(Text)
+    explanation_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    urgency: Mapped[str | None] = mapped_column(String(10))
+    suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    rule_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    prompt_version: Mapped[int | None] = mapped_column(Integer)
+    model_id: Mapped[str | None] = mapped_column(String(100))
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    decided_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "condition IN ('date_vs_km_warranty','date_vs_km_service','charging_cost_drift')",
+            name="condition_valid",
+        ),
+        CheckConstraint("status IN ('proposed','accepted','dismissed')", name="status_valid"),
+        CheckConstraint(
+            "explanation_status IN ('model','unavailable','disabled','limit_reached',"
+            "'invalid_output')",
+            name="explanation_status_valid",
+        ),
+        CheckConstraint(
+            "urgency IS NULL OR urgency IN ('low','normal','high')", name="urgency_valid"
+        ),
+        CheckConstraint(
+            "explanation IS NULL OR char_length(explanation) <= 500", name="explanation_length"
+        ),
+        CheckConstraint(
+            "(status = 'proposed') = (decided_at IS NULL)", name="decided_matches_status"
+        ),
+        Index("ix_advisory_proposal_history", desc("created_at"), desc("id")),
+    )
+
+
+class AdvisoryModelCall(Base):
+    """Audit of what was sent to the hosted model and what came back (owner decision)."""
+
+    __tablename__ = "advisory_model_call"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("advisory_proposal.id", ondelete="SET NULL")
+    )
+    called_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    request_text: Mapped[str] = mapped_column(Text, nullable=False)
+    response_text: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("outcome IN ('ok','error','invalid_output')", name="outcome_valid"),
+        Index("ix_advisory_model_call_called_at", "called_at"),
     )
 
 

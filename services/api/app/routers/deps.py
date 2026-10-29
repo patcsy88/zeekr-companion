@@ -7,11 +7,13 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.errors import Unauthenticated
+from app.repositories.advisory import AdvisoryRepository
 from app.repositories.expenses import ExpenseRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.repositories.vehicle import VehicleRepository
 from app.repositories.warranty import WarrantyClaimRepository, WarrantyCoverageRepository
+from app.services.advisory import AdvisoryService
 from app.services.auth import AuthService
 from app.services.expenses import ExpenseService
 from app.services.reminders import ReminderService
@@ -69,6 +71,12 @@ def get_warranty_claim_service(session: SessionDep) -> WarrantyClaimService:
     return WarrantyClaimService(WarrantyClaimRepository(session))
 
 
+def get_advisory_service(request: Request, session: SessionDep) -> AdvisoryService:
+    return AdvisoryService(
+        AdvisoryRepository(session), ServiceRecordRepository(session), request.app.state.settings
+    )
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
@@ -77,3 +85,4 @@ WarrantyCoverageServiceDep = Annotated[
     WarrantyCoverageService, Depends(get_warranty_coverage_service)
 ]
 WarrantyClaimServiceDep = Annotated[WarrantyClaimService, Depends(get_warranty_claim_service)]
+AdvisoryServiceDep = Annotated[AdvisoryService, Depends(get_advisory_service)]
