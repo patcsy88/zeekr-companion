@@ -4,6 +4,10 @@
  * client-side shapes that are not part of the contract. Type-only: nothing here exists at runtime.
  */
 import type {
+  AdvisoryProposal,
+  AdvisoryProposalList,
+  AdvisoryRun,
+  AdvisoryStatus,
   components,
   ApiErrorCode,
   ApiErrorDetail,
@@ -33,6 +37,10 @@ import type {
 } from '@zeekr-companion/shared-types';
 
 export type {
+  AdvisoryProposal,
+  AdvisoryProposalList,
+  AdvisoryRun,
+  AdvisoryStatus,
   Expense,
   ExpenseCategory,
   ExpenseCategoryTotal,

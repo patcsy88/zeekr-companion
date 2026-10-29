@@ -4,6 +4,7 @@ import { SignIn } from './components/SignIn';
 import { SyncBar } from './components/SyncBar';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession } from './data/hooks';
+import { AdvisoryPage } from './pages/AdvisoryPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
 import { ExpenseDetailPage } from './pages/ExpenseDetailPage';
@@ -86,6 +87,7 @@ function Layout() {
           <Route path="/warranty/:id" element={<CoverageDetailPage />} />
           <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
           <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
+          <Route path="/advisory" element={<AdvisoryPage />} />
           <Route path="/vehicle" element={<VehiclePage />} />
           <Route path="/vehicle/edit" element={<VehicleEditPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
@@ -98,6 +100,7 @@ function Layout() {
         <NavLink to="/reminders">Reminders</NavLink>
         <NavLink to="/expenses">Expenses</NavLink>
         <NavLink to="/warranty">Warranty</NavLink>
+        <NavLink to="/advisory">Advisory</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>
     </>

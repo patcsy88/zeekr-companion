@@ -614,3 +614,108 @@ class WarrantyTemplate(BaseModel):
 
 class WarrantyTemplateList(BaseModel):
     items: list[WarrantyTemplate]
+
+
+# --- Advisory agents (ADR-008) --------------------------------------------------------------
+
+AdvisoryCondition = Literal["date_vs_km_warranty", "date_vs_km_service", "charging_cost_drift"]
+ProposalStatus = Literal["proposed", "accepted", "dismissed"]
+ExplanationStatus = Literal["model", "unavailable", "disabled", "limit_reached", "invalid_output"]
+ModelRunStatus = Literal["used", "disabled", "unavailable", "limit_reached"]
+
+
+class AdvisorySourceRef(BaseModel):
+    kind: Literal["warranty_coverage", "reminder", "expense"]
+    id: uuid.UUID
+
+
+class AdvisorySuggestion(BaseModel):
+    kind: Literal["review_reminder"]
+    title: str
+    due_date: dt.date | None
+    due_odometer: int | None
+
+
+class AdvisoryProvenance(BaseModel):
+    rule_version: int
+    prompt_version: int | None
+    model_id: str | None
+
+
+class AdvisoryProposalOut(BaseModel):
+    id: uuid.UUID
+    condition: AdvisoryCondition
+    status: ProposalStatus
+    inputs: dict[str, int | str]
+    source_refs: list[AdvisorySourceRef]
+    explanation: str | None
+    explanation_status: ExplanationStatus
+    urgency: Literal["low", "normal", "high"] | None
+    suggestion: AdvisorySuggestion | None
+    provenance: AdvisoryProvenance
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    decided_at: UtcDateTime | None
+
+
+class AdvisoryProposalList(BaseModel):
+    items: list[AdvisoryProposalOut]
+
+
+class AdvisoryDecision(_Input):
+    status: Literal["accepted", "dismissed"]
+
+
+class AdvisorySkipped(BaseModel):
+    condition: AdvisoryCondition
+    reason: Literal["not_enough_data"]
+
+
+class AdvisoryModelRun(BaseModel):
+    status: ModelRunStatus
+    calls_this_month: int
+    monthly_limit: int
+
+
+class AdvisoryRunOut(BaseModel):
+    created: list[AdvisoryProposalOut]
+    unchanged: int
+    skipped: list[AdvisorySkipped]
+    model: AdvisoryModelRun
+
+
+class AdvisoryStatusOut(BaseModel):
+    model_enabled: bool
+    model_id: str | None
+    calls_this_month: int
+    monthly_limit: int
+    month: str
+
+
+class AdvisoryModelCallOut(_Output):
+    id: uuid.UUID
+    proposal_id: uuid.UUID | None
+    called_at: UtcDateTime
+    model_id: str
+    request_text: str
+    response_text: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    outcome: Literal["ok", "error", "invalid_output"]
+
+
+class AdvisoryModelCallList(BaseModel):
+    items: list[AdvisoryModelCallOut]
+
+
+def _bounded_limit(maximum: int):  # type: ignore[no-untyped-def]
+    def check(value: int) -> int:
+        if not 1 <= value <= maximum:
+            raise ValueError(f"must be between 1 and {maximum}")
+        return value
+
+    return check
+
+
+ProposalLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(200))]
+ModelCallLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(100))]
