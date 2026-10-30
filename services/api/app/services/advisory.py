@@ -1,8 +1,9 @@
 """Advisory proposals (ADR-008): run the checks, store findings, record decisions.
 
-The model is not built in this step: every proposal is stored with `explanation_status`
-`disabled`. Nothing is sent anywhere, and nothing here changes a reminder, expense, warranty or
-service record.
+With the model off, every proposal is stored with `explanation_status` `disabled` and nothing is
+sent anywhere. With it on, each new finding makes at most one call (see `reasoning.py`), capped per
+Kuala Lumpur month, and every call is written to `advisory_model_call`. Nothing here changes a
+reminder, expense, warranty or service record.
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ from app.schemas import (
     AdvisoryStatusOut,
 )
 from app.services import advisory_checks as checks
+from app.services.reasoning import PROMPT_VERSION, ModelResult, ReasoningModel
 
 MAX_PROPOSALS = 2000
 
@@ -75,19 +77,37 @@ class AdvisoryService:
         repo: AdvisoryRepository,
         records: ServiceRecordRepository,
         settings: Settings,
+        model: ReasoningModel | None = None,
     ) -> None:
         self._repo = repo
         self._records = records
         self._settings = settings
+        self._model = model
 
-    def _model_status(self) -> str:
-        # No model call is built yet (ADR-008 step 4), so an enabled switch cannot be used.
-        return "unavailable" if self._settings.advisory_model_enabled else "disabled"
+    def _model_status(self, limited: bool = False) -> str:
+        if not self._settings.advisory_model_enabled:
+            return "disabled"
+        if self._model is None:
+            return "unavailable"
+        return "limit_reached" if limited else "used"
 
-    def _run_model_block(self, today: dt.date) -> AdvisoryModelRun:
+    def _explain(self, f: checks.Finding, used: int, limit: int) -> tuple[ModelResult | None, str]:
+        """Returns the call result (None if no call was made) and the explanation status."""
+        if not self._settings.advisory_model_enabled:
+            return None, "disabled"
+        if self._model is None:
+            return None, "unavailable"
+        if used >= limit:
+            return None, "limit_reached"
+        result = self._model.explain(f.condition, f.inputs)
+        if result.outcome == "ok":
+            return result, "model"
+        return result, "unavailable" if result.outcome == "error" else "invalid_output"
+
+    def _run_model_block(self, today: dt.date, limited: bool = False) -> AdvisoryModelRun:
         calls = self._repo.calls_since(month_start_kl(today))
         return AdvisoryModelRun(
-            status=self._model_status(),
+            status=self._model_status(limited),
             calls_this_month=calls,
             monthly_limit=self._settings.advisory_monthly_call_limit,
         )
@@ -126,19 +146,27 @@ class AdvisoryService:
     def run(self, today: dt.date | None = None) -> AdvisoryRunOut:
         today = today or today_kl()
         outcome = self._collect(today)
-        model_status = self._model_status()
-        explanation_status = "unavailable" if model_status == "unavailable" else "disabled"
         created: list[AdvisoryProposalOut] = []
         unchanged = 0
+        limited = False
+        month_start = month_start_kl(today)
+        limit = self._settings.advisory_monthly_call_limit
         try:
             self._repo.lock_run()
             cutoff = dt.datetime.now(dt.UTC) - dt.timedelta(days=MODEL_CALL_RETENTION_DAYS)
             self._repo.purge_old_calls(cutoff)
+            used = self._repo.calls_in_transaction(month_start)
             known = self._repo.existing_keys([f.dedupe_key for f in outcome.findings])
             for f in outcome.findings:
                 if f.dedupe_key in known:
                     unchanged += 1
                     continue
+                result, explanation_status = self._explain(f, used, limit)
+                if explanation_status == "limit_reached":
+                    limited = True
+                call_id = uuid.uuid4()
+                if result is not None:
+                    used += 1
                 values: dict[str, Any] = {
                     "id": uuid.uuid4(),
                     "condition": f.condition,
@@ -146,15 +174,33 @@ class AdvisoryService:
                     "status": "proposed",
                     "inputs": f.inputs,
                     "source_refs": [{"kind": r.kind, "id": str(r.id)} for r in f.source_refs],
-                    "explanation": None,
+                    "explanation": result.explanation.explanation
+                    if result and result.explanation
+                    else None,
                     "explanation_status": explanation_status,
-                    "urgency": None,
+                    "urgency": result.explanation.urgency
+                    if result and result.explanation
+                    else None,
                     "suggestion": f.suggestion,
                     "rule_version": checks.RULE_VERSION,
-                    "prompt_version": None,
-                    "model_id": None,
+                    "prompt_version": PROMPT_VERSION if result else None,
+                    "model_id": self._model.model_id if result and self._model else None,
                 }
                 row = self._repo.insert(values, MAX_PROPOSALS)
+                if result is not None and self._model is not None:
+                    self._repo.add_call(
+                        {
+                            "id": call_id,
+                            "proposal_id": row.id if row is not None else None,
+                            "called_at": dt.datetime.now(dt.UTC),
+                            "model_id": self._model.model_id,
+                            "request_text": result.request_text,
+                            "response_text": result.response_text,
+                            "input_tokens": result.input_tokens,
+                            "output_tokens": result.output_tokens,
+                            "outcome": result.outcome,
+                        }
+                    )
                 if row is None:
                     unchanged += 1
                 else:
@@ -175,7 +221,7 @@ class AdvisoryService:
             skipped=[
                 AdvisorySkipped(condition=s.condition, reason=s.reason) for s in outcome.skipped
             ],
-            model=self._run_model_block(today),
+            model=self._run_model_block(today, limited),
         )
 
     def get(self, proposal_id: uuid.UUID) -> AdvisoryProposalOut:

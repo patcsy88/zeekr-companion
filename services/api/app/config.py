@@ -29,6 +29,19 @@ class Settings(BaseSettings):
     advisory_model_id: str | None = Field(default=None, max_length=100)
     advisory_monthly_call_limit: int = Field(default=60, ge=1, le=1000)
 
+    anthropic_api_key: SecretStr | None = None
+    # Deliberately not named LANGSMITH_*: the library reads those itself and would trace unscrubbed.
+    advisory_tracing_enabled: bool = False
+    advisory_tracing_api_key: SecretStr | None = None
+    advisory_tracing_api_url: str | None = Field(default=None, max_length=200)
+
+    @field_validator(
+        "anthropic_api_key", "advisory_tracing_api_key", "advisory_tracing_api_url", mode="before"
+    )
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
     @field_validator("advisory_model_id", mode="before")
     @classmethod
     def _empty_model_id_is_none(cls, value: object) -> object:
