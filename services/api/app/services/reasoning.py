@@ -100,6 +100,20 @@ def parse_reply(text: str) -> Explanation | None:
     return Explanation(explanation, urgency)  # type: ignore[arg-type]
 
 
+def reply_text(content: Any) -> str:
+    """Plain text of a reply: a string, or the text blocks of a list (thinking is ignored)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [
+            b if isinstance(b, str) else b.get("text", "")
+            for b in content
+            if isinstance(b, str) or (isinstance(b, dict) and b.get("type") == "text")
+        ]
+        return "".join(p for p in parts if isinstance(p, str))
+    return ""
+
+
 def _hide_everything(_: Any) -> dict[str, Any]:
     """LangSmith privacy hook: traces keep timing and status, never content."""
     return {}
@@ -126,6 +140,7 @@ class AnthropicReasoningModel:
         *,
         langsmith_client: Any | None = None,
         chat_factory: Callable[[], Any] | None = None,
+        base_url: str | None = None,
     ) -> None:
         self.model_id = model_id
         self._langsmith_client = langsmith_client
@@ -134,13 +149,14 @@ class AnthropicReasoningModel:
         else:
             from langchain_anthropic import ChatAnthropic
 
+            extra: dict[str, Any] = {"base_url": base_url} if base_url else {}
             self._chat = ChatAnthropic(
                 model=model_id,
                 api_key=api_key,
-                max_tokens=300,
-                temperature=0,
-                timeout=20,
+                max_tokens=1024,
+                timeout=30,
                 max_retries=1,
+                **extra,
             )
 
     def _invoke(self, system: str, user: str) -> Any:
@@ -163,8 +179,7 @@ class AnthropicReasoningModel:
         except Exception as exc:
             logger.warning("advisory model call failed: %s", type(exc).__name__)
             return ModelResult(request_text, None, None, None, "error", None)
-        content = reply.content
-        text = content if isinstance(content, str) else ""
+        text = reply_text(reply.content)
         usage = getattr(reply, "usage_metadata", None) or {}
         tokens_in, tokens_out = usage.get("input_tokens"), usage.get("output_tokens")
         logger.info("advisory model reply: %s", text)
@@ -199,4 +214,5 @@ def build_reasoning_model(settings: Settings) -> ReasoningModel | None:
         settings.anthropic_api_key.get_secret_value(),
         settings.advisory_model_id,
         langsmith_client=client,
+        base_url=settings.advisory_model_base_url,
     )
