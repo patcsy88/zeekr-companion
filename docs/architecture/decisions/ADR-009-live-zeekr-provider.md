@@ -124,6 +124,17 @@ What was read: the README in full, `frida/zeekr_runtime_keys_3x.js` in full (95 
 
 Gate 4 is **partly done: values extracted, not yet shown to work.** If the owner chooses to run this, the safest shape is: run it on the Mac, never on the host; keep the APKs and `zeekr_secrets.json` outside the repo; and delete both after the values are in the host `.env`.
 
+## Gate 6 helper: `app/cli/zeekr_login_check.py` (written 2026-10-30; not run)
+
+A one-off command for the owner, not part of the running app and not wired into `docker-compose.yml` or `infra/.env.example`.
+
+- **One attempt.** It refuses to run unless `ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt` is set, makes a single `login()` with `max_retries=0`, and does not retry on failure.
+- **Calls only** `login`, `get_vehicle_list` and, with `--status`, one `get_status` on the first vehicle. A test fails if the file names a write method, `export_session` or `load_session`.
+- **Prints names and types only**, for example `$.soc: float`. No value, VIN or token. On failure it prints only the exception class, because the library puts server responses into exception text. The library's logger is silenced.
+- **Settings are read from environment variables only**, never from a file. Proposed names (not found elsewhere in the repo, taken from the library's constructor arguments): `ZEEKR_USERNAME`, `ZEEKR_PASSWORD`, `ZEEKR_COUNTRY_CODE`, `ZEEKR_HMAC_ACCESS_KEY`, `ZEEKR_HMAC_SECRET_KEY`, `ZEEKR_PASSWORD_PUBLIC_KEY`, `ZEEKR_PROD_SECRET`, `ZEEKR_VIN_KEY`, `ZEEKR_VIN_IV`.
+- **Tested with a fake client** and canary values (`tests/test_zeekr_login_check.py`, 10 tests). No Zeekr call has been made.
+- **Not known:** the right `ZEEKR_COUNTRY_CODE` for a Malaysian account (the library's default is `AU`), and whether the account's username is the email the login expects.
+
 ## Not decided
 
 - Which fields the app should read first. That depends on the real field names from gate 6.
