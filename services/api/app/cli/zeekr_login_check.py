@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import traceback
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -55,6 +56,23 @@ def describe(value: object, path: str = "$", depth: int = 0) -> list[str]:
             lines.extend(describe(value[0], f"{path}[0]", depth + 1))
         return lines
     return [f"{path}: {type(value).__name__}"]
+
+
+LIBRARY_PACKAGE = "zeekr_ev_api"
+
+
+def failing_stage(exc: BaseException) -> str:
+    """Where in the library the exception came from: function name and line, never any text.
+
+    The login runs a fixed chain of steps, so the innermost library function says which step
+    failed (for example `_check_user`, `_do_login_request` or `_bearer_login`).
+    """
+    found = "unknown"
+    for frame, line in traceback.walk_tb(exc.__traceback__):
+        module = str(frame.f_globals.get("__name__", ""))
+        if module == LIBRARY_PACKAGE or module.startswith(LIBRARY_PACKAGE + "."):
+            found = f"{frame.f_code.co_name} (line {line})"
+    return found
 
 
 def _build_client(**kwargs: Any) -> Any:
@@ -109,7 +127,10 @@ def main(
     try:
         client.login()
     except Exception as exc:  # the message can carry tokens, so only the class is shown
-        print(f"Login failed: {type(exc).__name__}. Details are not printed.", file=sys.stderr)
+        print(
+            f"Login failed: {type(exc).__name__} in {failing_stage(exc)}. Details are not printed.",
+            file=sys.stderr,
+        )
         return 1
     print("Login worked.")
 
@@ -125,7 +146,10 @@ def main(
             print("Status fields (one read):")
             _print(describe(vehicles[0].get_status()))
     except Exception as exc:  # as above
-        print(f"Read failed: {type(exc).__name__}. Details are not printed.", file=sys.stderr)
+        print(
+            f"Read failed: {type(exc).__name__} in {failing_stage(exc)}. Details are not printed.",
+            file=sys.stderr,
+        )
         return 1
     return 0
 

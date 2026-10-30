@@ -118,10 +118,44 @@ def test_failed_login_prints_only_the_class(capsys: pytest.CaptureFixture[str]) 
     assert CANARY not in out + err
 
 
+def _bearer_login_stand_in() -> None:
+    raise RuntimeError(f"Bearer login failed: {{'token': '{CANARY}'}}")
+
+
+def test_failing_stage_names_the_library_function_and_no_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(check, "LIBRARY_PACKAGE", __name__)
+    try:
+        _bearer_login_stand_in()
+    except RuntimeError as exc:
+        stage = check.failing_stage(exc)
+    assert stage.startswith("_bearer_login_stand_in (line ")
+    assert CANARY not in stage
+
+
+def test_failing_stage_is_unknown_outside_the_library() -> None:
+    try:
+        _bearer_login_stand_in()
+    except RuntimeError as exc:
+        assert check.failing_stage(exc) == "unknown"
+
+
+def test_login_failure_line_has_the_stage_and_no_text(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(check, "LIBRARY_PACKAGE", __name__)
+    code, out, err, _ = run(capsys, login_error=True)
+    assert code == 1
+    assert "RuntimeError in FakeClient.login (line " not in err  # co_name is the bare name
+    assert "RuntimeError in login (line " in err
+    assert CANARY not in out + err
+
+
 def test_failed_read_prints_only_the_class(capsys: pytest.CaptureFixture[str]) -> None:
     code, out, err, _ = run(capsys, args=["--status"], vehicles=[FakeVehicle(status_error=True)])
     assert code == 1
-    assert "RuntimeError" in err
+    assert "RuntimeError in unknown." in err
     assert CANARY not in out + err
 
 
