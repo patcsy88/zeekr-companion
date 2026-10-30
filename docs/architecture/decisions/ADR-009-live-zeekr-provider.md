@@ -133,6 +133,7 @@ A one-off command for the owner, not part of the running app and not wired into 
 - **Prints names and types only**, for example `$.soc: float`. No value, VIN or token. On failure it prints only the exception class, because the library puts server responses into exception text. The library's logger is silenced.
 - **Settings are read from environment variables only**, never from a file. Proposed names (not found elsewhere in the repo, taken from the library's constructor arguments): `ZEEKR_USERNAME`, `ZEEKR_PASSWORD`, `ZEEKR_COUNTRY_CODE`, `ZEEKR_HMAC_ACCESS_KEY`, `ZEEKR_HMAC_SECRET_KEY`, `ZEEKR_PASSWORD_PUBLIC_KEY`, `ZEEKR_PROD_SECRET`, `ZEEKR_VIN_KEY`, `ZEEKR_VIN_IV`.
 - **Tested with a fake client** and canary values (`tests/test_zeekr_login_check.py`, 10 tests). No Zeekr call has been made.
+- **Owner decisions for the first attempt (2026-10-30):** use `prod_secret` candidate 1 (the extractor's primary), country code `MY`, and the owner accepts that a failed attempt may count against the second account. The owner runs it from the Mac, with the values read from the extractor's JSON into the shell at run time. One attempt per go-ahead; a further candidate or country code needs a new go-ahead. This is not gate 5: nothing goes in the host `.env`.
 - **Not known:** the right `ZEEKR_COUNTRY_CODE` for a Malaysian account (the library's default is `AU`), and whether the account's username is the email the login expects.
 
 ## Not decided
