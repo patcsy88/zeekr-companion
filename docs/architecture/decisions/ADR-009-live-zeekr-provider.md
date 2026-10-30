@@ -100,7 +100,16 @@ Project: `zeekr_key_extractor` (MIT), read at commit `4fff1aa3`, downloaded to a
 
 **Correction.** The library needs **six** values, not five: the extractor and the library's constructor both include a production signing secret (`prod_secret`). Earlier text in this ADR and in research M42 said five.
 
-What was read: the README in full, and `frida/zeekr_runtime_keys_3x.js` in full (95 lines). `zeekr_extract_secrets.py` (869 lines) was **not read**; only its import lines and file-open calls were searched.
+What was read: the README in full, `frida/zeekr_runtime_keys_3x.js` in full (95 lines), and `zeekr_extract_secrets.py` in full (869 lines, read in a second pass the same day). The tests folder and the two linked third-party pages were not read.
+
+**Result of reading the Python script in full.**
+- It makes **no network calls and starts no other programs**. Its only imports are `argparse`, `json`, `os`, `re`, `struct`, `sys`, `tempfile`, `zipfile`, `pathlib`, plus `capstone` and `pyelftools`.
+- It opens the two APK files you give it for reading. It unzips only `.dex` files and ARM64 `.so` files into a temporary folder that is removed afterwards, and searches them with patterns.
+- It prints every value it finds to the terminal in full, and writes them in plain text to `zeekr_secrets.json` **in the same folder as the base APK**. That is the only file it writes.
+- The host names it matches are Zeekr gateway names held in the app. The `SEA` region matches a Singapore-hosted gateway and `EM` matches an emerging-markets gateway. Which one a Malaysian account uses is unknown.
+- It may print several `prod_secret` candidates and says to try each if the first fails. Trying them means repeated logins, which conflicts with the one-attempt rule in Proposal 7. Each candidate would need the owner's go-ahead.
+- Nothing in the script touches the phone or the Zeekr servers. The risk is in the inputs (pulling the APK) and the plain-text output, not in hidden behaviour.
+- This is a read by an agent, not a security audit. Dependencies `capstone` and `pyelftools` were not reviewed.
 
 - **What it does.** A Python script reads two APK files you pull from an Android phone with `adb`, and recovers the HMAC keys, the password public key and (on older builds) the other secrets from the app's code and its native library. A Frida script reads the other three values from the running app.
 - **Network and code execution.** The Python script's imports are `argparse`, `json`, `os`, `re`, `struct`, `sys`, `tempfile`, `zipfile` and `pathlib`, plus `capstone` and `pyelftools` per `requirements.txt`. The search found no network, `subprocess`, `eval` or `exec` calls. This is a search, not a read of the logic.
