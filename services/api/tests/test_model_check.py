@@ -18,6 +18,19 @@ def patch_settings(monkeypatch: pytest.MonkeyPatch, database_url: str, **over: A
     monkeypatch.setattr(model_check, "Settings", lambda: make_settings(database_url, **over))
 
 
+def test_sample_is_a_case_the_app_could_produce() -> None:
+    import datetime as dt
+
+    from app.services.reasoning import build_prompt
+
+    today = dt.date(2026, 10, 30)
+    inputs = model_check.sample_inputs(today)
+    build_prompt("date_vs_km_warranty", inputs)  # approved fields only
+    projected = dt.date.fromisoformat(str(inputs["projected_limit_date"]))
+    assert projected > today
+    assert (projected - today).days < int(inputs["days_to_expiry"])
+
+
 def test_off_sends_nothing(
     monkeypatch: pytest.MonkeyPatch, database_url: str, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -9,17 +9,24 @@ Exit code 0 means a valid reply came back.
 
 from __future__ import annotations
 
+import datetime as dt
 import sys
 
+from app.clock import today_kl
 from app.config import Settings
 from app.services.reasoning import build_reasoning_model
 
 _CONDITION = "date_vs_km_warranty"
-_INPUTS: dict[str, int | str] = {
-    "km_to_limit": 1200,
-    "days_to_expiry": 90,
-    "projected_limit_date": "2030-01-15",
-}
+_DAYS_TO_EXPIRY = 90
+_DAYS_TO_LIMIT = 45  # a real finding always projects the km limit before the date limit
+
+
+def sample_inputs(today: dt.date) -> dict[str, int | str]:
+    return {
+        "km_to_limit": 1200,
+        "days_to_expiry": _DAYS_TO_EXPIRY,
+        "projected_limit_date": (today + dt.timedelta(days=_DAYS_TO_LIMIT)).isoformat(),
+    }
 
 
 def main() -> int:
@@ -33,7 +40,7 @@ def main() -> int:
         return 2
     where = settings.advisory_model_base_url or "the default Anthropic endpoint"
     print(f"Model: {model.model_id}. Endpoint: {where}. Sending made-up numbers only.")
-    result = model.explain(_CONDITION, _INPUTS)
+    result = model.explain(_CONDITION, sample_inputs(today_kl()))
     print(f"Outcome: {result.outcome}")
     print(f"Tokens: in={result.input_tokens} out={result.output_tokens}")
     if result.response_text is not None:
