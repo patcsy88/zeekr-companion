@@ -120,7 +120,9 @@ What was read: the README in full, `frida/zeekr_runtime_keys_3x.js` in full (95 
 - **The README's own example** sets the username as an email and calls `login()`, the same as the library.
 - **Two more third-party links** appear (a Home Assistant walkthrough). They were not opened.
 
-Gate 4 is **not done**. If the owner chooses to run this, the safest shape is: run it on the Mac, never on the host; keep the APKs and `zeekr_secrets.json` outside the repo; and delete both after the values are in the host `.env`.
+**Gate 4 run (owner, 2026-10-30, reported).** The owner ran the extractor on the Mac against `com.zeekr.global` **v1.5.5** (build 10552) from a third-party APK mirror, region flag `EM`. All six values were found. Seven `prod_secret` candidates were printed. The values are not recorded here. Not established: whether the mirror file is genuine (no known-good certificate was found to compare), whether the v1.5.5 values match the app version on the owner's iPhone, which region fits a Malaysian account, and which of the seven `prod_secret` candidates is right, if any. Only a login can show that. Each candidate tried is a login attempt and needs the owner's go-ahead (Proposal 7). The owner pasted the extractor output into the agent chat, so the values appear in that session's transcript; the README describes them as app-global constants, not account secrets. The working folder is under the owner's Desktop, which may sync to iCloud (unconfirmed).
+
+Gate 4 is **partly done: values extracted, not yet shown to work.** If the owner chooses to run this, the safest shape is: run it on the Mac, never on the host; keep the APKs and `zeekr_secrets.json` outside the repo; and delete both after the values are in the host `.env`.
 
 ## Not decided
 
