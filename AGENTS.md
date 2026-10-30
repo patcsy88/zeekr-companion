@@ -26,6 +26,16 @@ See `docs/architecture/decisions/` for the rationale.
 9. Do not run destructive commands or modify production data without explicit approval.
 10. Do not mark work complete merely because code was written.
 
+## Names, paths and commands (owner rule, 2026-10-30)
+
+Never guess a name, path, unit, flag or command that the owner will run.
+
+- Before giving the owner any systemd unit name, file path, script argument, container or service name, or command, look it up in the repo (`infra/`, `docs/`, scripts, unit files, `--help` text) and read the file it comes from.
+- Quote the source (file and line) when it is not obvious.
+- If the repo does not contain the answer, say so plainly. Then either give the read-only command that lets the owner find it (for example `systemctl list-units --all | grep -i zeekr`), or propose a candidate clearly labelled "proposed, not found in the repo" for the owner to decide, and ask the owner to provide the real value.
+- Do not present a proposed value as a fact, and do not put it inside a ready-to-run command as if it were confirmed.
+- Host facts the agent cannot see (host address, unit names installed on the host, paths on the host) come from the owner, not from assumption.
+
 ## Definition of done
 
 - Acceptance criteria are satisfied.
