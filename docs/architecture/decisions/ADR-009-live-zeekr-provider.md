@@ -30,6 +30,7 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 5. **Off by default.** A setting switches the provider on. With it off, or when Zeekr is unreachable, every feature works from manual records as today (ADR-008 decision 2).
 6. **Minimum data kept.**
    - GPS coordinates are dropped on arrival and never stored, logged or sent anywhere.
+   - From the vehicle record, `vin`, `plateNo` and `nickName` are dropped on arrival and never stored, logged or sent anywhere (owner approved 2026-10-31). The provider keeps an allow-list of fields, so any other field in that record is dropped too until the owner has seen it and approved it.
    - Trip history is reduced to odometer, distance and energy.
    - Raw responses are not stored. The first readings are mapped field by field after the owner has seen the real field names.
    - Nothing from the live provider reaches the model except the derived values already approved in ADR-008.
