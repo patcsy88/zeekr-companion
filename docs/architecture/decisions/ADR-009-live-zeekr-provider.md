@@ -11,7 +11,7 @@ The owner wants the app to read vehicle data through the Zeekr API (`zeekrlife.c
 What is known (research M42, read from source on 2026-10-29, nothing run):
 
 - No official or documented data interface for Malaysian owners has been found (R1, M29). This is absence of evidence, not proof that none exists.
-- The only route found is the unofficial `zeekr_ev_api` client (MIT licence, single maintainer). It presents itself as the Zeekr Android app. It needs the owner's Zeekr username and password plus five values extracted from the phone app: an HMAC access key, an HMAC secret key, a password public key, a VIN key and an IV. Extracting them is left to the user.
+- The only route found is the unofficial `zeekr_ev_api` client (MIT licence, single maintainer). It presents itself as the Zeekr Android app. It needs the owner's Zeekr username and password plus six values extracted from the phone app: an HMAC access key, an HMAC secret key, a password public key, a production signing secret (`prod_secret`), a VIN key and an IV (corrected 2026-10-30; this ADR first said five). Extracting them is left to the user.
 - Its read calls cover the vehicle list, latest status, VTM status, charging status, remote-control state, charge limit, charge plan, travel plan, trip history and GPS trackpoints. The status calls return raw JSON, so field names are **unverified**.
 - Its write calls (`do_remote_control`, `set_charge_plan`, `set_travel_plan`) are not restricted by the library.
 - Each call logs the phone app out unless a second account has the car shared to it. `export_session()` returns the password in plain text. It defaults to the SEA region and country `AU`; whether a Malaysian account resolves correctly is **unknown**.
@@ -26,7 +26,7 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 1. **It sits behind the existing port.** `VehicleTelemetryProvider` in `app/adapters/telemetry.py` has one method today, `read_odometer`. A live provider adds more `read_*` methods that return a `Reading` with `source` and `observed_at`. The existing test that fails when a non-`read_*` method is added stays.
 2. **The library is never exposed.** A wrapper holds the client and calls only a short allow-list of `get_*` methods. It has no attribute that reaches `do_remote_control`, `set_charge_plan`, `set_travel_plan` or `export_session`. A test fails if the wrapper exposes any of them, and another proves a write method on the client is never called.
 3. **A second Zeekr account.** The car is shared to a second account and the app logs in as that account only. The owner's main account and phone app are never used by the app (owner answer 2026-10-30). Whether the share gives the second account the read calls needed is **unverified**.
-4. **Credentials live only on the host.** The account login and the five extracted values go only in the host `infra/.env`, as secrets. They are never in the repo, logs, Sentry events, model prompts, or chat. Nobody but the owner extracts the values or logs in. An agent does not do either.
+4. **Credentials live only on the host.** The account login and the six extracted values go only in the host `infra/.env`, as secrets. They are never in the repo, logs, Sentry events, model prompts, or chat. Nobody but the owner extracts the values or logs in. An agent does not do either.
 5. **Off by default.** A setting switches the provider on. With it off, or when Zeekr is unreachable, every feature works from manual records as today (ADR-008 decision 2).
 6. **Minimum data kept.**
    - GPS coordinates are dropped on arrival and never stored, logged or sent anywhere.
@@ -52,7 +52,7 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 1. Accept or reject this ADR, knowing the enquiry is unsent. **Done: accepted 2026-10-30.** The owner was pointed to the "Risks the owner accepts" section before answering.
 2. Add the client as a dependency (new external dependency). **Done: approved by the owner 2026-10-30.** `zeekr-ev-api==0.1.15` is pinned in `services/api/pyproject.toml` and installed from a wheel into the local venv only (`pycryptodome` 3.24.1 came with it; `requests` was already present). Nothing imports it, nothing was run from it and no login was made. `pip-audit` reports no known vulnerabilities, and `ruff` and `mypy` pass. The wheel's own SHA-256 was not compared (the earlier check was of the sdist), its licence field is empty (the sdist's `LICENSE` file is MIT), and the full backend tests were not re-run because no code uses the package. It is **not deployed**: the host image has not been rebuilt.
 3. Create the second Zeekr account and share the car to it. **Done: reported by the owner 2026-10-30; not checked by an agent.** Still unverified: whether the share gives the second account the read calls needed, and whether it shows the car in the vehicle list (see the issue #2 report above).
-4. Extract the five values from the phone app. The owner does this. The method is not described here, because the README leaves it to the user and nothing has been checked.
+4. Extract the six values from the phone app. The owner does this. The method is not described here, because the README leaves it to the user and nothing has been checked.
 5. Put credentials in the host `.env`.
 6. Make the first live login. The owner runs it, with the output reviewed for field names before any mapping is written.
 7. Deploy.
@@ -90,9 +90,28 @@ Read this pass: `login` and its helpers in `client.py` (lines 189 to 420), all o
 - **Issue #44:** a user reports that the vehicle enters "deep sleep" and does not answer commands until the phone app wakes it. That was about a command, not a read, but a sleeping car may return old or empty status. For us this is a reason to show the age of every reading (Proposal 8), and it is not yet tested.
 - **Issue #37:** the charging status is a bare number that the maintainer has not mapped to meanings, and the library no longer logs it. We would have to work out the meanings from real output.
 - **Issue #2 (most relevant):** a user reports that the current Zeekr app API has changed. The old vehicle list call still logs in but returns an empty list, even for the main account. The maintainer replied that he cannot test or develop against this and asked for a pull request. That user was on the iOS app stack; which region and app version is unknown. If this applies to Malaysia, the library would log in and read nothing.
-- **Third-party key extractor.** A commenter links a separate project that claims to extract the five values. It was **not** reviewed and is not recommended here. Gate 4 stays with the owner and needs its own review before anything is run.
+- **Third-party key extractor.** A commenter links a separate project that claims to extract the values. Reviewed in the section below.
 
 Conclusion for gate 2: nothing found in the code disqualifies it as a dependency. The risks are that it impersonates the Zeekr app, a Malaysian account is untested, and there is a credible report that the vehicle list now comes back empty on the current app. Gate 2 is **not yet approved** by the owner. Adding the dependency would not show whether any of this works for a Malaysian car, because only a login by the owner would.
+
+## Gate 4 review: third-party key extractor (read by the agent on 2026-10-30; nothing run)
+
+Project: `zeekr_key_extractor` (MIT), read at commit `4fff1aa3`, downloaded to a scratch folder outside the repo. Nothing was installed or run, and no APK was pulled.
+
+**Correction.** The library needs **six** values, not five: the extractor and the library's constructor both include a production signing secret (`prod_secret`). Earlier text in this ADR and in research M42 said five.
+
+What was read: the README in full, and `frida/zeekr_runtime_keys_3x.js` in full (95 lines). `zeekr_extract_secrets.py` (869 lines) was **not read**; only its import lines and file-open calls were searched.
+
+- **What it does.** A Python script reads two APK files you pull from an Android phone with `adb`, and recovers the HMAC keys, the password public key and (on older builds) the other secrets from the app's code and its native library. A Frida script reads the other three values from the running app.
+- **Network and code execution.** The Python script's imports are `argparse`, `json`, `os`, `re`, `struct`, `sys`, `tempfile`, `zipfile` and `pathlib`, plus `capstone` and `pyelftools` per `requirements.txt`. The search found no network, `subprocess`, `eval` or `exec` calls. This is a search, not a read of the logic.
+- **Output.** It prints the values and writes them in plain text to `zeekr_secrets.json` next to the APK. That file must never enter this repo, a backup or chat.
+- **The Frida part is invasive.** It needs a rooted phone or an emulator, matching Frida versions, and the Zeekr app running and logged in. It hooks the live app. The script only prints three values to the console; I saw no network code in it.
+- **Which route applies is unknown.** The README says the static route works on some app versions and not others, and that the newest EU build needs the Frida route for three values. Which app package and version a Malaysian phone has is **not known**; the README names `com.zeekr.global` for Singapore, Australia and SEA. The region flag (`SEA` or `EM`) that matches a Malaysian account is also unknown.
+- **Terms and risk.** The README says reverse engineering may be restricted in the owner's jurisdiction. Decompiling the app may breach Zeekr's terms, and this is part of the open terms question.
+- **The README's own example** sets the username as an email and calls `login()`, the same as the library.
+- **Two more third-party links** appear (a Home Assistant walkthrough). They were not opened.
+
+Gate 4 is **not done**. If the owner chooses to run this, the safest shape is: run it on the Mac, never on the host; keep the APKs and `zeekr_secrets.json` outside the repo; and delete both after the values are in the host `.env`.
 
 ## Not decided
 
