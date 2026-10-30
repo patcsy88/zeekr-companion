@@ -51,7 +51,7 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 
 1. Accept or reject this ADR, knowing the enquiry is unsent. **Done: accepted 2026-10-30.** The owner was pointed to the "Risks the owner accepts" section before answering.
 2. Add the client as a dependency (new external dependency). **Done: approved by the owner 2026-10-30.** `zeekr-ev-api==0.1.15` is pinned in `services/api/pyproject.toml` and installed from a wheel into the local venv only (`pycryptodome` 3.24.1 came with it; `requests` was already present). Nothing imports it, nothing was run from it and no login was made. `pip-audit` reports no known vulnerabilities, and `ruff` and `mypy` pass. The wheel's own SHA-256 was not compared (the earlier check was of the sdist), its licence field is empty (the sdist's `LICENSE` file is MIT), and the full backend tests were not re-run because no code uses the package. It is **not deployed**: the host image has not been rebuilt.
-3. Create the second Zeekr account and share the car to it.
+3. Create the second Zeekr account and share the car to it. **Done: reported by the owner 2026-10-30; not checked by an agent.** Still unverified: whether the share gives the second account the read calls needed, and whether it shows the car in the vehicle list (see the issue #2 report above).
 4. Extract the five values from the phone app. The owner does this. The method is not described here, because the README leaves it to the user and nothing has been checked.
 5. Put credentials in the host `.env`.
 6. Make the first live login. The owner runs it, with the output reviewed for field names before any mapping is written.
