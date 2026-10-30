@@ -1,21 +1,24 @@
 # Security Policy
 
-## Supported Versions
+Zeekr Companion is a personal project for one owner, self-hosted and not offered as a service. There are no releases or supported versions: only the latest commit on `main` is maintained.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Reporting a vulnerability
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Please report it privately, not in a public issue.
 
-## Reporting a Vulnerability
+- Use GitHub's private vulnerability reporting: open the repository's **Security** tab and choose **Report a vulnerability**.
+- If that option is not shown, open a public issue that says only "security contact requested", with no details, and the owner will reply with a private route.
 
-Use this section to tell people how to report a vulnerability.
+This is a one-person project, so there is no guaranteed response time. Reports will be read and answered as soon as the owner can.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## What is in scope
+
+- The code in this repository (API, web client, infrastructure files, scripts).
+- Mistakes that expose secrets or owner data, such as a committed key or a weakness in sign-in, rate limiting or backup handling.
+
+## Please do not
+
+- Test against anyone's running instance, or access data that is not yours.
+- Include real credentials, vehicle identifiers or personal data in a report.
+
+The repository holds no secrets, VIN, plate or host details by design. If you find any, that is itself a report worth making.
