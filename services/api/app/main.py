@@ -19,6 +19,7 @@ from app.observability import init_sentry
 from app.openapi_docs import install as install_openapi_docs
 from app.routers import advisory, auth, expenses, reminders, service_records, vehicle, warranty
 from app.services.auth import AuthService
+from app.services.reasoning import build_reasoning_model
 
 logger = logging.getLogger("zeekr.api")
 
@@ -118,6 +119,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None,
     )
     app.state.settings = settings
+    app.state.reasoning_model = build_reasoning_model(settings)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.auth_service = AuthService(

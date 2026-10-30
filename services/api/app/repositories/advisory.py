@@ -158,6 +158,18 @@ class AdvisoryRepository:
         self._session.rollback()
         return int(n)
 
+    def calls_in_transaction(self, start: dt.datetime) -> int:
+        """Like calls_since, but keeps the transaction (and the run lock) open."""
+        n = self._session.execute(
+            select(func.count(AdvisoryModelCall.id)).where(AdvisoryModelCall.called_at >= start)
+        ).scalar_one()
+        return int(n)
+
+    def add_call(self, values: dict[str, Any]) -> None:
+        """Part of a run's transaction; the caller commits."""
+        self._session.add(AdvisoryModelCall(**values))
+        self._session.flush()
+
     def list_calls(self, limit: int) -> list[AdvisoryModelCall]:
         rows = list(
             self._session.scalars(

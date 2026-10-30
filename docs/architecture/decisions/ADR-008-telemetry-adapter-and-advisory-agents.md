@@ -1,6 +1,6 @@
 # ADR-008: Read-only telemetry adapter and advisory agents
 
-- Status: **Accepted for design on 2026-10-29. No code exists and no model has been called.** The owner accepted advisory-only agents (decision 5), the first conditions, a hosted model from the start (replacing the rules-first order in decision 7), Anthropic as the provider with a monthly cap of USD 10.00, the derived-values-only field list, host logging, and LangChain, LangGraph and LangSmith (free tier, with conditions). The owner still has to set and check the cap in the Anthropic console and create the keys (see "Owner approvals").
+- Status: **Accepted for design on 2026-10-29. Steps 1 to 3 are deployed with the model off. Step 4 (the model call) is built and tested with a fake chat model, not deployed, and no real model has been called.** The owner accepted advisory-only agents (decision 5), the first conditions, a hosted model from the start (replacing the rules-first order in decision 7), Anthropic as the provider with a monthly cap of USD 10.00, the derived-values-only field list, host logging, and LangChain, LangGraph and LangSmith (free tier, with conditions). The owner still has to set and check the cap in the Anthropic console and create the keys (see "Owner approvals").
 - Date: 2026-10-29
 - Related: `docs/research/vehicle-integrations.md` (R1, M29, M30, M42), AGENTS.md principles 5 to 7 and the approval gates, ADR-005.
 

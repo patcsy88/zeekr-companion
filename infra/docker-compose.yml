@@ -37,12 +37,21 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Optional error reporting (ADR-007). Empty means off.
       SENTRY_DSN: ${SENTRY_DSN_API:-}
+      # Optional advisory model (ADR-008). Off and empty by default; keys live in infra/.env only.
+      ADVISORY_MODEL_ENABLED: ${ADVISORY_MODEL_ENABLED:-false}
+      ADVISORY_MODEL_ID: ${ADVISORY_MODEL_ID:-}
+      ADVISORY_MONTHLY_CALL_LIMIT: ${ADVISORY_MONTHLY_CALL_LIMIT:-60}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ADVISORY_TRACING_ENABLED: ${ADVISORY_TRACING_ENABLED:-false}
+      ADVISORY_TRACING_API_KEY: ${ADVISORY_TRACING_API_KEY:-}
+      ADVISORY_TRACING_API_URL: ${ADVISORY_TRACING_API_URL:-}
       # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
       # Never '*': the entrypoint refuses it.
       FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}
     # No "ports": the API is reachable only through the web proxy.
     networks:
       - backend
+      - egress
     read_only: true
     cap_drop:
       - ALL
@@ -115,6 +124,9 @@ networks:
         - subnet: ${WEB_SUBNET:-172.28.77.0/24}
   # web only. Published ports are served through this network.
   edge:
+  # api only (ADR-008 step 4, owner decision 2026-10-30): a route out for the hosted model and
+  # optional tracing. Nothing is published from it and db is not on it.
+  egress:
 
 volumes:
   pgdata:

@@ -73,7 +73,10 @@ def get_warranty_claim_service(session: SessionDep) -> WarrantyClaimService:
 
 def get_advisory_service(request: Request, session: SessionDep) -> AdvisoryService:
     return AdvisoryService(
-        AdvisoryRepository(session), ServiceRecordRepository(session), request.app.state.settings
+        AdvisoryRepository(session),
+        ServiceRecordRepository(session),
+        request.app.state.settings,
+        request.app.state.reasoning_model,
     )
 
 
