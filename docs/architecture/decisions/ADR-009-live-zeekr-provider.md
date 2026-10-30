@@ -57,6 +57,26 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 6. Make the first live login. The owner runs it, with the output reviewed for field names before any mapping is written.
 7. Deploy.
 
+## Gate 2 review: `zeekr-ev-api` 0.1.15 (read by the agent on 2026-10-30; nothing installed, run or logged in)
+
+Source: the PyPI sdist for 0.1.15 (uploaded 2026-09-01), downloaded to a scratch folder outside the repo. Its SHA-256 (`87be36a9...2311`) equals the digest PyPI lists. The repo was not changed by the download.
+
+- **Size and shape.** 1,618 lines of Python in 7 files (`client.py` 957, `zeekr_app_sig.py` 249, `network.py` 167, `zeekr_hmac.py` 121, `const.py` 110). Small enough to read in full before pinning. What was actually read: `const.py` in full; `client.py` as a method list plus the constructor, `export_session`, `do_remote_control` and the region lookup; `network.py` only through a search of its log calls. The login flow, the signing and HMAC modules and the rest of `client.py` were **not** read, so the findings below are a partial review, not a full audit.
+- **Dependencies.** `pycryptodome` (3.23.0 or newer, below 4) and `requests` (2.32.5 or newer, below 3). No other packages. PyPI lists no known vulnerabilities for the package (this does not prove it is safe). `pip-audit` and the licence check have not been run on it, because it is not a dependency yet.
+- **Licence.** MIT (`LICENSE` read; the PyPI licence field is empty).
+- **Hosts it contacts.** Only `zeekrlife.com` gateways (SEA) and `zeekr.eu` (EU), plus region login servers on `zeekrlife.com`. A search found no other URLs, and none of `eval`, `exec`, `subprocess`, `os.system`, `pickle`, `socket` or analytics code.
+- **Read methods (names as defined):** `get_vehicle_list`, `get_status`, `get_vtm_status`, `get_charging_status`, `get_remote_control_state`, `get_charging_limit`, `get_charge_plan`, `get_travel_plan`, `get_journey_log`, `get_trip_trackpoints`. Longer `get_vehicle_*` names also exist; whether they are aliases was not checked.
+- **Write methods:** `do_remote_control` (any command, service id and setting the caller supplies; service id `RCS` goes to the charge-control endpoint), `set_charge_plan`, `set_travel_plan`. This matches the earlier research (M42). The wrapper in decision 2 must not expose them.
+- **Other sensitive methods:** `export_session` returns the username, the plain-text password and the tokens. `load_session` takes the same.
+- **Region.** It defaults to country `AU` and the SEA hosts. It looks the country up in an EU region list and uses EU hosts if found. How a Malaysian account resolves was not traced and stays **unknown**.
+- **Impersonation.** It sends hard-coded app identifiers: a client id, app version `1.4.1`, an Android user agent and an emulator device name (`const.py`). Open issue #45 (opened by the maintainer on 2026-09-23, "Update DEFAULT/LOGGED_IN headers") suggests these go stale. Only the issue titles were read, not the bodies.
+- **Logging.** At debug level it logs full request URLs, headers, signed request bodies and response text; at error level it logs the start of a response body. These can hold the login body and, for trip calls, GPS. The wrapper must pass its own logger and keep it at warning or above, and a test must prove no credential or response text reaches a log line.
+- **Retries and timeouts.** Default timeout is 10 seconds to connect and 30 to read. It retries connection errors and 429/5xx responses twice with back-off, and only retries a bad status on GET/HEAD, so a command POST is not re-sent. Our own back-off (decision 7) still applies on top.
+- **Open issues (titles only):** #44 "Charging action intermittently stops responding until phone app usage"; #40 send destination; #37 charging status; #2 whether the China region can be used. None names Malaysia.
+- **Maintainer risk.** One maintainer, 15 releases since December 2025, so the upstream API changes often and a pinned version may stop working without notice.
+
+Conclusion for gate 2: nothing found in the code disqualifies it as a dependency, but it is a fast-moving package that impersonates the Zeekr app, and a Malaysian account is untested. Gate 2 is **not yet approved** by the owner.
+
 ## Not decided
 
 - Which fields the app should read first. That depends on the real field names from gate 6.
