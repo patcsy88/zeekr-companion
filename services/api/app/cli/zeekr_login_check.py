@@ -1,7 +1,11 @@
 """One login to Zeekr, run by the owner, to see which field names come back (ADR-009 gate 6).
 
 Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
-            python -m app.cli.zeekr_login_check [--status] [--show-code]
+            python -m app.cli.zeekr_login_check [--status] [--values] [--show-code]
+
+With --values (implies --status) it prints the value of each path in VALUE_PATHS instead of the
+field tree, so the owner can compare them with the car. The list holds no position, lock, door,
+VIN or plate field. Values are for the owner's screen only: never paste them into the repo.
 
 With --show-code, a failed login also prints the server's error number (digits after a key named
 like `code`) and any phrase from a short fixed list. No other server text is ever printed.
@@ -61,6 +65,55 @@ def describe(value: object, path: str = "$", depth: int = 0) -> list[str]:
             lines.extend(describe(value[0], f"{path}[0]", depth + 1))
         return lines
     return [f"{path}: {type(value).__name__}"]
+
+
+_AVS = "additionalVehicleStatus"
+# The only fields --values may print. Nothing about position, locks, doors, VIN or plate.
+VALUE_PATHS = (
+    f"{_AVS}.maintenanceStatus.odometer",
+    f"{_AVS}.maintenanceStatus.daysToService",
+    f"{_AVS}.maintenanceStatus.distanceToService",
+    f"{_AVS}.maintenanceStatus.serviceWarningStatus",
+    f"{_AVS}.maintenanceStatus.mainBatteryStatus.stateOfHealth",
+    f"{_AVS}.maintenanceStatus.tyreStatusDriver",
+    f"{_AVS}.maintenanceStatus.tyreStatusPassenger",
+    f"{_AVS}.maintenanceStatus.tyreStatusDriverRear",
+    f"{_AVS}.maintenanceStatus.tyreStatusPassengerRear",
+    f"{_AVS}.maintenanceStatus.tyreTempDriver",
+    f"{_AVS}.maintenanceStatus.tyreTempPassenger",
+    f"{_AVS}.maintenanceStatus.tyreTempDriverRear",
+    f"{_AVS}.maintenanceStatus.tyreTempPassengerRear",
+    f"{_AVS}.electricVehicleStatus.stateOfCharge",
+    f"{_AVS}.electricVehicleStatus.chargeLevel",
+    f"{_AVS}.electricVehicleStatus.chargeSts",
+    f"{_AVS}.electricVehicleStatus.isCharging",
+    f"{_AVS}.electricVehicleStatus.isPluggedIn",
+    f"{_AVS}.electricVehicleStatus.timeToFullyCharged",
+    f"{_AVS}.electricVehicleStatus.distanceToEmptyOnBatteryOnly",
+    "basicVehicleStatus.distanceToEmpty",
+    f"{_AVS}.climateStatus.exteriorTemp",
+    f"{_AVS}.climateStatus.interiorTemp",
+    f"{_AVS}.climateStatus.updateTime",
+)
+_MAX_VALUE = 24
+
+
+def pick_values(status: object) -> list[str]:
+    """`path = value` for each allow-listed path that holds a plain number, string or flag."""
+    lines = []
+    for path in VALUE_PATHS:
+        node: object = status
+        for part in path.split("."):
+            node = node.get(part) if isinstance(node, dict) else None
+        if isinstance(node, bool | int | float):
+            lines.append(f"{path} = {node}")
+        elif isinstance(node, str):
+            lines.append(f"{path} = {node[:_MAX_VALUE]!r}")
+        elif node is None:
+            lines.append(f"{path} = (absent or null)")
+        else:
+            lines.append(f"{path} = ({type(node).__name__}, not printed)")
+    return lines
 
 
 LIBRARY_PACKAGE = "zeekr_ev_api"
@@ -139,7 +192,8 @@ def main(
 ) -> int:
     args = sys.argv[1:] if argv is None else argv
     values = os.environ if env is None else env
-    want_status = "--status" in args
+    want_values = "--values" in args
+    want_status = "--status" in args or want_values
     want_hint = "--show-code" in args
     if env is None:
         logging.disable(logging.CRITICAL)
@@ -182,8 +236,13 @@ def main(
         print("Vehicle record fields:")
         _print(describe(vehicles[0].data))
         if want_status:
-            print("Status fields (one read):")
-            _print(describe(vehicles[0].get_status()))
+            status = vehicles[0].get_status()
+            if want_values:
+                print("Status values (fixed list, one read):")
+                _print(pick_values(status))
+            else:
+                print("Status fields (one read):")
+                _print(describe(status))
     except Exception as exc:  # as above
         print(
             f"Read failed: {type(exc).__name__} in {failing_stage(exc)}. Details are not printed.",
