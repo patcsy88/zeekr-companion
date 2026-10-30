@@ -1,6 +1,6 @@
 # ADR-007: Optional Sentry error reporting
 
-Status: accepted by the owner on 2026-10-28; code written and tested; Sentry projects created 2026-10-28 (org `unlimited-limited`, EU region `de.sentry.io`). **Not yet deployed: no DSN is configured on the host or in a web build.**
+Status: accepted by the owner on 2026-10-28; code written and tested; Sentry projects created 2026-10-28 (org `unlimited-limited`, EU region `de.sentry.io`). **Deployed 2026-10-30 (owner-reported). Web delivery verified by the owner; API delivery not yet confirmed (see step 5).**
 
 ## Context
 
@@ -36,3 +36,5 @@ The Sentry setup in steps 1 and 2 below (project creation, rate limits and the s
 3. Put the API DSN in the host `infra/.env` as `SENTRY_DSN_API`, recreate the API container.
 4. Build the web client on the Mac with `VITE_SENTRY_DSN` set, copy `dist` to the host as usual.
 5. After deploying, trigger a test error and confirm it arrives with no request data or message.
+   - **API (2026-10-30, owner-run, owner-reported):** the host `api` container started the SDK (`init_sentry` returned `True`, so `SENTRY_DSN_API` reached it) and sent one `RuntimeError` in environment `deploy-check`. `sentry_sdk.flush()` printed `None`; the agent had expected `True` and did not check what `flush` returns. **Arrival in `zeekr-companion-api` and the issue contents have not been reported. Unverified.**
+   - **Web (2026-10-30, owner-run, owner-reported):** the first web build had no DSN (a `grep` of `dist` for the ingest host found nothing; no `envelope` request appeared). The owner rebuilt on the Mac with `VITE_SENTRY_DSN` set in the shell only (nothing written to the repo), copied `dist` to the host and cleared the service worker. A console-thrown error produced an `envelope` request that returned 200, and the issue in `zeekr-companion-web` shows the exception type and stack frames. Not explicitly reported: that the canary message, user, headers and breadcrumbs were absent.
