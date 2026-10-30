@@ -30,17 +30,34 @@ class Settings(BaseSettings):
     advisory_monthly_call_limit: int = Field(default=60, ge=1, le=1000)
 
     anthropic_api_key: SecretStr | None = None
+    # Optional Anthropic-compatible endpoint (host `.env` only). Empty means api.anthropic.com.
+    advisory_model_base_url: str | None = Field(default=None, max_length=200)
     # Deliberately not named LANGSMITH_*: the library reads those itself and would trace unscrubbed.
     advisory_tracing_enabled: bool = False
     advisory_tracing_api_key: SecretStr | None = None
     advisory_tracing_api_url: str | None = Field(default=None, max_length=200)
 
     @field_validator(
-        "anthropic_api_key", "advisory_tracing_api_key", "advisory_tracing_api_url", mode="before"
+        "anthropic_api_key",
+        "advisory_model_base_url",
+        "advisory_tracing_api_key",
+        "advisory_tracing_api_url",
+        mode="before",
     )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("advisory_model_base_url")
+    @classmethod
+    def _check_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        url = value.strip().rstrip("/")
+        if not url.startswith(("http://", "https://")):
+            raise ValueError("ADVISORY_MODEL_BASE_URL must start with http:// or https://")
+        # The Anthropic SDK adds /v1/messages itself, so a trailing /v1 would double up.
+        return url.removesuffix("/v1")
 
     @field_validator("advisory_model_id", mode="before")
     @classmethod

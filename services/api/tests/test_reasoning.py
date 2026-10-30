@@ -138,6 +138,33 @@ def test_factory_returns_none_unless_fully_configured(database_url: str) -> None
     assert build_reasoning_model(full) is not None
 
 
+def test_reply_text_reads_only_text_blocks() -> None:
+    blocks = [
+        {"type": "thinking", "thinking": "hidden"},
+        {"type": "text", "text": GOOD},
+    ]
+    assert reasoning.reply_text(blocks) == GOOD
+    assert reasoning.reply_text(GOOD) == GOOD
+    assert reasoning.reply_text(None) == ""
+    assert reasoning.reply_text([{"type": "thinking", "thinking": "x"}]) == ""
+    chat = FakeChat()
+    chat.reply = GOOD
+    reply = FakeReply(blocks)  # type: ignore[arg-type]
+    chat.invoke = lambda _m: reply  # type: ignore[method-assign]
+    assert model_with(chat).explain("date_vs_km_warranty", DATE_INPUTS).outcome == "ok"
+
+
+def test_base_url_is_cleaned_and_reaches_the_client(database_url: str) -> None:
+    s = make_settings(database_url, advisory_model_base_url="http://proxy.invalid:1234/v1/")
+    assert s.advisory_model_base_url == "http://proxy.invalid:1234"
+    assert make_settings(database_url, advisory_model_base_url=" ").advisory_model_base_url is None
+    with pytest.raises(ValueError):
+        make_settings(database_url, advisory_model_base_url="proxy.invalid:1234")
+    model = AnthropicReasoningModel("k", "model-x", base_url="http://proxy.invalid:1234")
+    assert str(model._chat.anthropic_api_url) == "http://proxy.invalid:1234"
+    assert model._chat.temperature is None
+
+
 def test_empty_env_values_are_unset(database_url: str) -> None:
     s = make_settings(
         database_url,
