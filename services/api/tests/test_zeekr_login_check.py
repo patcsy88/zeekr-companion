@@ -177,3 +177,45 @@ def test_the_file_names_no_write_or_session_method() -> None:
         assert banned not in source
     for banned in ("export_session", "load_session"):
         assert banned not in source
+
+
+TOKEN = "fake-test-token-not-real-123456"
+
+
+def _hint(text: str) -> str:
+    return check.failure_hint(RuntimeError(text))
+
+
+def test_hint_reports_a_code_after_a_code_key_and_a_known_phrase() -> None:
+    text = "Bearer login failed: {'code': '079025', 'msg': 'Signature authentication failed'}"
+    hint = _hint(text)
+    assert "code 079025" in hint
+    assert "Signature authentication failed" in hint
+
+
+def test_hint_never_copies_a_token_or_unknown_text() -> None:
+    text = (
+        f"Bearer login failed: {{'code': 500, 'msg': 'secret {CANARY}', "
+        f"'data': {{'accessToken': '{TOKEN}', 'id': 123456}}}}"
+    )
+    hint = _hint(text)
+    assert "code 500" in hint
+    assert CANARY not in hint and TOKEN not in hint and "123456" not in hint
+    assert "secret" not in hint
+
+
+def test_hint_ignores_digits_inside_a_token() -> None:
+    hint = _hint("Bearer login failed: {'accessToken': 'abc-code=123456-xyz'}")
+    assert "123456" not in hint
+
+
+def test_hint_with_nothing_recognised() -> None:
+    assert _hint(f"odd {CANARY}") == "no known code or message found"
+
+
+def test_hint_is_printed_only_with_the_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    code, _, err, _ = run(capsys, login_error=True)
+    assert code == 1 and "Server hint" not in err
+    code, out, err, _ = run(capsys, args=["--show-code"], login_error=True)
+    assert code == 1 and "Server hint: " in err
+    assert CANARY not in out + err
