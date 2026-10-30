@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.adapters.zeekr_live import build_live_provider
 from app.config import Settings
 from app.db import create_db_engine, create_session_factory
 from app.errors import AppError, Conflict, InvalidInput, NotFound, RateLimited, Unauthenticated
@@ -120,6 +121,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.reasoning_model = build_reasoning_model(settings)
+    # None unless ZEEKR_LIVE_ENABLED. No route reads it yet, and building it sends nothing.
+    app.state.live_telemetry = build_live_provider(settings)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.auth_service = AuthService(

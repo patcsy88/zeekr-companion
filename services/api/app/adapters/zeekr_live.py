@@ -22,7 +22,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import SecretStr
+
 from app.adapters.telemetry import Reading, TyrePressures
+from app.config import ZEEKR_LIVE_FIELDS, Settings
 
 SOURCE = "zeekr_live"
 log = logging.getLogger("app.zeekr_live")
@@ -143,6 +146,22 @@ class ZeekrSettings:
     prod_secret: str
     vin_key: str
     vin_iv: str
+
+
+def build_live_provider(settings: Settings) -> ZeekrLiveTelemetryProvider | None:
+    """None unless the owner switched it on. Building it makes no network call: the first login
+    happens on the first `read_*`, and nothing in the app calls one yet."""
+    if not settings.zeekr_live_enabled:
+        return None
+
+    def secret(name: str) -> str:
+        value = getattr(settings, name)
+        return value.get_secret_value() if isinstance(value, SecretStr) else str(value)
+
+    values = {name.removeprefix("zeekr_"): secret(name) for name in ZEEKR_LIVE_FIELDS}
+    # Looked up at call time (not bound as a default) so a test can replace the library.
+    source = ZeekrStatusSource(ZeekrSettings(**values), lambda s: _build_client(s))
+    return ZeekrLiveTelemetryProvider(source)
 
 
 def _silent_logger() -> logging.Logger:

@@ -46,6 +46,17 @@ services:
       ADVISORY_TRACING_ENABLED: ${ADVISORY_TRACING_ENABLED:-false}
       ADVISORY_TRACING_API_KEY: ${ADVISORY_TRACING_API_KEY:-}
       ADVISORY_TRACING_API_URL: ${ADVISORY_TRACING_API_URL:-}
+      # Optional live Zeekr readings (ADR-009). Off and empty by default; values live in infra/.env only.
+      ZEEKR_LIVE_ENABLED: ${ZEEKR_LIVE_ENABLED:-false}
+      ZEEKR_USERNAME: ${ZEEKR_USERNAME:-}
+      ZEEKR_PASSWORD: ${ZEEKR_PASSWORD:-}
+      ZEEKR_COUNTRY_CODE: ${ZEEKR_COUNTRY_CODE:-}
+      ZEEKR_HMAC_ACCESS_KEY: ${ZEEKR_HMAC_ACCESS_KEY:-}
+      ZEEKR_HMAC_SECRET_KEY: ${ZEEKR_HMAC_SECRET_KEY:-}
+      ZEEKR_PASSWORD_PUBLIC_KEY: ${ZEEKR_PASSWORD_PUBLIC_KEY:-}
+      ZEEKR_PROD_SECRET: ${ZEEKR_PROD_SECRET:-}
+      ZEEKR_VIN_KEY: ${ZEEKR_VIN_KEY:-}
+      ZEEKR_VIN_IV: ${ZEEKR_VIN_IV:-}
       # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
       # Never '*': the entrypoint refuses it.
       FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}

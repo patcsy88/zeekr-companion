@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.dburl import normalise_database_url
 
 _MIN_DISTINCT_CHARS = 12
+
+ZEEKR_LIVE_FIELDS = (
+    "zeekr_username",
+    "zeekr_password",
+    "zeekr_country_code",
+    "zeekr_hmac_access_key",
+    "zeekr_hmac_secret_key",
+    "zeekr_password_public_key",
+    "zeekr_prod_secret",
+    "zeekr_vin_key",
+    "zeekr_vin_iv",
+)
 
 
 def _is_placeholder(value: str) -> bool:
@@ -37,16 +49,45 @@ class Settings(BaseSettings):
     advisory_tracing_api_key: SecretStr | None = None
     advisory_tracing_api_url: str | None = Field(default=None, max_length=200)
 
+    # Live Zeekr readings (ADR-009). Off by default. The values live in the host `infra/.env` only.
+    zeekr_live_enabled: bool = False
+    zeekr_username: SecretStr | None = None
+    zeekr_password: SecretStr | None = None
+    zeekr_country_code: str | None = Field(default=None, max_length=8)
+    zeekr_hmac_access_key: SecretStr | None = None
+    zeekr_hmac_secret_key: SecretStr | None = None
+    zeekr_password_public_key: SecretStr | None = None
+    zeekr_prod_secret: SecretStr | None = None
+    zeekr_vin_key: SecretStr | None = None
+    zeekr_vin_iv: SecretStr | None = None
+
     @field_validator(
         "anthropic_api_key",
         "advisory_model_base_url",
         "advisory_tracing_api_key",
         "advisory_tracing_api_url",
+        "zeekr_username",
+        "zeekr_password",
+        "zeekr_country_code",
+        "zeekr_hmac_access_key",
+        "zeekr_hmac_secret_key",
+        "zeekr_password_public_key",
+        "zeekr_prod_secret",
+        "zeekr_vin_key",
+        "zeekr_vin_iv",
         mode="before",
     )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _live_zeekr_needs_all_its_settings(self) -> Settings:
+        if self.zeekr_live_enabled:
+            missing = [name.upper() for name in ZEEKR_LIVE_FIELDS if getattr(self, name) is None]
+            if missing:
+                raise ValueError("ZEEKR_LIVE_ENABLED is true but not set: " + ", ".join(missing))
+        return self
 
     @field_validator("advisory_model_base_url")
     @classmethod

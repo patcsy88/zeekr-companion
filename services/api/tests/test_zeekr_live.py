@@ -312,3 +312,81 @@ def test_module_does_not_log_settings_or_responses() -> None:
     source = inspect.getsource(zeekr_live)
     assert "log.debug" not in source and "log.info" not in source
     assert "password" not in source.split("log.warning")[1].split("\n")[0]
+
+
+# --- settings and wiring (ADR-009) ---
+
+from pydantic import SecretStr, ValidationError  # noqa: E402
+
+from app.adapters.zeekr_live import build_live_provider  # noqa: E402
+from app.config import ZEEKR_LIVE_FIELDS, Settings  # noqa: E402
+
+BASE = {
+    "database_url": "postgresql://user:pw@localhost/db",
+    "token_secret": "-".join(
+        ["fake", "test", "only", "not", "a", "real", "secret", "value", "xyz"]
+    ),
+}
+
+
+def live_settings(**overrides: Any) -> Settings:
+    values: dict[str, Any] = {name: f"{CANARY}-{name}" for name in ZEEKR_LIVE_FIELDS}
+    values["zeekr_live_enabled"] = True
+    values["zeekr_country_code"] = "MY"
+    values.update(overrides)
+    return Settings(_env_file=None, **BASE, **values)  # type: ignore[arg-type]
+
+
+def test_off_by_default_and_builds_nothing() -> None:
+    settings = Settings(_env_file=None, **BASE)  # type: ignore[arg-type]
+    assert settings.zeekr_live_enabled is False
+    assert build_live_provider(settings) is None
+
+
+def test_enabled_without_every_setting_refuses_to_start() -> None:
+    with pytest.raises(ValidationError) as caught:
+        live_settings(zeekr_prod_secret=None, zeekr_vin_iv="  ")
+    text = str(caught.value)
+    assert "ZEEKR_PROD_SECRET" in text and "ZEEKR_VIN_IV" in text
+    assert CANARY not in text
+
+
+def test_empty_strings_count_as_unset() -> None:
+    settings = Settings(_env_file=None, **BASE, zeekr_username="", zeekr_country_code=" ")  # type: ignore[arg-type]
+    assert settings.zeekr_username is None and settings.zeekr_country_code is None
+
+
+def test_secrets_are_hidden_in_repr() -> None:
+    settings = live_settings()
+    assert CANARY not in repr(settings) and CANARY not in str(settings)
+    assert isinstance(settings.zeekr_password, SecretStr)
+
+
+def test_enabled_builds_a_provider_without_any_network_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*_: Any, **__: Any) -> Any:
+        raise AssertionError("the library must not be built while constructing the provider")
+
+    monkeypatch.setattr(zeekr_live, "_build_client", forbidden)
+    provider = build_live_provider(live_settings())
+    assert isinstance(provider, ZeekrLiveTelemetryProvider)
+    assert not provider.stopped
+
+
+def test_provider_passes_the_settings_to_the_library_once_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[ZeekrSettings] = []
+
+    def fake_build(s: ZeekrSettings) -> FakeClient:
+        seen.append(s)
+        return FakeClient()
+
+    monkeypatch.setattr(zeekr_live, "_build_client", fake_build)
+    provider = build_live_provider(live_settings())
+    assert provider is not None
+    assert seen == []
+    assert provider.read_odometer().value == 4321
+    assert seen[0].username == f"{CANARY}-zeekr_username"
+    assert seen[0].prod_secret == f"{CANARY}-zeekr_prod_secret"
