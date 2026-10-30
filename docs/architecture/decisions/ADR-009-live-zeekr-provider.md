@@ -1,6 +1,6 @@
 # ADR-009: Live Zeekr telemetry provider (read-only)
 
-- Status: **Proposed on 2026-10-30. Not accepted. Nothing in this ADR is built, installed or run.** No dependency is added, no Zeekr login is made, no key is extracted. Every step under "Gates" needs the owner's explicit approval.
+- Status: **Accepted by the owner on 2026-10-30 as the design (gate 1 only), with the Zeekr Malaysia enquiry still unsent.** Nothing in this ADR is built, installed or run. No dependency is added, no Zeekr login is made, no key is extracted. Acceptance does not approve gates 2 to 7: each still needs the owner's explicit approval when the time comes.
 - Date: 2026-10-30
 - Related: ADR-008 (decisions 1, 3 and 4), `docs/research/vehicle-integrations.md` (R1, M29, M30, M42), `docs/operations/zeekr-malaysia-enquiry.md`, AGENTS.md principles 5 to 8 and the approval gates.
 
@@ -49,7 +49,7 @@ If the owner decides to go ahead, knowingly accepting the open risks above, the 
 
 ## Gates (each needs the owner's explicit approval)
 
-1. Accept or reject this ADR, knowing the enquiry is unsent.
+1. Accept or reject this ADR, knowing the enquiry is unsent. **Done: accepted 2026-10-30.** The owner was pointed to the "Risks the owner accepts" section before answering.
 2. Add the client as a dependency (new external dependency).
 3. Create the second Zeekr account and share the car to it.
 4. Extract the five values from the phone app. The owner does this. The method is not described here, because the README leaves it to the user and nothing has been checked.

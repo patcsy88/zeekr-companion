@@ -16,7 +16,7 @@ The project rules are to prefer documented interfaces, never invent vehicle capa
 
 1. **A read-only telemetry port.** The API defines an interface, `VehicleTelemetryProvider`, with read methods only. Each method returns a typed snapshot in which every field is nullable and carries `source` and `observed_at`. There is no method that sends a command, sets a plan or changes anything on the car. A test fails if one is added to the interface.
 2. **The first provider is manual or simulated.** Readings come from what the owner already records (odometer, service records, reminders, expenses, warranty) and from a fixture provider for tests. No live connection is needed for any feature, as the project rules require.
-3. **A live Zeekr provider is not part of this decision.** A proposal is in `ADR-009-live-zeekr-provider.md` (proposed, not accepted). It stays behind the port and needs a separate ADR and the owner's explicit approval after the account, terms and warranty questions are answered. Until then:
+3. **A live Zeekr provider is not part of this decision.** A proposal is in `ADR-009-live-zeekr-provider.md` (design accepted 2026-10-30; nothing built, and its later gates are not approved). It stays behind the port and needs a separate ADR and the owner's explicit approval after the account, terms and warranty questions are answered. Until then:
    - the unofficial client is not added as a dependency,
    - no one extracts keys from the app on the owner's behalf,
    - no Zeekr login is made by any agent or by the app.
