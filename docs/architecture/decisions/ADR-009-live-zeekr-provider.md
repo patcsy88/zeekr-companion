@@ -176,5 +176,5 @@ A one-off command for the owner, not part of the running app and not wired into 
 
 - Which fields the app should read first. That depends on the real field names from gate 6.
 - The polling interval, and whether the data is stored or only shown live.
-- New data model and screens for live readings. Each needs its own design before code, as with ADR-008.
+- New data model and screens for live readings. Each needs its own design before code, as with ADR-008. A first proposal, a read-only live vehicle card, is in `docs/product/live-vehicle-card-proposal.md` (proposed 2026-10-31, not approved).
 - Whether a supported route appears. If Zeekr Malaysia ever offers one, it replaces this proposal.
