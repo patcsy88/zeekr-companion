@@ -19,6 +19,8 @@ dependencies = [
     # ADR-008 step 4, pinned exactly (owner condition). Transitive packages resolve from these.
     "langchain-anthropic==1.7.7",
     "langsmith==0.14.16",
+    # ADR-009 gate 2, pinned exactly. Not imported anywhere yet.
+    "zeekr-ev-api==0.1.15",
 ]
 
 [project.optional-dependencies]
