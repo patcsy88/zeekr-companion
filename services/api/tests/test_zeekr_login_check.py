@@ -219,3 +219,60 @@ def test_hint_is_printed_only_with_the_flag(capsys: pytest.CaptureFixture[str]) 
     code, out, err, _ = run(capsys, args=["--show-code"], login_error=True)
     assert code == 1 and "Server hint: " in err
     assert CANARY not in out + err
+
+
+class ValuesVehicle(FakeVehicle):
+    def get_status(self) -> dict[str, Any]:
+        self.status_calls += 1
+        return {
+            "additionalVehicleStatus": {
+                "maintenanceStatus": {
+                    "odometer": 12345,
+                    "tyreStatusDriver": "1",
+                    "mainBatteryStatus": {"stateOfHealth": "98.5"},
+                    "serviceWarningTrigger": CANARY,
+                },
+                "electricVehicleStatus": {"stateOfCharge": "71", "isCharging": False},
+                "drivingSafetyStatus": {
+                    "centralLockingStatus": CANARY,
+                    "doorLockStatusDriver": CANARY,
+                },
+                "climateStatus": {"interiorTemp": {"nested": CANARY}},
+            },
+            "basicVehicleStatus": {
+                "position": {"latitude": CANARY, "longitude": CANARY},
+                "distanceToEmpty": "300",
+            },
+            "vin": CANARY,
+            "plateNo": CANARY,
+        }
+
+
+def test_values_prints_only_the_fixed_list(capsys: pytest.CaptureFixture[str]) -> None:
+    code, out, err, made = run(capsys, args=["--values"], vehicles=[ValuesVehicle()])
+    assert code == 0
+    assert "maintenanceStatus.odometer = 12345" in out
+    assert "stateOfHealth = '98.5'" in out
+    assert "isCharging = False" in out
+    assert "distanceToEmpty = '300'" in out
+    assert "exteriorTemp = (absent or null)" in out
+    assert CANARY not in out + err
+    assert made[0].vehicles[0].status_calls == 1
+
+
+def test_values_never_prints_a_nested_value(capsys: pytest.CaptureFixture[str]) -> None:
+    _, out, _, _ = run(capsys, args=["--values"], vehicles=[ValuesVehicle()])
+    assert "interiorTemp = (dict, not printed)" in out
+
+
+def test_value_list_has_no_position_lock_door_vin_or_plate() -> None:
+    banned = ("position", "latitude", "longitude", "Lock", "door", "trunk", "vin", "plate", "nick")
+    for path in check.VALUE_PATHS:
+        assert not any(word.lower() in path.lower() for word in banned), path
+
+
+def test_values_without_the_flag_prints_the_tree_not_values(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _, out, _, _ = run(capsys, args=["--status"], vehicles=[ValuesVehicle()])
+    assert "Status fields" in out and "12345" not in out
