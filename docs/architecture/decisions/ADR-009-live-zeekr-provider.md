@@ -75,7 +75,24 @@ Source: the PyPI sdist for 0.1.15 (uploaded 2026-09-01), downloaded to a scratch
 - **Open issues (titles only):** #44 "Charging action intermittently stops responding until phone app usage"; #40 send destination; #37 charging status; #2 whether the China region can be used. None names Malaysia.
 - **Maintainer risk.** One maintainer, 15 releases since December 2025, so the upstream API changes often and a pinned version may stop working without notice.
 
-Conclusion for gate 2: nothing found in the code disqualifies it as a dependency, but it is a fast-moving package that impersonates the Zeekr app, and a Malaysian account is untested. Gate 2 is **not yet approved** by the owner.
+### Second pass (2026-10-30): login flow, request signing and issue bodies
+
+Read this pass: `login` and its helpers in `client.py` (lines 189 to 420), all of `network.py`, all of `zeekr_hmac.py`, and the bodies and comments of issues #45, #44, #37 and #2. **Not read:** `zeekr_app_sig.py` (only searched for imports and network calls), the read methods' parsing code (`get_status` and the others), and the region lookup in full. This is still not a full audit.
+
+- **Login is a chain of about eight requests**, all to `zeekrlife.com` hosts: region URL lookup, user check, password login, user info, protocol, inbox, TSP code, language, then a bearer login. Each login therefore touches the account many times, which supports the single-attempt rule in Proposal 7.
+- **The account name is sent as an `email` field.** The second account must be an email-based Zeekr account. A Malaysian account that logs in by phone number is untested.
+- **The password is RSA-encrypted with the extracted public key before sending.** It is held in plain text on the client object.
+- **Failures put server responses into exception text**, for example `Login failed: {login_data}` and `Bearer login failed: {block}`. The password is not in these, but tokens may be in a success-shaped response. Our wrapper must catch every exception from the client and re-raise a fixed message with no response text.
+- **Automatic re-login.** When a token expires, `network.py` logs in again by itself under a lock. Whether it repeats on repeated failure was not traced. Our own back-off and stop-after-failures rule must wrap every call, not just the first login.
+- **Fixed device identity.** The bearer login sends an Android emulator device id and model. To Zeekr this looks like an emulator, not a phone.
+- **Signing.** Requests are signed with HMAC-SHA256 using the two extracted keys. `zeekr_hmac.py` only signs and does no network calls.
+- **Issue #45** is the maintainer noting the hard-coded headers need a new capture from the app, so they may be stale now.
+- **Issue #44:** a user reports that the vehicle enters "deep sleep" and does not answer commands until the phone app wakes it. That was about a command, not a read, but a sleeping car may return old or empty status. For us this is a reason to show the age of every reading (Proposal 8), and it is not yet tested.
+- **Issue #37:** the charging status is a bare number that the maintainer has not mapped to meanings, and the library no longer logs it. We would have to work out the meanings from real output.
+- **Issue #2 (most relevant):** a user reports that the current Zeekr app API has changed. The old vehicle list call still logs in but returns an empty list, even for the main account. The maintainer replied that he cannot test or develop against this and asked for a pull request. That user was on the iOS app stack; which region and app version is unknown. If this applies to Malaysia, the library would log in and read nothing.
+- **Third-party key extractor.** A commenter links a separate project that claims to extract the five values. It was **not** reviewed and is not recommended here. Gate 4 stays with the owner and needs its own review before anything is run.
+
+Conclusion for gate 2: nothing found in the code disqualifies it as a dependency. The risks are that it impersonates the Zeekr app, a Malaysian account is untested, and there is a credible report that the vehicle list now comes back empty on the current app. Gate 2 is **not yet approved** by the owner. Adding the dependency would not show whether any of this works for a Malaysian car, because only a login by the owner would.
 
 ## Not decided
 
