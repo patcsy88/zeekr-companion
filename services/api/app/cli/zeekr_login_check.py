@@ -1,6 +1,10 @@
 """One login to Zeekr, run by the owner, to see which field names come back (ADR-009 gate 6).
 
-Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt python -m app.cli.zeekr_login_check [--status]
+Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
+            python -m app.cli.zeekr_login_check [--status] [--show-code]
+
+With --show-code, a failed login also prints the server's error number (digits after a key named
+like `code`) and any phrase from a short fixed list. No other server text is ever printed.
 
 It reads the account and the six app values from environment variables, never from a file, and
 prints names and types only: no value, no VIN, no token. It makes ONE login attempt and does not
@@ -14,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 import traceback
 from collections.abc import Callable, Mapping
@@ -75,6 +80,37 @@ def failing_stage(exc: BaseException) -> str:
     return found
 
 
+KNOWN_MESSAGES = (
+    "Signature authentication failed",
+    "Decrypt X-VIN failed",
+    "Invalid access key",
+    "Token expired",
+)
+_CODE_PATTERN = re.compile(
+    r"""["']?(?:code|errCode|errorCode|resultCode|status)["']?\s*[:=]\s*["']?(\d{3,7})["']?(?![\w-])"""
+)
+
+
+def failure_hint(exc: BaseException) -> str:
+    """A server error number and a known phrase from the exception text, or nothing.
+
+    The text can hold tokens, so nothing from it is copied except digits that follow a key named
+    like `code`, and a phrase is printed from our own fixed list, never from the text itself.
+    """
+    text = str(exc)
+    codes = []
+    for match in _CODE_PATTERN.finditer(text):
+        if match.group(1) not in codes:
+            codes.append(match.group(1))
+    phrases = [phrase for phrase in KNOWN_MESSAGES if phrase.lower() in text.lower()]
+    parts = []
+    if codes:
+        parts.append("code " + ", ".join(codes[:3]))
+    if phrases:
+        parts.append("message matches: " + "; ".join(phrases))
+    return " | ".join(parts) if parts else "no known code or message found"
+
+
 def _build_client(**kwargs: Any) -> Any:
     from zeekr_ev_api.client import ZeekrClient  # type: ignore[import-untyped]
 
@@ -104,6 +140,7 @@ def main(
     args = sys.argv[1:] if argv is None else argv
     values = os.environ if env is None else env
     want_status = "--status" in args
+    want_hint = "--show-code" in args
     if env is None:
         logging.disable(logging.CRITICAL)
 
@@ -131,6 +168,8 @@ def main(
             f"Login failed: {type(exc).__name__} in {failing_stage(exc)}. Details are not printed.",
             file=sys.stderr,
         )
+        if want_hint:
+            print(f"Server hint: {failure_hint(exc)}", file=sys.stderr)
         return 1
     print("Login worked.")
 
