@@ -265,3 +265,5 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 - The status for a replayed identical `POST` (200 or 201) is unspecified. The client accepts both.
 - `PUT /vehicle` does not say whether the client supplies `id`.
 - Offline pagination: only pages already fetched are available.
+
+**Web: live vehicle card (ADR-009, build step 2, not deployed).** `LiveVehicleCard` on the Vehicle page and `LiveHistoryPage` at `/vehicle/live` are online only and keep nothing in IndexedDB. The service worker has no `runtimeCaching` and denies `/api/` for navigation, so these responses are not cached. Gaps (more than 3 x the interval) are marked in the list and the trend charts are split so no line crosses one.

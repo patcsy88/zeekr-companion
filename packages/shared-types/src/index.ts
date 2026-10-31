@@ -44,6 +44,11 @@ export type AdvisoryRun = Schemas["AdvisoryRunOut"];
 export type AdvisoryStatus = Schemas["AdvisoryStatusOut"];
 export type AdvisoryModelCallList = Schemas["AdvisoryModelCallList"];
 
+export type LiveCard = Schemas["LiveCardOut"];
+export type LiveHistory = Schemas["LiveHistoryOut"];
+export type LiveReadingItem = Schemas["LiveReadingItem"];
+export type LiveDelete = Schemas["LiveDeleteOut"];
+
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];
 export type ApiError = Schemas["ErrorBody"];

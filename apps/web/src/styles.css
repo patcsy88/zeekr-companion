@@ -353,3 +353,20 @@ select {
   border-radius: 0.5rem;
   background: #fff;
 }
+.live-card {
+  border: 1px solid var(--border, #ccc);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+}
+.live-card h2 {
+  margin: 0;
+}
+.trend {
+  margin: 0.5rem 0;
+}
+.trend svg {
+  display: block;
+  max-height: 6rem;
+  border-bottom: 1px solid currentColor;
+}

@@ -84,6 +84,18 @@ export function assertContractPath(path: string): void {
     if (!advisoryOk) throw new ClientError('Refused a request outside the API contract.');
     return;
   }
+  if (parts[1] === 'live-vehicle') {
+    // Live vehicle card (ADR-009): online only. The history takes a plain query string.
+    const liveOk =
+      extra.length === 0 &&
+      parts[0] === '' &&
+      ((parts.length === 2 && query === undefined) ||
+        (parts.length === 3 &&
+          parts[2] === 'history' &&
+          (query === undefined || QUERY_RE.test(query))));
+    if (!liveOk) throw new ClientError('Refused a request outside the API contract.');
+    return;
+  }
   const ok =
     extra.length === 0 &&
     parts[0] === '' &&
