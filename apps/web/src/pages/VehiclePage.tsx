@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { Vehicle } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
 import { TextField } from '../components/Field';
+import { LiveVehicleCard } from '../components/LiveVehicleCard';
 import { SyncBadge } from '../components/SyncBadge';
 import { useVehicle } from '../data/hooks';
 import { saveVehicle } from '../data/mutations';
@@ -23,6 +24,7 @@ export function VehiclePage() {
         <h1 id="vehicle-title">Vehicle</h1>
         {view ? <SyncBadge sync={view.sync} /> : null}
       </div>
+      <LiveVehicleCard />
       {view === null ? (
         <>
           <p className="muted">

@@ -607,8 +607,40 @@ export const warrantyHandlers = [
   }),
 ];
 
+/** Default for the live card: switched off, as on the host today. Tests override with server.use. */
+export const OFF_CARD = {
+  status: 'off',
+  interval_minutes: 5,
+  served_from: null,
+  observed_at: null,
+  received_at: null,
+  readings: {
+    odometer_km: null,
+    battery_percent: null,
+    range_km: null,
+    plugged_in: null,
+    charging: null,
+    tyres_kpa: {
+      driver_front: null,
+      passenger_front: null,
+      driver_rear: null,
+      passenger_rear: null,
+    },
+    service_distance_km: null,
+    service_days: null,
+  },
+};
+
+const liveHandlers = [
+  http.get('*/api/v1/live-vehicle', () => HttpResponse.json(OFF_CARD)),
+  http.get('*/api/v1/live-vehicle/history', () =>
+    HttpResponse.json({ items: [], interval_minutes: 5, retention_months: 12 }),
+  ),
+];
+
 export const server = setupServer(
   ...handlers,
+  ...liveHandlers,
   ...reminderHandlers,
   ...expenseHandlers,
   ...warrantyHandlers,
