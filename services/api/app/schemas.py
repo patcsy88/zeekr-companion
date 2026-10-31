@@ -719,3 +719,66 @@ def _bounded_limit(maximum: int):  # type: ignore[no-untyped-def]
 
 ProposalLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(200))]
 ModelCallLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(100))]
+
+
+class LiveTyres(BaseModel):
+    driver_front: int | None
+    passenger_front: int | None
+    driver_rear: int | None
+    passenger_rear: int | None
+
+
+class LiveReadings(BaseModel):
+    odometer_km: int | None
+    battery_percent: float | None
+    range_km: int | None
+    plugged_in: bool | None
+    charging: bool | None
+    tyres_kpa: LiveTyres
+    service_distance_km: int | None
+    service_days: int | None
+
+    @classmethod
+    def empty(cls) -> LiveReadings:
+        return cls(
+            odometer_km=None,
+            battery_percent=None,
+            range_km=None,
+            plugged_in=None,
+            charging=None,
+            tyres_kpa=LiveTyres(
+                driver_front=None, passenger_front=None, driver_rear=None, passenger_rear=None
+            ),
+            service_distance_km=None,
+            service_days=None,
+        )
+
+
+class LiveCardOut(BaseModel):
+    status: Literal["off", "ok", "unavailable", "paused"]
+    interval_minutes: int
+    served_from: Literal["zeekr", "cache"] | None
+    observed_at: UtcDateTime | None
+    received_at: UtcDateTime | None
+    readings: LiveReadings
+
+
+class LiveReadingItem(LiveReadings):
+    id: uuid.UUID
+    observed_at: UtcDateTime
+    received_at: UtcDateTime
+
+
+class LiveHistoryOut(BaseModel):
+    items: list[LiveReadingItem]
+    interval_minutes: int
+    retention_months: int
+
+
+class LiveDeleteOut(BaseModel):
+    deleted: int
+
+
+LiveHistoryLimit = Annotated[
+    int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(1000))
+]

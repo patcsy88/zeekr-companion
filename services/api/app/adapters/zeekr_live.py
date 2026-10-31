@@ -161,7 +161,9 @@ def build_live_provider(settings: Settings) -> ZeekrLiveTelemetryProvider | None
     values = {name.removeprefix("zeekr_"): secret(name) for name in ZEEKR_LIVE_FIELDS}
     # Looked up at call time (not bound as a default) so a test can replace the library.
     source = ZeekrStatusSource(ZeekrSettings(**values), lambda s: _build_client(s))
-    return ZeekrLiveTelemetryProvider(source)
+    return ZeekrLiveTelemetryProvider(
+        source, min_interval_s=settings.zeekr_live_interval_minutes * 60.0
+    )
 
 
 def _silent_logger() -> logging.Logger:
@@ -243,14 +245,31 @@ class ZeekrLiveTelemetryProvider:
         self._snapshot: Snapshot | None = None
         self._next_try = 0.0
         self._failures = 0
+        self._fetches = 0
 
     @property
     def stopped(self) -> bool:
         return self._failures >= self._max_failures
 
+    @property
+    def failures(self) -> int:
+        """Consecutive failed reads; 0 after a success."""
+        return self._failures
+
+    @property
+    def fetches(self) -> int:
+        """Real reads attempted, so a caller can tell a fresh read from a cached one."""
+        return self._fetches
+
+    @property
+    def snapshot(self) -> Snapshot | None:
+        """The last successful snapshot, or None after a failure or before the first read."""
+        return self._snapshot
+
     def _current(self) -> Snapshot | None:
         if self.stopped or self._clock() < self._next_try:
             return self._snapshot
+        self._fetches += 1
         try:
             self._snapshot = map_status(self._source())
         except Exception:

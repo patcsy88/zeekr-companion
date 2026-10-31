@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -16,6 +17,7 @@ from sqlalchemy import (
     Index,
     Integer,
     MetaData,
+    Numeric,
     String,
     Text,
     Uuid,
@@ -377,5 +379,55 @@ class WarrantyClaim(Base):
             desc("date"),
             desc("created_at"),
             desc("id"),
+        ),
+    )
+
+
+class LiveReading(Base):
+    """One stored reading from the car (ADR-009). No position, locks, doors, VIN, plate, nickname,
+    free text or raw reply. `observed_at` is the car's own update time and is unique, so a repeat
+    of the same reading is stored once."""
+
+    __tablename__ = "live_reading"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    observed_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, unique=True
+    )
+    received_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    odometer_km: Mapped[int | None] = mapped_column(Integer)
+    battery_percent: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    range_km: Mapped[int | None] = mapped_column(Integer)
+    service_days: Mapped[int | None] = mapped_column(Integer)
+    service_distance_km: Mapped[int | None] = mapped_column(Integer)
+    tyre_driver_front_kpa: Mapped[int | None] = mapped_column(Integer)
+    tyre_passenger_front_kpa: Mapped[int | None] = mapped_column(Integer)
+    tyre_driver_rear_kpa: Mapped[int | None] = mapped_column(Integer)
+    tyre_passenger_rear_kpa: Mapped[int | None] = mapped_column(Integer)
+    is_charging: Mapped[bool | None] = mapped_column(Boolean)
+    is_plugged_in: Mapped[bool | None] = mapped_column(Boolean)
+
+    __table_args__ = (
+        CheckConstraint(
+            "odometer_km IS NULL OR odometer_km BETWEEN 0 AND 10000000", name="odometer_range"
+        ),
+        CheckConstraint(
+            "battery_percent IS NULL OR battery_percent BETWEEN 0 AND 100", name="battery_range"
+        ),
+        CheckConstraint("range_km IS NULL OR range_km BETWEEN 0 AND 5000", name="range_range"),
+        CheckConstraint(
+            "service_days IS NULL OR service_days BETWEEN -100000 AND 100000",
+            name="service_days_range",
+        ),
+        CheckConstraint(
+            "service_distance_km IS NULL OR service_distance_km BETWEEN -100000 AND 100000",
+            name="service_distance_range",
+        ),
+        CheckConstraint(
+            "(tyre_driver_front_kpa IS NULL OR tyre_driver_front_kpa BETWEEN 0 AND 500)"
+            " AND (tyre_passenger_front_kpa IS NULL OR tyre_passenger_front_kpa BETWEEN 0 AND 500)"
+            " AND (tyre_driver_rear_kpa IS NULL OR tyre_driver_rear_kpa BETWEEN 0 AND 500)"
+            " AND (tyre_passenger_rear_kpa IS NULL OR tyre_passenger_rear_kpa BETWEEN 0 AND 500)",
+            name="tyre_range",
         ),
     )

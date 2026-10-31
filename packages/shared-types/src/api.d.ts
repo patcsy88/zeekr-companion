@@ -169,6 +169,47 @@ export interface paths {
         patch: operations["patch_expense_api_v1_expenses__expense_id__patch"];
         trace?: never;
     };
+    "/api/v1/live-vehicle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Card
+         * @description The latest reading. Makes a real Zeekr read only if the spacing window has passed.
+         */
+        get: operations["live_card_api_v1_live_vehicle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live-vehicle/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live History */
+        get: operations["live_history_api_v1_live_vehicle_history_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Live Delete All
+         * @description Deletes every stored reading. Needs `confirm=delete_all`.
+         */
+        delete: operations["live_delete_all_api_v1_live_vehicle_history_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reminder-templates": {
         parameters: {
             query?: never;
@@ -748,6 +789,99 @@ export interface components {
             currency: "MYR";
             /** Total Minor */
             total_minor: number;
+        };
+        /** LiveCardOut */
+        LiveCardOut: {
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Observed At */
+            observed_at: string | null;
+            readings: components["schemas"]["LiveReadings"];
+            /** Received At */
+            received_at: string | null;
+            /** Served From */
+            served_from: ("zeekr" | "cache") | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "off" | "ok" | "unavailable" | "paused";
+        };
+        /** LiveDeleteOut */
+        LiveDeleteOut: {
+            /** Deleted */
+            deleted: number;
+        };
+        /** LiveHistoryOut */
+        LiveHistoryOut: {
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Items */
+            items: components["schemas"]["LiveReadingItem"][];
+            /** Retention Months */
+            retention_months: number;
+        };
+        /** LiveReadingItem */
+        LiveReadingItem: {
+            /** Battery Percent */
+            battery_percent: number | null;
+            /** Charging */
+            charging: boolean | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Odometer Km */
+            odometer_km: number | null;
+            /** Plugged In */
+            plugged_in: boolean | null;
+            /** Range Km */
+            range_km: number | null;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Service Days */
+            service_days: number | null;
+            /** Service Distance Km */
+            service_distance_km: number | null;
+            tyres_kpa: components["schemas"]["LiveTyres"];
+        };
+        /** LiveReadings */
+        LiveReadings: {
+            /** Battery Percent */
+            battery_percent: number | null;
+            /** Charging */
+            charging: boolean | null;
+            /** Odometer Km */
+            odometer_km: number | null;
+            /** Plugged In */
+            plugged_in: boolean | null;
+            /** Range Km */
+            range_km: number | null;
+            /** Service Days */
+            service_days: number | null;
+            /** Service Distance Km */
+            service_distance_km: number | null;
+            tyres_kpa: components["schemas"]["LiveTyres"];
+        };
+        /** LiveTyres */
+        LiveTyres: {
+            /** Driver Front */
+            driver_front: number | null;
+            /** Driver Rear */
+            driver_rear: number | null;
+            /** Passenger Front */
+            passenger_front: number | null;
+            /** Passenger Rear */
+            passenger_rear: number | null;
         };
         /** ReminderCreate */
         ReminderCreate: {
@@ -2101,6 +2235,143 @@ export interface operations {
             };
             /** @description not_found: resource does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    live_card_api_v1_live_vehicle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveCardOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    live_history_api_v1_live_vehicle_history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                since?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveHistoryOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    live_delete_all_api_v1_live_vehicle_history_delete: {
+        parameters: {
+            query: {
+                confirm: "delete_all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveDeleteOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
