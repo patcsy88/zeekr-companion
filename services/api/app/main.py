@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -18,7 +19,16 @@ from app.errors import AppError, Conflict, InvalidInput, NotFound, RateLimited, 
 from app.middleware import BodyLimitMiddleware, NoStoreMiddleware
 from app.observability import init_sentry
 from app.openapi_docs import install as install_openapi_docs
-from app.routers import advisory, auth, expenses, reminders, service_records, vehicle, warranty
+from app.routers import (
+    advisory,
+    auth,
+    expenses,
+    live_vehicle,
+    reminders,
+    service_records,
+    vehicle,
+    warranty,
+)
 from app.services.auth import AuthService
 from app.services.reasoning import build_reasoning_model
 
@@ -121,8 +131,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.reasoning_model = build_reasoning_model(settings)
-    # None unless ZEEKR_LIVE_ENABLED. No route reads it yet, and building it sends nothing.
+    # None unless ZEEKR_LIVE_ENABLED. Building it sends nothing; the first request that reads it
+    # may log in. The lock makes a read and its store one step, so two pages cause one read.
     app.state.live_telemetry = build_live_provider(settings)
+    app.state.live_lock = threading.Lock()
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.auth_service = AuthService(
@@ -164,6 +176,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expenses.router,
         warranty.router,
         advisory.router,
+        live_vehicle.router,
     ):
         app.include_router(router, prefix="/api/v1")
     return app

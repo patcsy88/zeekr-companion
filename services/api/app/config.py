@@ -51,6 +51,8 @@ class Settings(BaseSettings):
 
     # Live Zeekr readings (ADR-009). Off by default. The values live in the host `infra/.env` only.
     zeekr_live_enabled: bool = False
+    # Spacing between real Zeekr reads and the page's refresh interval. Below 5 refuses to start.
+    zeekr_live_interval_minutes: int = Field(default=5, ge=5, le=1440)
     zeekr_username: SecretStr | None = None
     zeekr_password: SecretStr | None = None
     zeekr_country_code: str | None = Field(default=None, max_length=8)

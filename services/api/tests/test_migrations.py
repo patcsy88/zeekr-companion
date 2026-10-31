@@ -29,7 +29,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0007"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0008"
             )
     finally:
         engine.dispose()
@@ -211,4 +211,34 @@ def test_adr008_advisory_migration_downgrades_and_reapplies(fresh_database_url: 
         os.environ.pop("DATABASE_URL", None)
     run_migrations(fresh_database_url)
     assert {"advisory_proposal", "advisory_model_call"} <= set(inspect(engine).get_table_names())
+    engine.dispose()
+
+
+def test_live_reading_migration_downgrades_and_reapplies(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0007")
+        engine = create_engine(fresh_database_url)
+        assert "live_reading" not in inspect(engine).get_table_names()
+        assert "advisory_proposal" in inspect(engine).get_table_names()
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    insp = inspect(engine)
+    assert "live_reading" in insp.get_table_names()
+    assert "uq_live_reading_observed_at" in {
+        c["name"] for c in insp.get_unique_constraints("live_reading")
+    }
     engine.dispose()
