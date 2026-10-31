@@ -607,3 +607,108 @@ Tyres and attachments. They are specified when their increment starts. Reminders
 
 - **Implemented 2026-10-29 (build step 3, model off):** the six endpoints above, migration `0007`, and the Advisory screen (online only, no cache or queue). With the model off, proposals are stored with `explanation_status` `disabled`; if `ADVISORY_MODEL_ENABLED=true` but no model code exists yet, the run reports `model.status` `unavailable` and proposals get `unavailable`. A run is serialised, all or nothing, and returns `400 validation_error` if it would pass the 2,000-proposal cap; it also deletes model-call rows older than 396 days. Only incomplete service reminders with both a due date and a due odometer are checked. Accepting a suggestion opens the normal "Add reminder" form prefilled from `suggestion`; the proposal is marked accepted by `PATCH` only after the reminder is saved, and Cancel decides nothing. No change to the approved contract. Deployed 2026-10-30 (owner-reported).
 - **Step 4 (built 2026-10-30, not deployed):** with the model on, `explanation_status` can be `model`, `limit_reached`, `unavailable` (switch on but no model, or the call failed) or `invalid_output`; `urgency`, `explanation`, `prompt_version` (1) and `model_id` are filled only for `model`. `model.status` is `used` when a model is configured, `limit_reached` when the monthly limit stopped a call in this run. Every call is listed by `GET /advisory/model-calls`. No endpoint, field or enum value changed.
+
+## Live vehicle card and history (DRAFT, 2026-10-31, NOT approved; ADR-009)
+
+Drafted by the Engineering Lead for the owner's review. **No code, migration or deploy exists or is approved.** Basis: `docs/product/live-vehicle-card-proposal.md` (approved as a proposal on 2026-10-31) and the owner's answers on the data model. Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code. Validation failures are `400 validation_error`, never 422.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/live-vehicle` | The card. Returns the latest reading, and makes a real Zeekr read only if the server's spacing window has passed. `200` |
+| `GET` | `/api/v1/live-vehicle/history` | Stored readings, newest first. Query: `limit` (1 to 1000, default 100, strict integer), `since` (UTC timestamp, optional). `200` |
+| `DELETE` | `/api/v1/live-vehicle/history` | Deletes every stored reading. Needs query `confirm=delete_all`, else `400 validation_error` on `confirm`. `200` with `{ "deleted": <count> }` (a body, not 204, so the screen can show the count) |
+
+No endpoint writes to the car, creates a reading from a request body, or edits a reading. The card and the history take no request body.
+
+### Card object (`GET /api/v1/live-vehicle`)
+
+```json
+{
+  "status": "off | ok | unavailable | paused",
+  "interval_minutes": 5,
+  "served_from": "zeekr | cache | null",
+  "observed_at": "timestamp|null",
+  "received_at": "timestamp|null",
+  "readings": {
+    "odometer_km": 0,
+    "battery_percent": 0.0,
+    "range_km": 0,
+    "plugged_in": true,
+    "charging": false,
+    "tyres_kpa": { "driver_front": 0, "passenger_front": 0, "driver_rear": 0, "passenger_rear": 0 },
+    "service_distance_km": 0,
+    "service_days": 0
+  }
+}
+```
+
+- The numbers are shape only, not a reading. Every value under `readings` may be `null` (missing, empty or out of range), shown as "no reading", never as zero. With `status` `off`, `readings` is all `null`, `observed_at` and `received_at` are `null`, and no Zeekr call is made.
+- `status`: `off` (`ZEEKR_LIVE_ENABLED` is false), `ok` (the readings are the car's latest), `unavailable` (the last Zeekr read failed; the **last stored reading** is still returned with its own `observed_at` so the screen can say how old it is, or all `null` if none), `paused` (5 failures; stays so until the API restarts; no reset exists, owner decision).
+- `interval_minutes`: the configured spacing X, at least 5. The page timer follows it. Source: host setting, below.
+- `served_from`: `zeekr` if this request caused a real read; `cache` if it fell inside the spacing window and returned the stored reading (the screen then says "no newer reading yet" with the reading's own time); `null` when `off`.
+- `observed_at` is the car's own update time (UTC). `received_at` is when the server got it. The screen shows both in Asia/Kuala_Lumpur.
+- Distances are integers in km, tyre pressure integer kPa (owner-confirmed unit), `battery_percent` a number from 0 to 100 (the car's precision is unverified; the model stores one decimal).
+- **Never present** in the response, the logs or the table: position, lock state, door state, VIN, plate, nickname, and the raw Zeekr reply. A test checks the serialised response.
+- Failures show fixed text. Nothing from the Zeekr library or server appears in the response or logs.
+
+### Spacing and who triggers a read
+
+- The web page calls the card endpoint on a timer every `interval_minutes`, and on pull-down, **only while the Vehicle page is open and visible**. The server never polls Zeekr in the background (owner decision A).
+- The server makes at most one real Zeekr read per `interval_minutes`, however many calls arrive. Calls inside the window return the stored reading with `served_from: "cache"` and store nothing.
+- Concurrent calls are serialised, so two pages cannot cause two reads.
+
+### Settings (host `infra/.env`; the name is proposed, not found in the repo)
+
+`ZEEKR_LIVE_INTERVAL_MINUTES`: integer, default 5, minimum 5 (owner decisions). **Open point for the owner:** a value below 5 should make the API **refuse to start** (consistent with the other `ZEEKR_*` settings) rather than silently raise it. Proposed: refuse. Changed by editing the file and restarting the API. This replaces the provider's fixed 5-minute spacing with the setting, a code change inside ADR-009's wrapper.
+
+### History (`GET /api/v1/live-vehicle/history`)
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "observed_at": "timestamp",
+      "received_at": "timestamp",
+      "odometer_km": 0,
+      "battery_percent": 0.0,
+      "range_km": 0,
+      "plugged_in": true,
+      "charging": false,
+      "tyres_kpa": { "driver_front": 0, "passenger_front": 0, "driver_rear": 0, "passenger_rear": 0 },
+      "service_distance_km": 0,
+      "service_days": 0
+    }
+  ],
+  "interval_minutes": 5,
+  "retention_months": 12
+}
+```
+
+- Newest first by `observed_at`, then `id`. Fields other than `id`, `observed_at` and `received_at` may be `null`.
+- **Gaps are the client's to show.** Because only an open Vehicle page causes reads, the history has holes. The screen marks a gap wherever two consecutive items are more than 3 × `interval_minutes` apart and draws **no line across it**. The factor 3 is a proposed named constant for the owner to change.
+- The screen is a list plus a simple trend for battery and odometer (owner answer). Chart scope (range of days, axes) is settled with the owner at the build step; the contract does not depend on it.
+- `since` returns items with `observed_at` at or after it. A bad `limit` or timestamp is `400 validation_error`.
+
+### Errors
+
+Missing or invalid token is `401 unauthenticated` on all three endpoints. `DELETE` without `confirm=delete_all` is `400 validation_error`. A failed or paused Zeekr read is **not** an HTTP error: the card returns `200` with `status` `unavailable` or `paused`.
+
+### Offline
+
+Online only. Neither the card nor the history is cached by the service worker or queued. Offline the card says "Needs a connection". The rest of the app is unaffected.
+
+### Acceptance criteria (draft; the proposal's list still applies)
+
+1. `off`: `200`, `status: "off"`, all `null`, no outbound call, nothing stored.
+2. A real read happens at most once per `interval_minutes`; calls inside the window return `served_from: "cache"` and store nothing.
+3. A real read whose `observed_at` equals the newest stored row's stores nothing (owner answer 1).
+4. A real read with every field `null` stores nothing.
+5. Rows with `observed_at` older than 12 months are deleted when a reading is stored (owner answer 2).
+6. `DELETE` needs `confirm=delete_all`, removes every row and returns the count; the next card call may store a new row.
+7. The response, table and logs contain no position, lock, door, VIN, plate, nickname or raw reply.
+8. After 5 failures the endpoint returns `paused`, makes no Zeekr call, and the last stored reading is still shown.
+9. `ZEEKR_LIVE_INTERVAL_MINUTES` below 5 stops the API starting (proposed).
+10. Unauthenticated calls get `401`. The service worker does not cache either path.
