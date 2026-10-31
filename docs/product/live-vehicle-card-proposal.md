@@ -1,6 +1,6 @@
 # Live vehicle card: proposal
 
-Status: **proposed, not approved** (drafted 2026-10-31 at the owner's request, "B"). No code, contract or screen exists for this. Builds on ADR-009 (the read-only live provider, deployed off) and ADR-008 (the telemetry port). Nothing here changes an approved contract until the owner approves it.
+Status: **proposed, owner answers recorded 2026-10-31, still not approved as a whole** (see "Owner answers" at the end; two points need confirming before the contract is drafted). Drafted 2026-10-31 at the owner's request, "B". No code, contract or screen exists for this. Builds on ADR-009 (the read-only live provider, deployed off) and ADR-008 (the telemetry port). Nothing here changes an approved contract until the owner approves it.
 
 ## What the owner would get
 
@@ -24,8 +24,12 @@ Every line says "as of" the car's own update time (Asia/Kuala_Lumpur), and a mis
 
 ## Proposed behaviour
 
-1. **Pull, not push.** The server contacts Zeekr only when the owner opens the card or presses Refresh. There is no background polling. The provider already serves a cached snapshot for at least 5 minutes, so repeated opens do not repeat the call.
-2. **Not stored.** Readings live in the server's memory and are lost on restart. No new table, no migration. A history (for example battery over time) would be a separate slice with its own data model.
+1. **Updates by a timer and by pull-down (revised after the owner's answers to questions 4 and 5).**
+   - **Timer:** the card refreshes itself every X minutes while it is on screen. X is configurable, with a **minimum of 5 minutes**; a lower value is refused or raised to 5.
+   - **Pull-down:** pulling the page down asks for a refresh. The server still spaces its real calls to Zeekr by the same X, so a pull inside that window returns the cached reading and the card says "no newer reading yet" with the reading's own time. This stops repeated pulls from becoming repeated logins.
+   - **Who polls (proposed, needs the owner's confirmation):** the web page does, only while the Vehicle page is open and visible. The server never polls Zeekr in the background. Background polling around the clock would mean about 288 reads a day at 5 minutes, would run with nobody looking, and the effect of reads on the car's 12 V battery is unknown. The alternative (server polls all the time, so the card is always warm and history becomes possible) is a larger decision and is not what this proposal assumes.
+   - **Where X is set (proposed, not found in the repo):** a host setting such as `ZEEKR_LIVE_INTERVAL_MINUTES` in `infra/.env`, default 5, floor 5, changed by editing the file and restarting the API. The API sends the current X to the page so the timer follows it. An in-app setting would need a stored value and a settings screen; that is not proposed unless the owner wants it.
+2. **No history table.** Readings live in the server's memory and are lost on restart. No new table, no migration. This is the agent's reading of the owner's answer; see "Owner answers". A history (for example battery over time) would be a separate slice with its own data model.
 3. **Online only.** The card is not cached by the service worker and is not queued offline. Offline it says "Needs a connection". Live data that looks current but is old would mislead.
 4. **Off means invisible.** With `ZEEKR_LIVE_ENABLED=false` the card shows "Live readings are off" and no call is made.
 5. **Failure is stated plainly.** States: off, reading, readings available, no readings (car reported nothing), unavailable (last read failed), paused (5 failures, until the API restarts). No server text is shown.
@@ -51,7 +55,9 @@ The numbers above are examples in the right shape, not a reading. `status` is on
 ## Acceptance criteria (draft)
 
 1. With the flag off, the endpoint returns `status: "off"` with no readings, and no outbound call is made.
-2. With the flag on, opening the card makes at most one Zeekr read per 5 minutes however many times it is opened.
+2. With the flag on, the server makes at most one Zeekr read per X minutes (X from the setting, never below 5) however many times the card is opened, timed or pulled down, and none while no page asks.
+2a. A setting below 5 is raised to 5 (or refused at startup; the contract will say which), and the response carries the current X so the page timer matches.
+2b. Pull-down inside the window returns the cached reading and the card says no newer reading yet.
 3. A missing, empty or out-of-range value is `null`, shown as "no reading".
 4. The response contains no position, lock, door, VIN, plate or nickname field (test on the serialised response).
 5. A failed read returns `status: "unavailable"` with fixed text, and nothing from the server or the library appears in the response or the logs.
@@ -77,11 +83,18 @@ The numbers above are examples in the right shape, not a reading. `status` is on
 - **Stability of the sign-in.** `prod_secret` candidate 3 worked on the Mac on 2026-10-31. Whether it keeps working is unknown.
 - **Paused state needs a restart.** After 5 failures the owner must restart the API. A "try again" button would be a small addition, but it would let a person hammer a failing login, so it is not proposed.
 
-## Questions for the owner
+## Owner answers (2026-10-31)
 
-1. Is this the right first use, or would you rather the odometer feed the existing service checks first?
-2. Which lines should the card show? The list above, fewer, or more?
-3. Where should it live: at the top of the Vehicle page, or its own tab?
-4. Is "shown live, never stored" right for now, or do you want history (a separate slice)?
-5. Do you accept pull-only with a 5-minute minimum, or do you want a different spacing?
-6. Should a paused state need an API restart, or do you want a deliberate reset?
+1. **First use:** yes, read the information from the car and show it read-only. Whether any of it goes to the model is the owner's later decision (nothing goes now).
+2. **Lines:** show all of the list above.
+3. **Place:** the Vehicle page.
+4. **Updates:** "No" to pull-only. Poll for updates on a configurable interval, and also allow pull-down to refresh.
+5. **Spacing:** configurable, with a 5-minute minimum.
+6. **Paused state:** hold for now. Until decided, a paused provider stays paused until the API restarts, and no reset is built.
+
+## Still open (needs the owner before the contract is drafted)
+
+- **A. Who polls.** The page while it is open (proposed), or the server all the time? See behaviour item 1.
+- **B. "No" to question 4.** The agent read it as "update on a timer, not only on open", with no history table. If the owner also wants readings kept over time, that is a data model and a separate slice.
+- **C. Where the interval is set.** Host `.env` and restart (proposed), or an in-app setting.
+- **D. Explicit approval** of this proposal as revised, so the contract can be drafted for review. Nothing is built until then.
