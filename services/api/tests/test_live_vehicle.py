@@ -339,3 +339,221 @@ def test_the_interval_sets_the_provider_spacing_and_is_reported(
     provider = build_live_provider(live_settings(zeekr_live_interval_minutes=20))
     assert provider is not None
     assert provider._min_interval == 20 * 60
+
+
+# --- fixes from the QA and security reviews (2026-10-31) ---
+
+
+def test_mapper_limits_sit_inside_the_table_checks() -> None:
+    from app.adapters.zeekr_live import map_status
+    from app.live_limits import ODOMETER_KM, SERVICE_DAYS, SERVICE_DISTANCE_KM
+
+    def mapped(**kw: Any) -> Any:
+        return map_status(status(**kw))
+
+    def maint(**kw: Any) -> dict[str, Any]:
+        body = status()
+        body["additionalVehicleStatus"]["maintenanceStatus"].update(kw)
+        return body
+
+    assert map_status(maint(odometer=ODOMETER_KM[1])).odometer_km == ODOMETER_KM[1]
+    assert map_status(maint(odometer=ODOMETER_KM[1] + 1)).odometer_km is None
+    assert map_status(maint(odometer=3_000_000_000)).odometer_km is None
+    assert map_status(maint(daysToService=SERVICE_DAYS[1] + 1)).days_to_service is None
+    assert map_status(maint(daysToService=SERVICE_DAYS[0] - 1)).days_to_service is None
+    assert (
+        map_status(maint(distanceToService=SERVICE_DISTANCE_KM[1] + 1)).distance_to_service_km
+        is None
+    )
+    assert mapped() is not None
+
+
+def test_overdue_service_is_kept_as_a_negative_number() -> None:
+    from app.adapters.zeekr_live import map_status
+
+    body = status()
+    body["additionalVehicleStatus"]["maintenanceStatus"].update(
+        daysToService=-5, distanceToService=-120
+    )
+    snap = map_status(body)
+    assert snap.days_to_service == -5 and snap.distance_to_service_km == -120
+
+
+def test_an_odd_value_from_the_car_no_longer_breaks_the_card(
+    client: TestClient, auth_headers: dict[str, str], live: Any
+) -> None:
+    body = with_time(recent())
+    body["additionalVehicleStatus"]["maintenanceStatus"]["odometer"] = 20_000_000
+    body["additionalVehicleStatus"]["maintenanceStatus"]["distanceToService"] = 200_000
+    live(body)
+    r = client.get(CARD, headers=auth_headers)
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok" and r.json()["readings"]["odometer_km"] is None
+    assert r.json()["readings"]["battery_percent"] == 64.0
+
+
+def test_a_storage_error_is_unavailable_not_a_500(
+    client: TestClient, auth_headers: dict[str, str], live: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    from app.repositories.live_readings import LiveReadingRepository
+
+    def boom(self: Any, values: Any, keep_after: Any) -> bool:
+        raise OperationalError("insert", {}, Exception(CANARY))
+
+    monkeypatch.setattr(LiveReadingRepository, "store", boom)
+    live(with_time(recent()))
+    r = client.get(CARD, headers=auth_headers)
+    assert r.status_code == 200 and r.json()["status"] == "unavailable"
+    assert CANARY not in r.text and count(client) == 0
+
+
+def test_a_car_time_in_the_future_is_not_stored(
+    client: TestClient, auth_headers: dict[str, str], live: Any
+) -> None:
+    live(with_time(dt.datetime.now(dt.UTC) + dt.timedelta(days=400)))
+    body = client.get(CARD, headers=auth_headers).json()
+    assert body["status"] == "ok" and body["observed_at"] is None
+    assert count(client) == 0
+    live(with_time(dt.datetime.now(dt.UTC) + dt.timedelta(minutes=2)))
+    client.get(CARD, headers=auth_headers)
+    assert count(client) == 1
+
+
+def test_a_card_request_does_not_wait_forever_for_a_slow_read(
+    client: TestClient, auth_headers: dict[str, str], live: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from app.services import live_vehicle
+
+    monkeypatch.setattr(live_vehicle, "LOCK_WAIT_S", 0.2)
+    live(with_time(recent()))
+    lock: threading.Lock = client.app.state.live_lock  # type: ignore[attr-defined]
+    lock.acquire()
+    try:
+        r = client.get(CARD, headers=auth_headers)
+        assert r.status_code == 200 and r.json()["served_from"] == "cache"
+        # delete does not wait behind a read either
+        assert (
+            client.delete(HISTORY + "?confirm=delete_all", headers=auth_headers).status_code == 200
+        )
+    finally:
+        lock.release()
+
+
+def test_history_prunes_rows_older_than_twelve_months(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    old = months_before(dt.datetime.now(dt.UTC), 12) - dt.timedelta(days=1)
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        conn.execute(
+            text(
+                "INSERT INTO live_reading (id, observed_at, received_at, odometer_km) "
+                "VALUES (gen_random_uuid(), :t, :t, 1)"
+            ),
+            {"t": old},
+        )
+    assert client.get(HISTORY, headers=auth_headers).json()["items"] == []
+    assert count(client) == 0
+
+
+@pytest.mark.parametrize("since", ["9999-12-31T23:59:59-05:00", "0001-01-01T00:00:00+05:00"])
+def test_an_extreme_since_is_a_400(
+    client: TestClient, auth_headers: dict[str, str], since: str
+) -> None:
+    r = client.get(HISTORY, params={"since": since}, headers=auth_headers)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "validation_error"
+
+
+def test_backoff_is_never_shorter_than_the_interval() -> None:
+    clock = Clock()
+    source = Source(ZeekrReadError("x"), ZeekrReadError("x"))
+    provider = ZeekrLiveTelemetryProvider(
+        source, clock=clock, min_interval_s=120 * 60, max_backoff_s=3600
+    )
+    provider.read_odometer()
+    clock.now += 119 * 60
+    provider.read_odometer()
+    assert source.calls == 1
+    clock.now += 2 * 60
+    provider.read_odometer()
+    assert source.calls == 2
+
+
+def test_the_module_calls_only_the_three_read_only_library_methods() -> None:
+    import ast
+    import inspect
+
+    from app.adapters import zeekr_live
+
+    tree = ast.parse(inspect.getsource(zeekr_live))
+    allowed = {"login", "get_vehicle_list", "get_status"}
+    called = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            owner = node.func.value
+            names = {n.id for n in ast.walk(owner) if isinstance(n, ast.Name)}
+            attrs = {n.attr for n in ast.walk(owner) if isinstance(n, ast.Attribute)}
+            if names & {"client", "vehicles"} or "_client" in attrs:
+                called.add(node.func.attr)
+            if isinstance(owner, ast.Subscript) and "vehicles" in names:
+                called.add(node.func.attr)
+    assert called <= allowed, called
+    assert allowed <= called, called
+
+
+def test_cache_headers_are_no_store_on_success_too(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    for r in (
+        client.get(CARD, headers=auth_headers),
+        client.get(HISTORY, headers=auth_headers),
+        client.delete(HISTORY + "?confirm=delete_all", headers=auth_headers),
+    ):
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+
+
+def test_every_value_the_mapper_keeps_fits_the_table(client: TestClient) -> None:
+    """Every bound is inserted into the real table, so its CHECK constraints judge them."""
+    from app import live_limits as lim
+
+    def row(**kw: Any) -> dict[str, Any]:
+        return kw
+
+    cases = [
+        row(odometer_km=lim.ODOMETER_KM[0]),
+        row(odometer_km=lim.ODOMETER_KM[1]),
+        row(battery_percent=lim.BATTERY_PERCENT[0]),
+        row(battery_percent=lim.BATTERY_PERCENT[1]),
+        row(range_km=lim.RANGE_KM[0]),
+        row(range_km=lim.RANGE_KM[1]),
+        row(service_days=lim.SERVICE_DAYS[0]),
+        row(service_days=lim.SERVICE_DAYS[1]),
+        row(service_distance_km=lim.SERVICE_DISTANCE_KM[0]),
+        row(service_distance_km=lim.SERVICE_DISTANCE_KM[1]),
+        *(
+            row(**{col: v})
+            for col in (
+                "tyre_driver_front_kpa",
+                "tyre_passenger_front_kpa",
+                "tyre_driver_rear_kpa",
+                "tyre_passenger_rear_kpa",
+            )
+            for v in lim.TYRE_KPA
+        ),
+    ]
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        for n, values in enumerate(cases):
+            cols = ", ".join(values)
+            params = ", ".join(f":{c}" for c in values)
+            conn.execute(
+                text(
+                    f"INSERT INTO live_reading (id, observed_at, received_at, {cols}) "  # noqa: S608
+                    "VALUES (gen_random_uuid(), now() - make_interval(secs => :n), now(), "
+                    f"{params})"
+                ),
+                {"n": n, **values},
+            )
+    assert count(client) == len(cases)

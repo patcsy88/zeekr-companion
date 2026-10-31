@@ -12,6 +12,7 @@ import {
   km,
   kpa,
   percent,
+  serviceKm,
   yesNo,
   type Point,
 } from '../lib/liveVehicle';
@@ -149,7 +150,7 @@ export function LiveHistoryPage() {
                     Plugged in {yesNo(i.plugged_in)} · Charging {yesNo(i.charging)} · Tyres{' '}
                     {kpa(i.tyres_kpa.driver_front)}, {kpa(i.tyres_kpa.passenger_front)},{' '}
                     {kpa(i.tyres_kpa.driver_rear)}, {kpa(i.tyres_kpa.passenger_rear)} · Service in{' '}
-                    {km(i.service_distance_km)}, {days(i.service_days)}
+                    {serviceKm(i.service_distance_km)}, {days(i.service_days)}
                   </p>
                   {gap && older ? (
                     <p className="notice info" data-testid="live-gap">

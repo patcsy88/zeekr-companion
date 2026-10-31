@@ -7,9 +7,12 @@ once per interval (the provider enforces the spacing), under one lock so two pag
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import threading
 from decimal import Decimal
 from typing import Literal
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.adapters.zeekr_live import Snapshot, ZeekrLiveTelemetryProvider
 from app.config import Settings
@@ -25,6 +28,9 @@ from app.schemas import (
 )
 
 RETENTION_MONTHS = 12
+CLOCK_SKEW = dt.timedelta(minutes=5)  # a car time further ahead than this is not believed
+LOCK_WAIT_S = 5.0  # a request waits this long for a read in progress, then serves what is stored
+log = logging.getLogger("app.live_vehicle")
 
 
 def months_before(moment: dt.datetime, months: int) -> dt.datetime:
@@ -107,18 +113,23 @@ class LiveVehicleService:
                 received_at=None,
                 readings=LiveReadings.empty(),
             )
-        with self._lock:
-            before = provider.fetches
-            provider.read_odometer()  # any read_* serves the shared snapshot and spaces the call
-            fetched = provider.fetches > before
-            snap = provider.snapshot
-            if fetched and snap is not None:
-                self._store(snap, now or dt.datetime.now(dt.UTC))
-            row = self._repo.latest()
+        fetched = False
+        store_failed = False
+        if self._lock.acquire(timeout=LOCK_WAIT_S):
+            try:
+                before = provider.fetches
+                provider.read_odometer()  # any read_* serves the shared snapshot
+                fetched = provider.fetches > before
+                snap = provider.snapshot
+                if fetched and snap is not None:
+                    store_failed = not self._store(snap, now or dt.datetime.now(dt.UTC))
+            finally:
+                self._lock.release()
+        row = self._repo.latest()
         status: Literal["ok", "unavailable", "paused"]
         if provider.stopped:
             status = "paused"
-        elif provider.failures > 0:
+        elif provider.failures > 0 or store_failed:
             status = "unavailable"
         else:
             status = "ok"
@@ -131,20 +142,28 @@ class LiveVehicleService:
             readings=_readings(row),
         )
 
-    def _store(self, snap: Snapshot, now: dt.datetime) -> None:
-        """Skip a reading with no car timestamp (it cannot be told from a repeat) or with every
-        value empty. A repeat of the newest `observed_at` is dropped by the unique index."""
-        if snap.observed_at is None:
-            return
+    def _store(self, snap: Snapshot, now: dt.datetime) -> bool:
+        """False only if the database refused the write. A reading is skipped (and True returned)
+        when it has no car timestamp (it cannot be told from a repeat), a car timestamp ahead of
+        the clock, or every value empty. A repeat of a stored `observed_at` is dropped by the
+        unique index."""
+        if snap.observed_at is None or snap.observed_at > now + CLOCK_SKEW:
+            return True
         data = _data_columns(snap)
         if all(v is None for v in data.values()):
-            return
-        self._repo.store(
-            {"observed_at": snap.observed_at, "received_at": now, **data},
-            keep_after=months_before(now, RETENTION_MONTHS),
-        )
+            return True
+        try:
+            self._repo.store(
+                {"observed_at": snap.observed_at, "received_at": now, **data},
+                keep_after=months_before(now, RETENTION_MONTHS),
+            )
+        except SQLAlchemyError:
+            log.warning("Could not store a live reading")
+            return False
+        return True
 
     def history(self, limit: int, since: dt.datetime | None) -> LiveHistoryOut:
+        self._repo.prune(months_before(dt.datetime.now(dt.UTC), RETENTION_MONTHS))
         rows = self._repo.list(limit, since)
         items = []
         for row in rows:
@@ -162,5 +181,5 @@ class LiveVehicleService:
         )
 
     def delete_all(self) -> LiveDeleteOut:
-        with self._lock:
-            return LiveDeleteOut(deleted=self._repo.delete_all())
+        # No lock: one DELETE is atomic, and it must not wait behind a slow Zeekr read.
+        return LiveDeleteOut(deleted=self._repo.delete_all())

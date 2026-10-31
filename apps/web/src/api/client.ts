@@ -64,8 +64,10 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
 
 /**
  * Only the contract's paths are allowed: /auth/token, /vehicle, /service-records, /reminders,
- * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and the {uuid} forms of the three collections, lists with a plain query string. Anything else (traversal, encoded
- * slashes, other hosts) is refused before fetch is called.
+ * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and
+ * the {uuid} forms of the three collections, with a plain query string on lists. The advisory
+ * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well.
+ * Anything else (traversal, encoded slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
   const [pathname = '', query, ...extra] = path.split('?');

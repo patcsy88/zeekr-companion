@@ -32,7 +32,10 @@ Currency = Literal["MYR"]
 def _to_utc(value: dt.datetime) -> dt.datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=dt.UTC)
-    return value.astimezone(dt.UTC)
+    try:
+        return value.astimezone(dt.UTC)
+    except OverflowError:
+        raise ValueError("is out of range") from None
 
 
 UtcDateTime = Annotated[dt.datetime, AfterValidator(_to_utc)]

@@ -414,3 +414,37 @@ describe('live vehicle: the history screen', () => {
     expect(screen.queryByText(/CANARY-TEXT/)).toBeNull();
   });
 });
+
+describe('live vehicle: overdue service', () => {
+  it('shows a negative number with overdue wording', async () => {
+    const c = card();
+    serveCard({ ...c, readings: { ...c.readings, service_days: -5, service_distance_km: -1200 } });
+    open();
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    expect(list).toHaveTextContent('overdue by 1,200 km, overdue by 5 days');
+    expect(list).not.toHaveTextContent('-');
+  });
+});
+
+describe('live vehicle: chart keys', () => {
+  it('draws without duplicate-key warnings when runs are single points', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    server.use(
+      http.get('*/api/v1/live-vehicle/history', () =>
+        HttpResponse.json(
+          history([
+            item(3, '2026-10-31T03:00:00Z', 4400, 60),
+            item(2, '2026-10-30T03:00:00Z', 4300, 70),
+            item(1, '2026-10-29T03:00:00Z', 4200, 80),
+          ]),
+        ),
+      ),
+    );
+    open('/vehicle/live');
+    render(<App />);
+    await screen.findByTestId('live-history-list');
+    expect(screen.getAllByTestId('live-trend')[0]?.querySelectorAll('circle')).toHaveLength(3);
+    expect(err).not.toHaveBeenCalled();
+  });
+});

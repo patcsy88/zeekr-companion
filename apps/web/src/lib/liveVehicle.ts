@@ -33,7 +33,16 @@ export function kpa(value: number | null): string {
 }
 
 export function days(value: number | null): string {
-  return value === null ? NO_READING : `${value} ${Math.abs(value) === 1 ? 'day' : 'days'}`;
+  if (value === null) return NO_READING;
+  const n = Math.abs(value);
+  const text = `${n} ${n === 1 ? 'day' : 'days'}`;
+  return value < 0 ? `overdue by ${text}` : text;
+}
+
+/** Distance to the next service. A negative number means the service distance has been passed. */
+export function serviceKm(value: number | null): string {
+  if (value === null) return NO_READING;
+  return value < 0 ? `overdue by ${Math.abs(value).toLocaleString('en-GB')} km` : km(value);
 }
 
 export function yesNo(value: boolean | null): string {
