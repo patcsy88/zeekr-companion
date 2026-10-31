@@ -608,9 +608,9 @@ Tyres and attachments. They are specified when their increment starts. Reminders
 - **Implemented 2026-10-29 (build step 3, model off):** the six endpoints above, migration `0007`, and the Advisory screen (online only, no cache or queue). With the model off, proposals are stored with `explanation_status` `disabled`; if `ADVISORY_MODEL_ENABLED=true` but no model code exists yet, the run reports `model.status` `unavailable` and proposals get `unavailable`. A run is serialised, all or nothing, and returns `400 validation_error` if it would pass the 2,000-proposal cap; it also deletes model-call rows older than 396 days. Only incomplete service reminders with both a due date and a due odometer are checked. Accepting a suggestion opens the normal "Add reminder" form prefilled from `suggestion`; the proposal is marked accepted by `PATCH` only after the reminder is saved, and Cancel decides nothing. No change to the approved contract. Deployed 2026-10-30 (owner-reported).
 - **Step 4 (built 2026-10-30, not deployed):** with the model on, `explanation_status` can be `model`, `limit_reached`, `unavailable` (switch on but no model, or the call failed) or `invalid_output`; `urgency`, `explanation`, `prompt_version` (1) and `model_id` are filled only for `model`. `model.status` is `used` when a model is configured, `limit_reached` when the monthly limit stopped a call in this run. Every call is listed by `GET /advisory/model-calls`. No endpoint, field or enum value changed.
 
-## Live vehicle card and history (DRAFT, 2026-10-31, NOT approved; ADR-009)
+## Live vehicle card and history (APPROVED by the owner, 2026-10-31; ADR-009)
 
-Drafted by the Engineering Lead for the owner's review. **No code, migration or deploy exists or is approved.** Basis: `docs/product/live-vehicle-card-proposal.md` (approved as a proposal on 2026-10-31) and the owner's answers on the data model. Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code. Validation failures are `400 validation_error`, never 422.
+Drafted by the Engineering Lead. **Approved by the owner on 2026-10-31, together with the data model, with these answers: `ZEEKR_LIVE_INTERVAL_MINUTES` below 5 refuses to start; gap rule 3 × the interval; battery 0 to 100 and tyres 0 to 500 kPa; a read with every field empty stores nothing; after a failure the last stored reading is shown; the spacing setting replaces the fixed 5 minutes; battery kept to one decimal. Changing it now needs the owner to be told first.** No code, migration or deploy exists yet, and none is approved beyond this contract and data model. Basis: `docs/product/live-vehicle-card-proposal.md` (approved as a proposal on 2026-10-31) and the owner's answers on the data model. Reuses all Conventions: `/api/v1`, `snake_case`, Bearer token, `no-store`, the 64 KiB limit, the error shape and the existing error codes. No new status or error code. Validation failures are `400 validation_error`, never 422.
 
 ### Endpoints
 
@@ -661,7 +661,7 @@ No endpoint writes to the car, creates a reading from a request body, or edits a
 
 ### Settings (host `infra/.env`; the name is proposed, not found in the repo)
 
-`ZEEKR_LIVE_INTERVAL_MINUTES`: integer, default 5, minimum 5 (owner decisions). **Open point for the owner:** a value below 5 should make the API **refuse to start** (consistent with the other `ZEEKR_*` settings) rather than silently raise it. Proposed: refuse. Changed by editing the file and restarting the API. This replaces the provider's fixed 5-minute spacing with the setting, a code change inside ADR-009's wrapper.
+`ZEEKR_LIVE_INTERVAL_MINUTES`: integer, default 5, minimum 5 (owner decisions). A value below 5 makes the API **refuse to start** (owner-approved 2026-10-31), consistent with the other `ZEEKR_*` settings. The variable name is still the agent's proposal, not found in the repo. Changed by editing the file and restarting the API. This replaces the provider's fixed 5-minute spacing with the setting, a code change inside ADR-009's wrapper.
 
 ### History (`GET /api/v1/live-vehicle/history`)
 

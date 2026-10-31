@@ -179,9 +179,9 @@ The pace is **not** sent (it is not on the approved list); the projected date ca
 
 **Web.** Online only in the first build: proposals are not cached offline and decisions are not queued. A new Advisory screen lists proposals with their inputs, explanation and "why" (rule version, model id), and Accept/Dismiss buttons. Accept opens the ordinary create-reminder form prefilled with the suggestion; saving it is a normal `POST /reminders` made by the owner, then the proposal is marked accepted. The service worker is unchanged.
 
-### Live vehicle readings data model (DRAFT 2026-10-31, NOT approved; ADR-009)
+### Live vehicle readings data model (APPROVED by the owner, 2026-10-31; ADR-009)
 
-Drafted for the owner's review. No migration or code exists. Contract: "Live vehicle card and history" in `api-contracts.md`. Owner answers applied: skip a read whose car timestamp equals the newest row, keep 12 months, a delete-all action, a list plus simple trend with gaps shown.
+Approved as drafted, with the tyre bound set to 0 to 500 kPa. Changing it now needs the owner to be told first. No migration or code exists yet. Contract: "Live vehicle card and history" in `api-contracts.md`. Owner answers applied: skip a read whose car timestamp equals the newest row, keep 12 months, a delete-all action, a list plus simple trend with gaps shown.
 
 **New table (next migration after `0007`, with a downgrade; the number is assigned at build).**
 
@@ -190,7 +190,8 @@ Drafted for the owner's review. No migration or code exists. Contract: "Live veh
 | `live_reading` | `id` uuid PK (server generated), `observed_at` timestamptz NOT NULL (the car's own update time, UTC), `received_at` timestamptz NOT NULL, `odometer_km` integer null, `battery_percent` numeric(4,1) null, `range_km` integer null, `service_days` integer null, `service_distance_km` integer null, `tyre_driver_front_kpa`, `tyre_passenger_front_kpa`, `tyre_driver_rear_kpa`, `tyre_passenger_rear_kpa` integer null, `is_charging` boolean null, `is_plugged_in` boolean null |
 
 - **Unique index on `observed_at`.** This enforces the skip rule in the database: the insert uses `ON CONFLICT DO NOTHING`, so a repeat or a race stores one row. Index order serves "newest first".
-- Checks (proposed bounds, for the owner to change): `odometer_km` 0 to 10,000,000 (the existing odometer bound), `battery_percent` 0 to 100, `range_km` 0 to 5,000, tyre pressures 0 to 1,000 kPa, `service_days` and `service_distance_km` within -100,000 to 100,000 (negative means overdue, unverified). A value outside its bound is stored as `NULL`, as the provider mapping already treats it as no reading.
+- Database checks (owner-approved 2026-10-31: battery 0 to 100, tyres 0 to 500 kPa; the other bounds are the agent's proposals that the owner approved with the draft): `odometer_km` 0 to 10,000,000 (the existing odometer bound), `battery_percent` 0 to 100, `range_km` 0 to 5,000, each tyre pressure 0 to 500 kPa, `service_days` and `service_distance_km` within -100,000 to 100,000 (negative means overdue, unverified). A value outside its bound is stored as `NULL`.
+- The deployed provider mapping (`zeekr_live.py`) is already **stricter** and runs first: tyres 50 to 500 kPa, range 1 to 2,000 km, battery 0 to 100. So the table checks are a backstop, and the mapping decides what reaches the table. They are not changed by this draft.
 - A row where every data column would be `NULL` is not stored.
 - **No** position, locks, doors, VIN, plate, nickname or raw reply. No free text and no JSON blob column, so nothing unexpected can be stored.
 - **Retention:** when a reading is stored, rows with `observed_at` older than 12 months (owner answer 2) are deleted in the same transaction. If nobody opens the page, nothing is stored and nothing is deleted. **Delete-all:** the `DELETE` endpoint removes every row.
