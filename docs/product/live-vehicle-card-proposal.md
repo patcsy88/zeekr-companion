@@ -1,6 +1,6 @@
 # Live vehicle card: proposal
 
-Status: **proposed, owner answers recorded 2026-10-31, still not approved as a whole** (see "Owner answers" at the end; two points need confirming before the contract is drafted). Drafted 2026-10-31 at the owner's request, "B". No code, contract or screen exists for this. Builds on ADR-009 (the read-only live provider, deployed off) and ADR-008 (the telemetry port). Nothing here changes an approved contract until the owner approves it.
+Status: **approved by the owner 2026-10-31 as a proposal, for drafting the contract and data model only.** No code, migration or deploy is approved. The data model and contract need the owner's approval before code. Drafted 2026-10-31 at the owner's request, "B". No code, contract or screen exists for this. Builds on ADR-009 (the read-only live provider, deployed off) and ADR-008 (the telemetry port). Nothing here changes an approved contract until the owner approves it.
 
 ## What the owner would get
 
@@ -29,7 +29,7 @@ Every line says "as of" the car's own update time (Asia/Kuala_Lumpur), and a mis
    - **Pull-down:** pulling the page down asks for a refresh. The server still spaces its real calls to Zeekr by the same X, so a pull inside that window returns the cached reading and the card says "no newer reading yet" with the reading's own time. This stops repeated pulls from becoming repeated logins.
    - **Who polls (proposed, needs the owner's confirmation):** the web page does, only while the Vehicle page is open and visible. The server never polls Zeekr in the background. Background polling around the clock would mean about 288 reads a day at 5 minutes, would run with nobody looking, and the effect of reads on the car's 12 V battery is unknown. The alternative (server polls all the time, so the card is always warm and history becomes possible) is a larger decision and is not what this proposal assumes.
    - **Where X is set (proposed, not found in the repo):** a host setting such as `ZEEKR_LIVE_INTERVAL_MINUTES` in `infra/.env`, default 5, floor 5, changed by editing the file and restarting the API. The API sends the current X to the page so the timer follows it. An in-app setting would need a stored value and a settings screen; that is not proposed unless the owner wants it.
-2. **No history table.** Readings live in the server's memory and are lost on restart. No new table, no migration. This is the agent's reading of the owner's answer; see "Owner answers". A history (for example battery over time) would be a separate slice with its own data model.
+2. **Readings are kept over time (owner decision B, 2026-10-31; replaces the earlier "memory only" draft).** Each successful read is stored, so the owner can look back at battery, odometer and tyres. This needs a **new table and migration, and a data model the owner approves before any code** (ADR-008 rule). The draft model is in "History: data model questions" below. It is not approved.
 3. **Online only.** The card is not cached by the service worker and is not queued offline. Offline it says "Needs a connection". Live data that looks current but is old would mislead.
 4. **Off means invisible.** With `ZEEKR_LIVE_ENABLED=false` the card shows "Live readings are off" and no call is made.
 5. **Failure is stated plainly.** States: off, reading, readings available, no readings (car reported nothing), unavailable (last read failed), paused (5 failures, until the API restarts). No server text is shown.
@@ -92,9 +92,31 @@ The numbers above are examples in the right shape, not a reading. `status` is on
 5. **Spacing:** configurable, with a 5-minute minimum.
 6. **Paused state:** hold for now. Until decided, a paused provider stays paused until the API restarts, and no reset is built.
 
-## Still open (needs the owner before the contract is drafted)
+## Owner decisions on the open points (2026-10-31)
 
-- **A. Who polls.** The page while it is open (proposed), or the server all the time? See behaviour item 1.
-- **B. "No" to question 4.** The agent read it as "update on a timer, not only on open", with no history table. If the owner also wants readings kept over time, that is a data model and a separate slice.
-- **C. Where the interval is set.** Host `.env` and restart (proposed), or an in-app setting.
-- **D. Explicit approval** of this proposal as revised, so the contract can be drafted for review. Nothing is built until then.
+- **A. Who polls:** the web page, only while the Vehicle page is open and visible. The server never polls Zeekr in the background.
+- **B. History:** readings are kept over time.
+- **C. Interval setting:** the host `infra/.env`, default 5 minutes, floor 5, changed by editing the file and restarting the API. The variable name `ZEEKR_LIVE_INTERVAL_MINUTES` is still the agent's proposal, not found in the repo.
+- **D. Approval:** the owner approved the proposal as revised. That lets the agent draft the **contract and data model for the owner to review**. It does not approve any code, migration or deploy.
+
+## Conflict the owner should know about: A and B together
+
+With the page polling (A), a reading is stored only while the owner has the Vehicle page open and visible. The history will have **gaps** for every hour the page was closed, and it will say nothing about the car while nobody looks. That is fine for "what was the pressure when I last checked", and weak for "how fast does the battery drop overnight" or charging curves. Server-side polling would fix the gaps, but it was the option the owner declined in A, and it brings the unknowns about the car's 12 V battery and Zeekr restricting the account. The proposal keeps A. The history screen must show the gaps honestly, not draw a line across them.
+
+## History: data model questions (draft, for the owner)
+
+Proposed table `live_reading`, one row per successful read: id, `observed_at` (UTC, from the car's own update time), `received_at` (UTC), and one nullable column per field kept: odometer km, battery percent, range km, days to service, distance to service km, four tyre pressures in kPa, charging, plugged in. No position, locks, doors, VIN, plate or nickname, and no raw reply.
+
+1. **Rows only when something changed?** A read with the same `observed_at` as the last stored row is a repeat and is not stored again. Proposed: yes.
+2. **Retention.** Keep all, or delete rows older than a limit (for example 13 months, like the model-call log's 396 days)? Proposed: 13 months, deleted when a read is stored.
+3. **Volume.** At most one row per X minutes while the page is open. At 5 minutes that is under 300 rows a day, about 105,000 a year at the very most, small for Postgres.
+4. **Export and backup.** The table would be in the encrypted backups and in dumps. Readings are personal driving-adjacent data (odometer and charging pattern), though without location.
+5. **What the history screen shows.** Proposed: a list of recent readings plus a simple trend for battery and odometer, with gaps shown. Charts are a UI scope question to settle at the contract step.
+6. **Edits.** Readings are read-only. No edit or manual add. Delete-all might be wanted (privacy); proposed: a single delete-all action, to confirm.
+7. **Who writes.** The server stores a reading whenever the page's request causes a real Zeekr read. A pull-down inside the spacing window stores nothing.
+
+## Next steps
+
+1. Agent drafts the contract (live card endpoint, history endpoint, interval value in the response) and the data model, marked draft, and shows them to the owner. No code.
+2. Owner reviews, answers the questions above and approves or changes them.
+3. Only then: backend, web card, history screen, tests, QA, security review. Then a deploy with the flag off. Gate 5 (real values in the host `.env`) stays a separate approval.
