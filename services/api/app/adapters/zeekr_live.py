@@ -26,6 +26,14 @@ from pydantic import SecretStr
 
 from app.adapters.telemetry import Reading, TyrePressures
 from app.config import ZEEKR_LIVE_FIELDS, Settings
+from app.live_limits import (
+    BATTERY_PERCENT,
+    ODOMETER_KM,
+    RANGE_KM,
+    SERVICE_DAYS,
+    SERVICE_DISTANCE_KM,
+    TYRE_KPA,
+)
 
 SOURCE = "zeekr_live"
 log = logging.getLogger("app.zeekr_live")
@@ -34,9 +42,6 @@ _AVS = "additionalVehicleStatus"
 _MAINT = (_AVS, "maintenanceStatus")
 _ELEC = (_AVS, "electricVehicleStatus")
 _CLIMATE = (_AVS, "climateStatus")
-
-_TYRE_KPA_RANGE = (50, 500)
-_RANGE_KM_MAX = 2000
 
 
 class ZeekrReadError(Exception):
@@ -109,7 +114,7 @@ def _tyres(status: object) -> TyrePressures | None:
         "tyreStatusDriverRear",
         "tyreStatusPassengerRear",
     )
-    values = [_whole(_dig(status, (*_MAINT, name)), *_TYRE_KPA_RANGE) for name in names]
+    values = [_whole(_dig(status, (*_MAINT, name)), *TYRE_KPA) for name in names]
     if any(v is None for v in values):
         return None
     driver, passenger, driver_rear, passenger_rear = (int(v) for v in values if v is not None)
@@ -117,18 +122,21 @@ def _tyres(status: object) -> TyrePressures | None:
 
 
 def map_status(status: object) -> Snapshot:
-    """Keep only the allow-listed fields. A range of 0 is read as 'not reported'."""
+    """Keep only the allow-listed fields. A range of 0 is read as 'not reported'. Values outside
+    `app.live_limits` become 'no reading'."""
     percent = _number(_dig(status, (*_ELEC, "chargeLevel")))
-    if percent is not None and not 0 <= percent <= 100:
+    if percent is not None and not BATTERY_PERCENT[0] <= percent <= BATTERY_PERCENT[1]:
         percent = None
-    range_km = _whole(_dig(status, (*_ELEC, "distanceToEmptyOnBatteryOnly")), 1, _RANGE_KM_MAX)
+    range_km = _whole(_dig(status, (*_ELEC, "distanceToEmptyOnBatteryOnly")), *RANGE_KM)
     return Snapshot(
         observed_at=_observed_at(_dig(status, (*_CLIMATE, "updateTime"))),
-        odometer_km=_whole(_dig(status, (*_MAINT, "odometer")), 1),
+        odometer_km=_whole(_dig(status, (*_MAINT, "odometer")), *ODOMETER_KM),
         battery_percent=percent,
         range_km=range_km,
-        days_to_service=_whole(_dig(status, (*_MAINT, "daysToService")), 0),
-        distance_to_service_km=_whole(_dig(status, (*_MAINT, "distanceToService")), 0),
+        days_to_service=_whole(_dig(status, (*_MAINT, "daysToService")), *SERVICE_DAYS),
+        distance_to_service_km=_whole(
+            _dig(status, (*_MAINT, "distanceToService")), *SERVICE_DISTANCE_KM
+        ),
         tyres_kpa=_tyres(status),
         is_charging=_flag(_dig(status, (*_ELEC, "isCharging"))),
         is_plugged_in=_flag(_dig(status, (*_ELEC, "isPluggedIn"))),
@@ -274,7 +282,10 @@ class ZeekrLiveTelemetryProvider:
             self._snapshot = map_status(self._source())
         except Exception:
             self._failures += 1
-            wait = min(self._min_interval * 2**self._failures, self._max_backoff)
+            # Never sooner than the interval, whatever the cap.
+            wait = max(
+                self._min_interval, min(self._min_interval * 2**self._failures, self._max_backoff)
+            )
             self._next_try = self._clock() + wait
             self._snapshot = None
             log.warning("Zeekr read failed (%d of %d)", self._failures, self._max_failures)

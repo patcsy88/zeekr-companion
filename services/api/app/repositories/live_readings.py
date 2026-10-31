@@ -34,11 +34,26 @@ class LiveReadingRepository:
             .on_conflict_do_nothing(index_elements=[LiveReading.observed_at])
             .returning(LiveReading.id)
         )
-        inserted = self._session.execute(stmt).scalar_one_or_none() is not None
-        if inserted:
-            self._session.execute(delete(LiveReading).where(LiveReading.observed_at < keep_after))
-        self._session.commit()
+        try:
+            inserted = self._session.execute(stmt).scalar_one_or_none() is not None
+            if inserted:
+                self._session.execute(
+                    delete(LiveReading).where(LiveReading.observed_at < keep_after)
+                )
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
         return inserted
+
+    def prune(self, keep_after: dt.datetime) -> None:
+        """Delete rows with `observed_at` before `keep_after`."""
+        try:
+            self._session.execute(delete(LiveReading).where(LiveReading.observed_at < keep_after))
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
 
     def list(self, limit: int, since: dt.datetime | None) -> list[LiveReading]:
         stmt = select(LiveReading).order_by(desc(LiveReading.observed_at), desc(LiveReading.id))

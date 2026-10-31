@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { request } from '../api/client';
 import type { LiveCard } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
-import { days, formatKl, km, kpa, percent, yesNo } from '../lib/liveVehicle';
+import { days, formatKl, km, kpa, percent, serviceKm, yesNo } from '../lib/liveVehicle';
 import { usePullToRefresh } from '../lib/pullToRefresh';
 
 /**
@@ -172,7 +172,7 @@ function CardBody({
         <dd>{km(r.odometer_km)}</dd>
         <dt>Next service in</dt>
         <dd>
-          {km(r.service_distance_km)}, {days(r.service_days)}
+          {serviceKm(r.service_distance_km)}, {days(r.service_days)}
         </dd>
       </dl>
       <p className="muted small">

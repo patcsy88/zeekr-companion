@@ -36,12 +36,12 @@ export function LiveTrend({
     <figure className="trend" data-testid="live-trend">
       <figcaption className="small">{title}</figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} width="100%">
-        {runs.map((run) =>
+        {runs.map((run, n) =>
           run.length === 1 ? (
-            <circle key={run[0]?.t} cx={x(run[0]?.t ?? 0)} cy={y(run[0]?.v ?? 0)} r="2.5" />
+            <circle key={n} cx={x(run[0]?.t ?? 0)} cy={y(run[0]?.v ?? 0)} r="2.5" />
           ) : (
             <polyline
-              key={run[0]?.t}
+              key={n}
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
