@@ -111,9 +111,14 @@ function CardBody({
 }) {
   if (card.status === 'off') {
     return (
-      <p className="muted" data-testid="live-off">
-        Live readings are off.
-      </p>
+      <>
+        <p className="muted" data-testid="live-off">
+          Live readings are off.
+        </p>
+        <Link to="/vehicle/live" className="button">
+          History
+        </Link>
+      </>
     );
   }
   const r = card.readings;
