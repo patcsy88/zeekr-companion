@@ -137,6 +137,7 @@ describe('live vehicle: the card', () => {
     render(<App />);
     expect(await screen.findByTestId('live-off')).toHaveTextContent('Live readings are off.');
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/vehicle/live');
   });
 
   it('shows readings with units and the time in KL', async () => {
