@@ -222,7 +222,7 @@ Order: overdue first, then upcoming, then completed. Within a group: `due_date` 
 ```json
 {
   "id": "awd-performance-service",
-  "version": 1,
+  "version": 2,
   "name": "AWD Performance service schedule",
   "kind": "service",
   "source": {
@@ -233,18 +233,11 @@ Order: overdue first, then upcoming, then completed. Within a group: `due_date` 
     "retrieved": "2026-10-22"
   },
   "caveat": "Requirements vary by model, build date, operating conditions and local rules. Confirm against your own booklet or service centre.",
-  "interval": { "km": 20000, "months": 12, "rule": "whichever comes first" },
+  "interval": { "km": 40000, "months": 24, "rule": "whichever comes first" },
   "baseline_required": true,
   "checkpoints": [
     {
       "number": 1,
-      "km": 20000,
-      "months": 12,
-      "work_items": [],
-      "work_items_stated": false
-    },
-    {
-      "number": 2,
       "km": 40000,
       "months": 24,
       "work_items": ["Maintenance inspection", "Cabin air filter replacement", "Brake fluid replacement", "Front and rear reducer lubricant replacement"],
@@ -254,7 +247,7 @@ Order: overdue first, then upcoming, then completed. Within a group: `due_date` 
 }
 ```
 
-The full list has checkpoints 1 to 8 (20,000 km / 12 months to 160,000 km / 96 months). Odd checkpoints have empty `work_items` and `work_items_stated: false`. Coolant replacement is added at checkpoints 4 and 8. All content is taken from research M12 and nothing else. The data is static, versioned and served from code, with no table. Due dates are not computed by the server: the owner supplies the baseline date on the client, which proposes `due_date = baseline + months` and `due_odometer = km` as editable values (proposal, Q5). The template is data, not a rule: no endpoint or job applies it.
+**Changed 2026-11-02 (owner decision, version 2).** The list has 4 checkpoints: 40,000 km / 24 months, 80,000 / 48, 120,000 / 72 and 160,000 / 96. Every checkpoint has stated work items. Coolant replacement is added at checkpoints 2 and 4 (80,000 and 160,000 km). Version 1 had 8 checkpoints at 20,000 km steps; the PDF marks no work and no cost at 20,000, 60,000, 100,000 and 140,000 km, and the car's own service counter agrees with 40,000 km as the first visit. `template_ref` is now `awd-performance-service:2:<number>`. Reminders already created from version 1 keep their `awd-performance-service:1:<number>` and are not changed. All content is taken from research M12 and nothing else. The data is static, versioned and served from code, with no table. Due dates are not computed by the server: the owner supplies the baseline date on the client, which proposes `due_date = baseline + months` and `due_odometer = km` as editable values (proposal, Q5). The template is data, not a rule: no endpoint or job applies it.
 
 ### Errors
 

@@ -98,7 +98,7 @@ export const WARRANTY_TEMPLATE: WarrantyTemplate = {
 
 export const TEMPLATE: ReminderTemplate = {
   id: 'awd-performance-service',
-  version: 1,
+  version: 2,
   name: 'AWD Performance service schedule',
   kind: 'service',
   source: {
@@ -110,14 +110,14 @@ export const TEMPLATE: ReminderTemplate = {
   },
   caveat:
     'Requirements vary by model, build date, operating conditions and local rules. Confirm against your own booklet or service centre.',
-  interval: { km: 20000, months: 12, rule: 'whichever comes first' },
+  interval: { km: 40000, months: 24, rule: 'whichever comes first' },
   baseline_required: true,
   checkpoints: [1, 2, 3, 4].map((n) => ({
     number: n,
-    km: n * 20000,
-    months: n * 12,
-    work_items: n % 2 === 0 ? ['Maintenance inspection', 'Cabin air filter replacement'] : [],
-    work_items_stated: n % 2 === 0,
+    km: n * 40000,
+    months: n * 24,
+    work_items: ['Maintenance inspection', 'Cabin air filter replacement'],
+    work_items_stated: true,
   })),
 };
 
