@@ -187,7 +187,11 @@ The owner asked (2026-11-03) for the odometer to be refreshed daily from 30 days
   - The design assumes one uvicorn process. A second worker would read twice.
   - A restart resets the failure count and the daily task simply retries at its next check.
   - Zeekr's terms for this use are still unanswered (the enquiry is unsent by the owner's choice).
-- **Not decided:** nothing is built, and the amendment needs the owner's approval of the contract before code.
+- **Build record (2026-11-03, local commits only, not pushed or deployed):**
+  - Backend: `POST /reminders/{id}/complete-service` (one all-or-nothing transaction), `read_reminder_odometer` (reminders only; warranty unchanged), and `app/services/daily_read.py` (starts only when `ZEEKR_LIVE_ENABLED`, first check 60 s after startup, then every 15 minutes, at most one attempt per KL day at or after 08:00 KL). 08:00 is a constant, not a setting.
+  - Web: a "Complete service" form at `/reminders/:id/complete`. The detail page shows it for open service reminders and keeps "Mark complete" for insurance and road tax. It is online only and is disabled offline with an explanation; it is never queued, so a replay cannot create a second next reminder. The odometer note says "from the car's reading" when the server's value is a live reading larger than any record.
+  - Limits: the daily task assumes one uvicorn process; a failure is logged without values; offline status on the device can lag the server; the task has not run against a real car.
+  - No QA or security review agent has been run on this feature yet.
 
 ## Not decided
 

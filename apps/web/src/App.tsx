@@ -11,6 +11,7 @@ import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
 import { ExpenseDetailPage } from './pages/ExpenseDetailPage';
 import { EditExpensePage, NewExpensePage } from './pages/ExpenseFormPages';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { CompleteServicePage } from './pages/CompleteServicePage';
 import { ReminderDetailPage } from './pages/ReminderDetailPage';
 import { EditReminderPage, NewReminderPage } from './pages/ReminderFormPages';
 import { ReminderTemplatePage } from './pages/ReminderTemplatePage';
@@ -77,6 +78,7 @@ function Layout() {
           <Route path="/reminders/template" element={<ReminderTemplatePage />} />
           <Route path="/reminders/:id" element={<ReminderDetailPage />} />
           <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
+          <Route path="/reminders/:id/complete" element={<CompleteServicePage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/expenses/new" element={<NewExpensePage />} />
           <Route path="/expenses/:id" element={<ExpenseDetailPage />} />

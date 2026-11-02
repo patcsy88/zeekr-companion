@@ -17,6 +17,8 @@ import type {
   ReminderCreate,
   ReminderList,
   ReminderTemplateList,
+  ServiceCompleteIn,
+  ServiceCompleteOut,
   ServiceRecord,
   ServiceRecordCreate,
   ServiceRecordPage,
@@ -91,6 +93,20 @@ export async function createReminder(body: ReminderCreate): Promise<Reminder> {
 
 export async function patchReminder(id: string, body: ReminderEdit): Promise<Reminder> {
   return (await request<Reminder>({ method: 'PATCH', path: reminderPath(id), body })).data;
+}
+
+/** Online only: records the service, completes the reminder and creates the next one. */
+export async function completeService(
+  id: string,
+  body: ServiceCompleteIn,
+): Promise<ServiceCompleteOut> {
+  return (
+    await request<ServiceCompleteOut>({
+      method: 'POST',
+      path: `${reminderPath(id)}/complete-service`,
+      body,
+    })
+  ).data;
 }
 
 export async function deleteReminder(id: string): Promise<void> {

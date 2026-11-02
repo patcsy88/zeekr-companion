@@ -21,6 +21,8 @@ export interface OdometerBasis {
   date: string | null;
   /** True when the number comes from a record that is saved only on this device so far. */
   unsent: boolean;
+  /** True when the number is the car's own reading (the server found it larger than any record). */
+  live?: boolean;
 }
 
 export interface RemindersSnapshot {
@@ -39,6 +41,10 @@ export interface RemindersSnapshot {
 async function deriveBasis(cached: ReminderCache | undefined): Promise<OdometerBasis | null> {
   const records = await readRecords();
   const newest = records.views[0];
+  const co = cached?.current_odometer;
+  if (co?.source === 'live_reading' && (!newest || co.km > newest.record.odometer)) {
+    return { km: co.km, date: co.date, unsent: false, live: true };
+  }
   if (newest) {
     return {
       km: newest.record.odometer,
@@ -47,7 +53,6 @@ async function deriveBasis(cached: ReminderCache | undefined): Promise<OdometerB
     };
   }
   if (records.loaded) return null;
-  const co = cached?.current_odometer;
   return co ? { km: co.km, date: co.date, unsent: false } : null;
 }
 

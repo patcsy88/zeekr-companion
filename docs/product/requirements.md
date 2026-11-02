@@ -181,6 +181,16 @@ Status: **approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepte
 - **Q24 Warranty reminders.** No automatic "warranty ending" reminder (reminder kinds are fixed by the approved contract). Proposal: leave to the backlog; the status badge is the signal.
 - **Q25 Template baseline.** The owner enters the warranty start; the vehicle `purchase_date` is a labelled guess (M8 says coverage starts at first registration or entry into service, whichever is earlier, and the vehicle profile holds no registration date). Proposal: accept.
 
+## Acceptance criteria: Complete service (approved by the owner 2026-11-03)
+
+| ID | Criterion |
+|---|---|
+| AC-70 | An open service reminder can be completed with one action that records the service (date, odometer, service centre, description, cost, notes), marks the reminder done and, for a suggested-schedule reminder, creates the next one at actual odometer + 40,000 km and actual date + 24 months. Nothing is written if any step fails. Cost may be zero. |
+| AC-71 | The same ids replayed with the same content change nothing (200); with different content they are refused (409). |
+| AC-72 | Completing a service needs a connection. It is disabled offline with an explanation and is never queued. Insurance and road-tax reminders keep "Mark complete". |
+| AC-73 | Reminder status uses the larger of the latest service record and the newest stored live reading; a tie keeps the service record; live readings are ignored when the provider is off. Warranty is unchanged and never uses the live reading. |
+| AC-74 | When live readings are on, the API reads the car at most once per Kuala Lumpur day at or after 08:00, only while an open service reminder with a due date is within 30 days of it or past it, and stops when it is completed. |
+
 ## Open questions for the owner
 
 Resolved:
