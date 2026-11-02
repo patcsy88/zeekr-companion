@@ -3,21 +3,29 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from app.clock import today_kl
+from sqlalchemy.exc import IntegrityError
+
+from app.clock import add_months, today_kl
 from app.errors import Conflict, FieldIssue, InvalidInput, NotFound
-from app.models import Reminder
+from app.models import Reminder, ServiceRecord
+from app.repositories.live_readings import LiveReadingRepository
 from app.repositories.reminders import ReminderCapReached, ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.schemas import (
+    MAX_ODOMETER_KM,
     MAX_REMINDERS,
     CurrentOdometer,
     ReminderCreate,
     ReminderList,
     ReminderOut,
     ReminderPatch,
+    ServiceCompleteIn,
+    ServiceCompleteOut,
+    ServiceRecordOut,
 )
-from app.services.odometer import read_current_odometer
+from app.services.odometer import read_reminder_odometer
 from app.services.reminder_status import compute_status
+from app.services.reminder_templates import STEP_KM, STEP_MONTHS, TEMPLATE_ID
 
 _CONTENT_FIELDS = ("kind", "title", "due_date", "due_odometer", "notes", "template_ref")
 _RANK = {"overdue": 0, "upcoming": 1, "completed": 2}
@@ -42,12 +50,18 @@ def check_due_rules(
 
 
 class ReminderService:
-    def __init__(self, repo: ReminderRepository, records: ServiceRecordRepository) -> None:
+    def __init__(
+        self,
+        repo: ReminderRepository,
+        records: ServiceRecordRepository,
+        live: LiveReadingRepository | None = None,
+    ) -> None:
         self._repo = repo
         self._records = records
+        self._live = live
 
     def _current_odometer(self) -> CurrentOdometer | None:
-        return read_current_odometer(self._records)
+        return read_reminder_odometer(self._records, self._live)
 
     @staticmethod
     def _out(row: Reminder, today: dt.date, km: int | None) -> ReminderOut:
@@ -145,3 +159,123 @@ class ReminderService:
     def delete(self, reminder_id: uuid.UUID) -> None:
         if not self._repo.delete(reminder_id):
             raise NotFound("Reminder not found.")
+
+    def complete_service(
+        self, reminder_id: uuid.UUID, data: ServiceCompleteIn
+    ) -> tuple[ServiceCompleteOut, bool]:
+        """Record the service, complete the reminder and create the next one, all or nothing.
+        Returns (result, created); a replay with identical content returns created False."""
+        row = self._repo.lock(reminder_id)
+        if row is None:
+            self._repo.release()
+            raise NotFound("Reminder not found.")
+        record_values = {
+            "id": data.record_id,
+            "date": data.date,
+            "odometer": data.odometer,
+            "provider": data.provider,
+            "description": data.description or row.title,
+            "cost_minor": data.cost_minor,
+            "currency": "MYR",
+            "notes": data.notes,
+        }
+        next_values = self._next_values(row, data)
+        try:
+            return self._complete_locked(row, data, record_values, next_values)
+        except (InvalidInput, Conflict):
+            self._repo.release()
+            raise
+
+    @staticmethod
+    def _next_values(row: Reminder, data: ServiceCompleteIn) -> dict[str, object] | None:
+        parts = (row.template_ref or "").split(":")
+        if row.kind != "service" or len(parts) != 3 or parts[0] != TEMPLATE_ID:
+            return None
+        due_odometer = data.odometer + STEP_KM
+        if due_odometer > MAX_ODOMETER_KM:
+            raise InvalidInput(
+                "Request failed validation.",
+                [FieldIssue("odometer", "the next service would be beyond the odometer limit")],
+            )
+        return {
+            "id": data.next_id,
+            "kind": "service",
+            "title": f"Next service ({due_odometer:,} km)",
+            "due_date": add_months(data.date, STEP_MONTHS),
+            "due_odometer": due_odometer,
+            "notes": None,
+            "completed_on": None,
+            "template_ref": row.template_ref,
+        }
+
+    def _complete_locked(
+        self,
+        row: Reminder,
+        data: ServiceCompleteIn,
+        record_values: dict[str, object],
+        next_values: dict[str, object] | None,
+    ) -> tuple[ServiceCompleteOut, bool]:
+        record = self._repo.existing_in_tx(ServiceRecord, data.record_id)
+        if record is not None:
+            if row.completed_on != data.date or not self._same_result(
+                record, record_values, next_values
+            ):
+                raise Conflict("These ids were already used with different content.")
+            return self._result(row, record, next_values), False
+        if row.completed_on is not None:
+            raise InvalidInput(
+                "Request failed validation.", [FieldIssue("body", "the reminder is already done")]
+            )
+        if row.kind != "service":
+            raise InvalidInput(
+                "Request failed validation.",
+                [FieldIssue("body", "only a service reminder can be completed this way")],
+            )
+        if next_values is not None:
+            if self._repo.existing_in_tx(Reminder, data.next_id) is not None:
+                raise Conflict("A reminder with next_id already exists.")
+            if self._repo.reminder_count() >= MAX_REMINDERS:
+                raise InvalidInput(
+                    "Request failed validation.",
+                    [FieldIssue("body", f"at most {MAX_REMINDERS} reminders are allowed")],
+                )
+        try:
+            self._repo.commit_complete(row, data.date, record_values, next_values)
+        except IntegrityError:
+            raise Conflict("Could not complete the service; please retry.") from None
+        saved = self._records.get(data.record_id)
+        if saved is None:
+            raise Conflict("Could not complete the service; please retry.")
+        return self._result(row, saved, next_values), True
+
+    def _same_result(
+        self,
+        record: ServiceRecord,
+        record_values: dict[str, object],
+        next_values: dict[str, object] | None,
+    ) -> bool:
+        fields = ("date", "odometer", "provider", "description", "cost_minor", "currency", "notes")
+        if not all(getattr(record, f) == record_values[f] for f in fields):
+            return False
+        if next_values is None:
+            return True
+        nxt = self._repo.existing_in_tx(Reminder, next_values["id"])  # type: ignore[arg-type]
+        return nxt is not None and all(getattr(nxt, f) == next_values[f] for f in _CONTENT_FIELDS)
+
+    def _result(
+        self, row: Reminder, record: ServiceRecord, next_values: dict[str, object] | None
+    ) -> ServiceCompleteOut:
+        nxt_row = (
+            self._repo.get(next_values["id"])  # type: ignore[arg-type]
+            if next_values is not None
+            else None
+        )
+        out_record = ServiceRecordOut.model_validate(record)
+        done = self._repo.get(row.id)
+        if done is None:
+            raise NotFound("Reminder not found.")
+        return ServiceCompleteOut(
+            service_record=out_record,
+            reminder=self._view(done, None),
+            next_reminder=self._view(nxt_row, None) if nxt_row is not None else None,
+        )

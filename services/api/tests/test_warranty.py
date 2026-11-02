@@ -558,7 +558,10 @@ def test_ac52_reminders_and_warranty_use_one_read() -> None:
 
     from app.services import reminders, warranty
 
-    assert reminders.read_current_odometer is warranty.read_current_odometer
+    # Owner decision 2026-11-03: reminders may use the live reading, warranty never does. Both
+    # start from the same service-record read; only reminders add the live reading on top.
+    assert reminders.read_reminder_odometer is not warranty.read_current_odometer
+    assert "live" not in pyinspect.getsource(warranty).lower()
     assert "list_page" not in pyinspect.getsource(reminders)
     assert "list_page" not in pyinspect.getsource(warranty)
 

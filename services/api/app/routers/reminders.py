@@ -20,6 +20,8 @@ from app.schemas import (
     ReminderOut,
     ReminderPatch,
     ReminderTemplateList,
+    ServiceCompleteIn,
+    ServiceCompleteOut,
     StrictDate,
 )
 from app.services.reminder_templates import get_templates
@@ -81,6 +83,28 @@ def patch_reminder(
     reminder_id: uuid.UUID, body: ReminderPatch, service: ReminderServiceDep
 ) -> ReminderOut:
     return service.update(reminder_id, body)
+
+
+@router.post(
+    "/reminders/{reminder_id}/complete-service",
+    response_model=ServiceCompleteOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        200: {"model": ServiceCompleteOut, "description": "Identical replay"},
+        **responses(BAD_REQUEST, UNAUTHENTICATED, NOT_FOUND, CONFLICT, INTERNAL),
+    },
+)
+def complete_service(
+    reminder_id: uuid.UUID,
+    body: ServiceCompleteIn,
+    response: Response,
+    service: ReminderServiceDep,
+) -> ServiceCompleteOut:
+    """Record the service, complete the reminder and create the next one, all or nothing."""
+    result, created = service.complete_service(reminder_id, body)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return result
 
 
 @router.delete(
