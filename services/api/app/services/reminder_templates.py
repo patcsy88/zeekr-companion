@@ -2,7 +2,8 @@
 
 Content comes only from research entry M12 (docs/research/vehicle-integrations.md), the Zeekr
 Malaysia schedule PDF, Performance Range (AWD) table, re-checked 2026-10-22. The PDF marks no work
-items at the odd checkpoints, so those stay empty with `work_items_stated` false.
+and no cost at 20,000, 60,000, 100,000 and 140,000 km, so the template starts at 40,000 km (owner
+decision 2026-11-02, version 2) and holds only the visits that have work.
 """
 
 from __future__ import annotations
@@ -17,28 +18,28 @@ from app.schemas import (
     TemplateSource,
 )
 
-_EVEN_ITEMS = (
+_WORK_ITEMS = (
     "Maintenance inspection",
     "Cabin air filter replacement",
     "Brake fluid replacement",
     "Front and rear reducer lubricant replacement",
 )
 _COOLANT = "Coolant replacement"
-_COOLANT_CHECKPOINTS = (4, 8)
+_COOLANT_CHECKPOINTS = (2, 4)  # 80,000 km and 160,000 km
+_STEP_KM = 40_000
+_STEP_MONTHS = 24
 
 
 def _checkpoint(number: int) -> TemplateCheckpoint:
-    items: list[str] = []
-    if number % 2 == 0:
-        items = list(_EVEN_ITEMS)
-        if number in _COOLANT_CHECKPOINTS:
-            items.insert(3, _COOLANT)
+    items = list(_WORK_ITEMS)
+    if number in _COOLANT_CHECKPOINTS:
+        items.insert(3, _COOLANT)
     return TemplateCheckpoint(
         number=number,
-        km=20_000 * number,
-        months=12 * number,
+        km=_STEP_KM * number,
+        months=_STEP_MONTHS * number,
         work_items=items,
-        work_items_stated=bool(items),
+        work_items_stated=True,
     )
 
 
@@ -47,7 +48,7 @@ def get_templates() -> ReminderTemplateList:
         items=[
             ReminderTemplate(
                 id="awd-performance-service",
-                version=1,
+                version=2,
                 name="AWD Performance service schedule",
                 kind="service",
                 source=TemplateSource(
@@ -64,9 +65,11 @@ def get_templates() -> ReminderTemplateList:
                     "Requirements vary by model, build date, operating conditions and local "
                     "rules. Confirm against your own booklet or service centre."
                 ),
-                interval=TemplateInterval(km=20_000, months=12, rule="whichever comes first"),
+                interval=TemplateInterval(
+                    km=_STEP_KM, months=_STEP_MONTHS, rule="whichever comes first"
+                ),
                 baseline_required=True,
-                checkpoints=[_checkpoint(n) for n in range(1, 9)],
+                checkpoints=[_checkpoint(n) for n in range(1, 5)],
             )
         ]
     )

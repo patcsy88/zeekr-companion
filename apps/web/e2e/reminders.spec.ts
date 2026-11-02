@@ -140,7 +140,7 @@ test('AC-20/21/22: template review creates nothing on cancel, and one reminder p
   const after = await serverReminders(browser, base);
   const made = after.filter((r) => r.title === title);
   expect(made).toHaveLength(1);
-  expect(made[0]?.template_ref).toMatch(/^awd-performance-service:1:\d+$/);
+  expect(made[0]?.template_ref).toMatch(/^awd-performance-service:2:\d+$/);
   expect(after.filter((r) => r.template_ref !== null)).toHaveLength(before.length + 1);
 });
 

@@ -472,26 +472,22 @@ def test_ac23_template_content_is_only_what_m12_states(
     assert len(t) == 1
     tpl = t[0]
     assert tpl["id"] == "awd-performance-service"
-    assert tpl["version"] == 1
+    assert tpl["version"] == 2
     assert tpl["source"]["research_ref"] == "M12"
     assert tpl["source"]["status"] == "verified"
     assert tpl["source"]["retrieved"] == "2026-10-22"
-    assert tpl["interval"] == {"km": 20000, "months": 12, "rule": "whichever comes first"}
+    assert tpl["interval"] == {"km": 40000, "months": 24, "rule": "whichever comes first"}
     assert tpl["baseline_required"] is True
     assert "build date" in tpl["caveat"]
     cps = tpl["checkpoints"]
-    assert [c["number"] for c in cps] == list(range(1, 9))
-    assert [c["km"] for c in cps] == [20000 * n for n in range(1, 9)]
-    assert [c["months"] for c in cps] == [12 * n for n in range(1, 9)]
+    assert [c["number"] for c in cps] == [1, 2, 3, 4]
+    assert [c["km"] for c in cps] == [40000, 80000, 120000, 160000]
+    assert [c["months"] for c in cps] == [24, 48, 72, 96]
     for c in cps:
-        if c["number"] % 2:
-            assert c["work_items"] == []
-            assert c["work_items_stated"] is False
-        else:
-            assert c["work_items_stated"] is True
-            assert "Maintenance inspection" in c["work_items"]
-            assert ("Coolant replacement" in c["work_items"]) == (c["number"] in (4, 8))
-            assert len(c["work_items"]) == (5 if c["number"] in (4, 8) else 4)
+        assert c["work_items_stated"] is True
+        assert "Maintenance inspection" in c["work_items"]
+        assert ("Coolant replacement" in c["work_items"]) == (c["number"] in (2, 4))
+        assert len(c["work_items"]) == (5 if c["number"] in (2, 4) else 4)
 
 
 def test_ac21_template_item_is_an_ordinary_reminder_with_template_ref(

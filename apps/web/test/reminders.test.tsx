@@ -351,12 +351,12 @@ describe('AC-20 / AC-21 / AC-22 / AC-23: the template review', () => {
   });
 
   it('preselects only the next checkpoint, requires a baseline, and creates one reminder per selected item', async () => {
-    seedRecord(25000); // next checkpoint above 25,000 km is #2
+    seedRecord(25000); // next checkpoint above 25,000 km is #1 (40,000 km)
     const user = open('/reminders/template');
     render(<App />);
     await screen.findByTestId('template-source');
     const boxes = screen.getAllByRole('checkbox');
-    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([false, true, false, false]);
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, false, false, false]);
     // No baseline yet (no vehicle purchase date): accepting is refused and nothing is sent.
     await user.click(screen.getByRole('button', { name: 'Create selected reminders' }));
     expect(
@@ -364,9 +364,9 @@ describe('AC-20 / AC-21 / AC-22 / AC-23: the template review', () => {
     ).toBeInTheDocument();
     expect(fake.reminderPosts).toHaveLength(0);
     await user.type(screen.getByLabelText(/Baseline date/), '2026-01-31');
-    expect(screen.getByLabelText('Due date', { selector: '#cp2-date' })).toHaveValue('2028-01-31');
-    await user.click(boxes[2] as HTMLElement);
-    const title = screen.getByLabelText('Title', { selector: '#cp2-title' });
+    expect(screen.getByLabelText('Due date', { selector: '#cp1-date' })).toHaveValue('2028-01-31');
+    await user.click(boxes[1] as HTMLElement);
+    const title = screen.getByLabelText('Title', { selector: '#cp1-title' });
     await user.clear(title);
     await user.type(title, 'My edited title');
     await user.click(screen.getByRole('button', { name: 'Create selected reminders' }));
@@ -376,12 +376,11 @@ describe('AC-20 / AC-21 / AC-22 / AC-23: the template review', () => {
     expect(fake.reminderPosts).toHaveLength(2);
     const made = [...fake.reminders.values()];
     expect(made.map((m) => m.template_ref).sort()).toEqual([
-      'awd-performance-service:1:2',
-      'awd-performance-service:1:3',
+      'awd-performance-service:2:1',
+      'awd-performance-service:2:2',
     ]);
-    expect(made.find((m) => m.template_ref?.endsWith(':2'))?.title).toBe('My edited title');
-    // Odd checkpoint: work items are not stated, nothing invented.
-    expect(made.find((m) => m.template_ref?.endsWith(':3'))?.notes).toMatch(/not stated/);
+    expect(made.find((m) => m.template_ref?.endsWith(':1'))?.title).toBe('My edited title');
+    expect(made.find((m) => m.template_ref?.endsWith(':2'))?.title).toBe('Service 2 (80,000 km)');
   });
 
   it('prefills the baseline from the vehicle purchase date and labels it a guess', async () => {

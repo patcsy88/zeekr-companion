@@ -734,23 +734,21 @@ def test_template_content_exact(client: TestClient, auth_headers: dict[str, str]
     t = data["items"][0]
     assert t["id"] == "awd-performance-service" and t["baseline_required"] is True
     assert t["source"]["research_ref"] == "M12" and t["source"]["status"] == "verified"
-    assert t["interval"] == {"km": 20000, "months": 12, "rule": "whichever comes first"}
+    assert t["version"] == 2
+    assert t["interval"] == {"km": 40000, "months": 24, "rule": "whichever comes first"}
     cps = t["checkpoints"]
-    assert [c["number"] for c in cps] == list(range(1, 9))
+    assert [c["number"] for c in cps] == [1, 2, 3, 4]
     for c in cps:
-        assert c["km"] == 20000 * c["number"] and c["months"] == 12 * c["number"]
-        if c["number"] % 2:
-            assert c["work_items"] == [] and c["work_items_stated"] is False
-        else:
-            assert c["work_items_stated"] is True
-            assert ("Coolant replacement" in c["work_items"]) == (c["number"] in (4, 8))
-            for item in (
-                "Maintenance inspection",
-                "Cabin air filter replacement",
-                "Brake fluid replacement",
-                "Front and rear reducer lubricant replacement",
-            ):
-                assert item in c["work_items"]
+        assert c["km"] == 40000 * c["number"] and c["months"] == 24 * c["number"]
+        assert c["work_items_stated"] is True
+        assert ("Coolant replacement" in c["work_items"]) == (c["number"] in (2, 4))
+        for item in (
+            "Maintenance inspection",
+            "Cabin air filter replacement",
+            "Brake fluid replacement",
+            "Front and rear reducer lubricant replacement",
+        ):
+            assert item in c["work_items"]
     assert "confirm" in t["caveat"].lower()
     assert "fee" not in str(t).lower() and "rm" not in t["caveat"].lower().split()
 
