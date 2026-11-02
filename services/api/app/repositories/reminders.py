@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.models import Reminder
+from app.models import Reminder, ServiceRecord
 
 _CAP_LOCK_KEY = 726_001  # arbitrary app-level advisory lock id for the reminder cap
 
@@ -75,6 +75,35 @@ class ReminderRepository:
         row.updated_at = dt.datetime.now(dt.UTC)
         self._session.commit()
         return row
+
+    def reminder_count(self) -> int:
+        """Count inside the open transaction (no rollback), after taking the cap lock."""
+        self._session.execute(select(func.pg_advisory_xact_lock(_CAP_LOCK_KEY)))
+        return self._session.execute(select(func.count()).select_from(Reminder)).scalar_one()
+
+    def existing_in_tx(self, model: type[Reminder] | type[ServiceRecord], row_id: uuid.UUID) -> Any:
+        """Read a row inside the open transaction, without ending it."""
+        return self._session.get(model, row_id, populate_existing=True)
+
+    def commit_complete(
+        self,
+        row: Reminder,
+        completed_on: dt.date,
+        record_values: dict[str, Any],
+        next_values: dict[str, Any] | None,
+    ) -> None:
+        """Write the service record, the completion and the next reminder in one commit. Nothing
+        is written if any step fails."""
+        try:
+            self._session.add(ServiceRecord(**record_values))
+            if next_values is not None:
+                self._session.add(Reminder(**next_values))
+            row.completed_on = completed_on
+            row.updated_at = dt.datetime.now(dt.UTC)
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
 
     def release(self) -> None:
         self._session.rollback()

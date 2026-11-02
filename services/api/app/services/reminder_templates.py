@@ -26,8 +26,9 @@ _WORK_ITEMS = (
 )
 _COOLANT = "Coolant replacement"
 _COOLANT_CHECKPOINTS = (2, 4)  # 80,000 km and 160,000 km
-_STEP_KM = 40_000
-_STEP_MONTHS = 24
+STEP_KM = 40_000
+STEP_MONTHS = 24
+TEMPLATE_ID = "awd-performance-service"
 
 
 def _checkpoint(number: int) -> TemplateCheckpoint:
@@ -36,8 +37,8 @@ def _checkpoint(number: int) -> TemplateCheckpoint:
         items.insert(3, _COOLANT)
     return TemplateCheckpoint(
         number=number,
-        km=_STEP_KM * number,
-        months=_STEP_MONTHS * number,
+        km=STEP_KM * number,
+        months=STEP_MONTHS * number,
         work_items=items,
         work_items_stated=True,
     )
@@ -66,7 +67,7 @@ def get_templates() -> ReminderTemplateList:
                     "rules. Confirm against your own booklet or service centre."
                 ),
                 interval=TemplateInterval(
-                    km=_STEP_KM, months=_STEP_MONTHS, rule="whichever comes first"
+                    km=STEP_KM, months=STEP_MONTHS, rule="whichever comes first"
                 ),
                 baseline_required=True,
                 checkpoints=[_checkpoint(n) for n in range(1, 5)],

@@ -277,6 +277,21 @@ class ReminderPatch(_Input):
         return value
 
 
+class ServiceCompleteIn(_Input):
+    """Complete a service reminder: records the service and creates the next reminder."""
+
+    record_id: uuid.UUID
+    next_id: uuid.UUID
+    date: StrictDate
+    odometer: Distance
+    provider: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    cost_minor: Money = 0
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_not_in_future)
+
+
 class ReminderOut(BaseModel):
     id: uuid.UUID
     kind: ReminderKind
@@ -292,10 +307,16 @@ class ReminderOut(BaseModel):
     updated_at: UtcDateTime
 
 
+class ServiceCompleteOut(BaseModel):
+    service_record: ServiceRecordOut
+    reminder: ReminderOut
+    next_reminder: ReminderOut | None
+
+
 class CurrentOdometer(BaseModel):
     km: int
-    source: Literal["latest_service_record"]
-    service_record_id: uuid.UUID
+    source: Literal["latest_service_record", "live_reading"]
+    service_record_id: uuid.UUID | None
     date: dt.date
 
 

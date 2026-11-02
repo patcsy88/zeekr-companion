@@ -711,7 +711,7 @@ Online only. Neither the card nor the history is cached by the service worker or
 - **Refinements after QA and security review, approved by the owner 2026-10-31 (not deployed):** (1) a car timestamp more than 5 minutes ahead of the server clock is treated as no reading and is not stored; (2) a card request waits at most 5 seconds for a read already in progress, then returns the stored reading with `served_from: "cache"`, and the delete does not wait for a read; (3) if the database refuses a write, the card returns `status: "unavailable"` with the last stored reading, never a 500; (4) `GET /live-vehicle/history` first deletes rows older than 12 months; (5) an extreme `since` is `400 validation_error`; (6) service days and distance below 0 are kept and shown as "overdue by N days" and "overdue by N km"; (7) values outside the ranges in `app/live_limits.py` are "no reading"; (8) after a failed read the wait is never shorter than the interval.
 
 
-## Complete service and daily odometer (PROPOSED 2026-11-03, awaiting owner approval; ADR-009 amendment)
+## Complete service and daily odometer (APPROVED by the owner, 2026-11-03; ADR-009 amendment)
 
 Owner request and answers, 2026-11-03: tick a service reminder on the reminder page, enter the actual date, service centre and odometer, and have that update the Service page; the next reminder is the actual odometer plus the interval; from 30 days before a service is due until it is done, the odometer is refreshed daily from the car. Cost may be zero. Warranty does not use the live odometer. The unattended daily Zeekr login is accepted (ADR-009 amendment).
 

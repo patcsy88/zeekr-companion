@@ -267,6 +267,26 @@ export interface paths {
         patch: operations["patch_reminder_api_v1_reminders__reminder_id__patch"];
         trace?: never;
     };
+    "/api/v1/reminders/{reminder_id}/complete-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Service
+         * @description Record the service, complete the reminder and create the next one, all or nothing.
+         */
+        post: operations["complete_service_api_v1_reminders__reminder_id__complete_service_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/service-records": {
         parameters: {
             query?: never;
@@ -625,16 +645,13 @@ export interface components {
             date: string;
             /** Km */
             km: number;
-            /**
-             * Service Record Id
-             * Format: uuid
-             */
-            service_record_id: string;
+            /** Service Record Id */
+            service_record_id: string | null;
             /**
              * Source
-             * @constant
+             * @enum {string}
              */
-            source: "latest_service_record";
+            source: "latest_service_record" | "live_reading";
         };
         /** ErrorBody */
         ErrorBody: {
@@ -1000,6 +1017,46 @@ export interface components {
         ReminderTemplateList: {
             /** Items */
             items: components["schemas"]["ReminderTemplate"][];
+        };
+        /**
+         * ServiceCompleteIn
+         * @description Complete a service reminder: records the service and creates the next reminder.
+         */
+        ServiceCompleteIn: {
+            /**
+             * Cost Minor
+             * @default 0
+             */
+            cost_minor?: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Next Id
+             * Format: uuid
+             */
+            next_id: string;
+            /** Notes */
+            notes?: string | null;
+            /** Odometer */
+            odometer: number;
+            /** Provider */
+            provider?: string | null;
+            /**
+             * Record Id
+             * Format: uuid
+             */
+            record_id: string;
+        };
+        /** ServiceCompleteOut */
+        ServiceCompleteOut: {
+            next_reminder: components["schemas"]["ReminderOut"] | null;
+            reminder: components["schemas"]["ReminderOut"];
+            service_record: components["schemas"]["ServiceRecordOut"];
         };
         /** ServiceRecordCreate */
         ServiceRecordCreate: {
@@ -2709,6 +2766,86 @@ export interface operations {
             };
             /** @description not_found: resource does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    complete_service_api_v1_reminders__reminder_id__complete_service_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reminder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceCompleteIn"];
+            };
+        };
+        responses: {
+            /** @description Identical replay */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceCompleteOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceCompleteOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

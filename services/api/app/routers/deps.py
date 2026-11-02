@@ -55,8 +55,9 @@ def get_service_record_service(session: SessionDep) -> ServiceRecordService:
     return ServiceRecordService(ServiceRecordRepository(session))
 
 
-def get_reminder_service(session: SessionDep) -> ReminderService:
-    return ReminderService(ReminderRepository(session), ServiceRecordRepository(session))
+def get_reminder_service(request: Request, session: SessionDep) -> ReminderService:
+    live = LiveReadingRepository(session) if request.app.state.live_telemetry else None
+    return ReminderService(ReminderRepository(session), ServiceRecordRepository(session), live)
 
 
 def get_expense_service(session: SessionDep) -> ExpenseService:

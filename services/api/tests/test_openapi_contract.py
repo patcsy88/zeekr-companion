@@ -60,6 +60,7 @@ REMINDER_ROUTES = {
     ("get", "/api/v1/reminders/{reminder_id}"),
     ("patch", "/api/v1/reminders/{reminder_id}"),
     ("delete", "/api/v1/reminders/{reminder_id}"),
+    ("post", "/api/v1/reminders/{reminder_id}/complete-service"),
     ("get", "/api/v1/reminder-templates"),
 }
 
