@@ -30,6 +30,7 @@ from app.routers import (
     warranty,
 )
 from app.services.auth import AuthService
+from app.services.daily_read import daily_read_lifespan
 from app.services.reasoning import build_reasoning_model
 
 logger = logging.getLogger("zeekr.api")
@@ -128,6 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
+        lifespan=daily_read_lifespan,
     )
     app.state.settings = settings
     app.state.reasoning_model = build_reasoning_model(settings)

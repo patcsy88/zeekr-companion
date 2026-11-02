@@ -313,3 +313,19 @@ def test_warranty_ignores_the_live_reading(
     _turn_live_on(client)
     cur = client.get("/api/v1/warranty-coverages", headers=auth_headers).json()["current_odometer"]
     assert cur["km"] == 12000 and cur["source"] == "latest_service_record"
+
+
+def test_patch_and_complete_still_work_with_live_readings_on(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers)
+    _live_row(client, 15000, dt.datetime.now(dt.UTC))
+    _turn_live_on(client)
+    r = client.patch(f"{URL}/{rem['id']}", json={"notes": "n"}, headers=auth_headers)
+    assert r.status_code == 200 and r.json()["notes"] == "n"
+    done = client.post(
+        f"{URL}/{rem['id']}/complete-service", json=complete_body(), headers=auth_headers
+    )
+    assert done.status_code == 201 and done.json()["next_reminder"]["due_odometer"] == 78500
+    assert client.get(f"{URL}/{rem['id']}", headers=auth_headers).status_code == 200
+    assert client.post(URL, json=reminder(), headers=auth_headers).status_code == 201

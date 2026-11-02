@@ -36,6 +36,19 @@ class ReminderRepository:
         self._session.rollback()
         return rows
 
+    def open_service_due_dates(self) -> list[dt.date]:
+        """Due dates of service reminders that are not completed (plain dates, no ORM rows)."""
+        rows = self._session.execute(
+            select(Reminder.due_date).where(
+                Reminder.kind == "service",
+                Reminder.completed_on.is_(None),
+                Reminder.due_date.is_not(None),
+            )
+        ).scalars()
+        dates = [d for d in rows if d is not None]
+        self._session.rollback()
+        return dates
+
     def insert_if_absent(
         self, values: dict[str, Any], max_rows: int | None = None
     ) -> Reminder | None:
