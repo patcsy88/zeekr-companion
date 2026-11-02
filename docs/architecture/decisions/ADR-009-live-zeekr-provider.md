@@ -175,6 +175,20 @@ A one-off command for the owner, not part of the running app and not wired into 
 - **QA and security review of the live card (2026-10-31).** Two independent reviews of `f32a7f1` and `72506e7`: no blockers. Majors found by QA and fixed: (a) a car value inside the mapper's range but outside the table's CHECK range (for example an odometer over 10,000,000 or service days over 100,000) made the card a 500, and the cached snapshot kept it broken; (b) an extreme `since` raised `OverflowError` (500, contract says 400). Fixes and owner-approved refinements are listed in `api-contracts.md`; the limits now live in one file, `app/live_limits.py`, and a test inserts every bound into the real table. Other fixes: lock wait of 5 seconds, delete not behind the lock, back-off never shorter than the interval, pruning on history reads, a read-only test that allows only `login`, `get_vehicle_list` and `get_status`, `no-store` asserted on 200 responses. Facts checked: the library's default timeout is 10 seconds to connect and 30 to read (`const.REQUEST_TIMEOUT`); the container starts one uvicorn process (`services/api/docker-entrypoint.sh`), and nothing enforces that, so the lock and the spacing clock are per process and a second worker would multiply Zeekr calls. Accepted, not changed: a wrong password can cause up to 5 login attempts on the second account (spaced by back-off) before the provider stops until restart, which could lock that account on Zeekr's side; a reading that fails to store is not retried; `served_from` is `zeekr` for any attempt, including a failed one. Not verified by either review: real-browser behaviour (pull-down, tab visibility, the service worker at runtime), CORS and the production CSP.
 - **Not known:** the right `ZEEKR_COUNTRY_CODE` for a Malaysian account (the library's default is `AU`), and whether the account's username is the email the login expects.
 
+## Amendment (proposed 2026-11-03, awaiting owner approval): a daily read before a service
+
+The owner asked (2026-11-03) for the odometer to be refreshed daily from 30 days before a service is due until it is done, and accepted an unattended daily Zeekr login. This reverses the card's "the server never polls" rule for one narrow case.
+
+- **What changes:** a background task in the API process reads the car once per Kuala Lumpur day, at or after 08:00, only while an open service reminder is within 30 days of its due date or past it. It stops when the service is completed. The contract is in `api-contracts.md`, "Complete service and daily odometer".
+- **What does not change:** read-only calls only, the same allow-list, the same dropped fields, the same lock, spacing, back-off and stop-after-failures, the same retention and delete-all, nothing to the model, off when `ZEEKR_LIVE_ENABLED` is false.
+- **Risks the owner accepts with this:**
+  - Logins happen while nobody is looking. A wrong password or a restriction on the second account could cause up to 5 attempts before the provider stops, which could lock that account on Zeekr's side. The back-off numbers are defaults, not observed.
+  - One read a day is the lowest-risk setting, but the effect of status reads on the car's 12 V battery is still unverified.
+  - The design assumes one uvicorn process. A second worker would read twice.
+  - A restart resets the failure count and the daily task simply retries at its next check.
+  - Zeekr's terms for this use are still unanswered (the enquiry is unsent by the owner's choice).
+- **Not decided:** nothing is built, and the amendment needs the owner's approval of the contract before code.
+
 ## Not decided
 
 - Which fields the app should read first. That depends on the real field names from gate 6.

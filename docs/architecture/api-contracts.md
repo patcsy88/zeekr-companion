@@ -710,3 +710,62 @@ Online only. Neither the card nor the history is cached by the service worker or
 - **Web implemented 2026-10-31 (build step 2, not deployed):** the Vehicle page card and the history screen at `/vehicle/live`. No change to the approved contract. The client allow-list accepts only `/live-vehicle`, `/live-vehicle/history` and a plain query on the history path. The card asks on load, when the page becomes visible, on a timer of `interval_minutes` while visible, on the Refresh button and on a pull-down. It stops asking when `status` is `off` or `paused`. A manual refresh served from cache shows "No newer reading yet." Nothing from the card or history is stored on the device or cached by the service worker; error text from the server is never shown.
 - **Refinements after QA and security review, approved by the owner 2026-10-31 (not deployed):** (1) a car timestamp more than 5 minutes ahead of the server clock is treated as no reading and is not stored; (2) a card request waits at most 5 seconds for a read already in progress, then returns the stored reading with `served_from: "cache"`, and the delete does not wait for a read; (3) if the database refuses a write, the card returns `status: "unavailable"` with the last stored reading, never a 500; (4) `GET /live-vehicle/history` first deletes rows older than 12 months; (5) an extreme `since` is `400 validation_error`; (6) service days and distance below 0 are kept and shown as "overdue by N days" and "overdue by N km"; (7) values outside the ranges in `app/live_limits.py` are "no reading"; (8) after a failed read the wait is never shorter than the interval.
 
+
+## Complete service and daily odometer (PROPOSED 2026-11-03, awaiting owner approval; ADR-009 amendment)
+
+Owner request and answers, 2026-11-03: tick a service reminder on the reminder page, enter the actual date, service centre and odometer, and have that update the Service page; the next reminder is the actual odometer plus the interval; from 30 days before a service is due until it is done, the odometer is refreshed daily from the car. Cost may be zero. Warranty does not use the live odometer. The unattended daily Zeekr login is accepted (ADR-009 amendment).
+
+No new table and no migration. Nothing here is built.
+
+### Endpoint
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/reminders/{id}/complete-service` | One all-or-nothing transaction. Online only |
+
+Body (`extra=forbid`): `record_id` (uuid, client-generated), `next_id` (uuid, client-generated), `date`, `odometer`, `provider` (service centre, optional), `description` (optional, default is the reminder title), `cost_minor` (integer sen, `>= 0`, zero allowed, default 0), `notes` (optional). `date`, `odometer`, `provider`, `cost_minor`, `notes` and the `description` bound follow the service-record rules (`date` not in the future in Asia/Kuala_Lumpur).
+
+In one transaction the server:
+
+1. Creates a service record with `record_id` and the entered values (so the Service page and the current odometer update).
+2. Sets the reminder's `completed_on` to `date`.
+3. Creates the next reminder `next_id`, only if the completed reminder has a `template_ref` of the form `awd-performance-service:<version>:<n>`. The interval comes from the current template (40,000 km, 24 months, whichever comes first):
+   - `due_odometer` = entered `odometer` + 40,000 (the actual reading, not the nominal checkpoint). A result above 10,000,000 returns `400`.
+   - `due_date` = entered `date` + 24 months, clamped to the month's last day. The date is always service date + 24 months. The odometer never moves it and it never moves the odometer limit, so when the two disagree the 24-month date stands (owner answer 1). The existing status rule still marks the reminder overdue by whichever limit is passed first.
+   - `title` = `Next service (<due_odometer> km)`; `kind` = `service`; `template_ref` = the same value; `notes` = null.
+   - A reminder with no `template_ref` completes and records the service but creates no next reminder. The response says so (`next_reminder: null`).
+
+Response `201`: `{ "service_record": {record}, "reminder": {completed reminder}, "next_reminder": {reminder} | null }`.
+
+Replay: the same `record_id`, `next_id` and body returns `200` with the same result and writes nothing. The same ids with different content return `409 conflict`.
+
+| Case | Status and code |
+|---|---|
+| Body fails validation, bad UUID, odometer above bound | `400 validation_error` |
+| Reminder not `kind` service, or already completed | `400 validation_error` on field `body` |
+| 500 reminders already exist | `400 validation_error` on field `body`; nothing is written |
+| Unknown reminder id | `404 not_found` |
+| Ids reused with different content | `409 conflict` |
+
+Offline: the button is disabled with a message. The three writes are not queued, so a replay cannot create a second next reminder. The existing "Mark complete" and "Edit" keep their offline behaviour for the other reminder kinds.
+
+Web: for a service reminder that is not completed, the detail page shows "Complete service" (replacing "Mark complete") and a form with Actual service date, Service centre, Odometer (km), Cost (MYR, zero allowed), Description and Notes. The odometer is prefilled from the current odometer and can be changed. Insurance and road-tax reminders keep "Mark complete".
+
+### Current odometer for reminders
+
+`current_odometer` on the reminders list gains `source: "live_reading"`. The server takes the larger kilometre figure of the newest stored live reading and the latest service record (an odometer does not go down, so a smaller figure is a stale or wrong one). With live readings off or none stored, behaviour is unchanged. Warranty and wear status keep using the service record only (owner answer 4). The live reading stays out of the model prompt.
+
+### Daily read (ADR-009 amendment)
+
+A background task starts with the API only if `ZEEKR_LIVE_ENABLED` is true. It reads the car at most once per Kuala Lumpur day, at or after 08:00 KL, only while at least one open service reminder has `due_date` and today is on or after `due_date` minus 30 days. It keeps running after the due date and stops when no such reminder is open, that is when the service is completed. It uses the existing lock, spacing, back-off and stop-after-failures, and stores through the existing `live_reading` path. A reading stored by a Vehicle page visit that day counts as the day's read. If the provider has stopped, the task does nothing and logs one line without any value. No setting is added. The 08:00 time is a constant in code.
+
+### Acceptance criteria (draft)
+
+- A complete-service call creates one service record, completes the reminder and creates one next reminder with `due_odometer` = actual + 40,000 and `due_date` = actual date + 24 months, all or nothing. A failure at any step leaves nothing written.
+- Replaying it changes nothing. Different content under the same ids returns `409`.
+- A reminder without a `template_ref` creates no next reminder.
+- Cost zero is accepted; a negative cost, a future date or a non-service reminder is rejected.
+- The Service page lists the new record, and the current odometer reflects it.
+- With the flag off, no background task runs and no Zeekr call is made.
+- The daily task does not read outside the 30-day window, after the service is completed, more than once per KL day, or when the provider has stopped.
+- Warranty and wear figures do not change when a live reading is stored.
