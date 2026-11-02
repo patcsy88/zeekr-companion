@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FailedNotice } from '../components/ErrorBox';
 import { BasisNote, StatusBadge } from '../components/ReminderParts';
 import { SyncBadge } from '../components/SyncBadge';
-import { useReminder } from '../data/hooks';
+import { useConnectivity, useReminder } from '../data/hooks';
 import { removeReminder, saveReminderEdit } from '../data/mutations';
 import { formatDate, formatTimestamp } from '../lib/dates';
 import { dateText, KIND_CONTEXT, KIND_LABELS, kmText } from '../lib/reminderText';
@@ -20,6 +20,7 @@ export function ReminderDetailPage() {
 function ReminderDetail({ id }: { id: string }) {
   const nav = useNavigate();
   const data = useReminder(id);
+  const { online } = useConnectivity();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -165,14 +166,31 @@ function ReminderDetail({ id }: { id: string }) {
         </div>
       ) : (
         <div className="actions">
-          <button
-            type="button"
-            className="primary"
-            disabled={busy}
-            onClick={() => void toggleComplete()}
-          >
-            {r.completed_on === null ? 'Mark complete' : 'Reopen'}
-          </button>
+          {r.kind === 'service' && r.completed_on === null ? (
+            online ? (
+              <Link to={`/reminders/${id}/complete`} className="button primary">
+                Complete service
+              </Link>
+            ) : (
+              <>
+                <button type="button" className="primary" disabled aria-describedby="cs-offline">
+                  Complete service
+                </button>
+                <p className="hint" id="cs-offline">
+                  Completing a service needs a connection.
+                </p>
+              </>
+            )
+          ) : (
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              onClick={() => void toggleComplete()}
+            >
+              {r.completed_on === null ? 'Mark complete' : 'Reopen'}
+            </button>
+          )}
           <Link to={`/reminders/${id}/edit`} className="button">
             Edit
           </Link>

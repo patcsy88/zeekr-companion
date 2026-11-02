@@ -112,6 +112,10 @@ export function assertContractPath(path: string): void {
         parts[1] === 'warranty-templates' ||
         parts[1] === 'reminder-templates')) ||
       (parts.length === 3 && parts[1] === 'auth' && parts[2] === 'token') ||
+      (parts.length === 4 &&
+        parts[1] === 'reminders' &&
+        isUuid(parts[2]) &&
+        parts[3] === 'complete-service') ||
       (parts.length === 3 &&
         (parts[1] === 'service-records' ||
           parts[1] === 'reminders' ||

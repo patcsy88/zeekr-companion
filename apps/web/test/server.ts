@@ -25,6 +25,7 @@ export interface FakeApi {
   klDateRule: boolean;
   reminders: Map<string, Reminder>;
   reminderPosts: unknown[];
+  completePosts: unknown[];
   reminderPatches: unknown[];
   reminderDeletes: string[];
   /** Status codes to answer the next reminder POSTs with, one per call. */
@@ -132,6 +133,7 @@ export const fake: FakeApi = {
   klDateRule: false,
   reminders: new Map(),
   reminderPosts: [],
+  completePosts: [],
   reminderPatches: [],
   reminderDeletes: [],
   reminderPostFailures: [],
@@ -169,6 +171,7 @@ export function resetFake(): void {
   fake.klDateRule = false;
   fake.reminders.clear();
   fake.reminderPosts = [];
+  fake.completePosts = [];
   fake.reminderPatches = [];
   fake.reminderDeletes = [];
   fake.reminderPostFailures = [];
@@ -327,6 +330,58 @@ export const reminderHandlers = [
     const updated = { ...rem, ...patch };
     fake.reminders.set(rem.id, updated);
     return HttpResponse.json(updated);
+  }),
+  http.post('*/api/v1/reminders/:id/complete-service', async ({ request, params }) => {
+    const rem = fake.reminders.get(String(params.id));
+    if (!rem) return err(404, 'not_found', 'Reminder not found.');
+    const body = (await request.json()) as {
+      record_id: string;
+      next_id: string;
+      date: string;
+      odometer: number;
+      provider?: string | null;
+      description?: string;
+      cost_minor?: number;
+      notes?: string | null;
+    };
+    fake.completePosts.push(body);
+    if (body.odometer === 666)
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'odometer', issue: 'rejected by test' },
+      ]);
+    const replay = fake.records.has(body.record_id);
+    const record = fake.records.get(body.record_id) ?? {
+      id: body.record_id,
+      date: body.date,
+      odometer: body.odometer,
+      provider: body.provider ?? null,
+      description: body.description ?? rem.title,
+      cost_minor: body.cost_minor ?? 0,
+      currency: 'MYR' as const,
+      notes: body.notes ?? null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    };
+    fake.records.set(record.id, record);
+    const done: Reminder = { ...rem, completed_on: body.date, status: 'completed', overdue_by: [] };
+    fake.reminders.set(done.id, done);
+    const next: Reminder | null = rem.template_ref
+      ? {
+          ...rem,
+          id: body.next_id,
+          title: `Next service (${(body.odometer + 40000).toLocaleString('en-US')} km)`,
+          due_odometer: body.odometer + 40000,
+          due_date: `${Number(body.date.slice(0, 4)) + 2}${body.date.slice(4)}`,
+          completed_on: null,
+          status: 'upcoming',
+          overdue_by: [],
+        }
+      : null;
+    if (next) fake.reminders.set(next.id, next);
+    return HttpResponse.json(
+      { service_record: record, reminder: done, next_reminder: next },
+      { status: replay ? 200 : 201 },
+    );
   }),
   http.delete('*/api/v1/reminders/:id', ({ params }) => {
     const id = String(params.id);

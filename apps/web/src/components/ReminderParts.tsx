@@ -16,7 +16,13 @@ export function BasisNote({ basis }: { basis: OdometerBasis | null }) {
   return (
     <p className="muted small" data-testid="odometer-basis">
       Current odometer: {basis.km.toLocaleString()} km
-      {basis.date ? `, from the service record dated ${formatDate(basis.date)}` : ''}
+      {basis.live
+        ? basis.date
+          ? `, from the car's reading on ${formatDate(basis.date)}`
+          : ''
+        : basis.date
+          ? `, from the service record dated ${formatDate(basis.date)}`
+          : ''}
       {basis.unsent ? ' (saved on this device, not yet on the server)' : ''}.
     </p>
   );

@@ -29,9 +29,13 @@ async function serverReminders(browser: Browser, baseURL: string): Promise<Serve
   }
 }
 
-async function addReminder(page: Page, o: { title: string; date?: string; km?: string }) {
+async function addReminder(
+  page: Page,
+  o: { title: string; date?: string; km?: string; kind?: string },
+) {
   await page.getByRole('link', { name: 'Reminders' }).click();
   await page.getByRole('link', { name: 'Add reminder' }).click();
+  if (o.kind) await page.getByLabel('Kind').selectOption(o.kind);
   await page.getByLabel('Title').fill(o.title);
   if (o.date) await page.getByLabel('Due date').fill(o.date);
   if (o.km) await page.getByLabel('Due odometer (km)').fill(o.km);
@@ -83,8 +87,8 @@ test('AC-17/18/19: overdue and upcoming groups, complete moves it to Completed, 
   const soon = unique('SOON');
   await page.goto('/');
   await signIn(page);
-  await addReminder(page, { title: late, date: klDate(-5) });
-  await addReminder(page, { title: soon, date: klDate(40) });
+  await addReminder(page, { title: late, date: klDate(-5), kind: 'insurance_renewal' });
+  await addReminder(page, { title: soon, date: klDate(40), kind: 'insurance_renewal' });
   await page.getByRole('link', { name: 'Reminders' }).click();
   await expect(page.getByRole('list', { name: 'Overdue reminders' }).getByText(late)).toBeVisible();
   await expect(

@@ -7,12 +7,17 @@ import type {
   ExpenseEdit,
   ReminderCreate,
   ReminderEdit,
+  ServiceCompleteIn,
   ServiceRecordCreate,
   ServiceRecordPatch,
   Vehicle,
 } from '../api/types';
+import { ClientError } from '../api/client';
+import { completeService } from '../api/endpoints';
 import { getSession } from '../auth/session';
 import { isOnline } from '../lib/connectivity';
+import { refreshReminders, upsertReminderInCache } from './reminders';
+import { upsertRecordInCache } from './repository';
 import { flush } from '../sync/engine';
 import {
   enqueueClaimCreate,
@@ -142,4 +147,22 @@ export async function removeClaim(id: string): Promise<void> {
 export async function saveCoverageBatch(items: WarrantyCoverageCreate[]): Promise<void> {
   for (const body of items) await enqueueCoverageCreate(body);
   await afterEnqueue();
+}
+
+/**
+ * Complete a service reminder: record the service, complete the reminder and create the next one,
+ * in one server step. Online only, never queued: a replayed queue entry must not create a second
+ * next reminder. The same ids make a retry safe.
+ */
+export async function completeServiceNow(
+  reminderId: string,
+  body: ServiceCompleteIn,
+): Promise<string | null> {
+  if (!isOnline()) throw new ClientError('Completing a service needs a connection.');
+  const out = await completeService(reminderId, body);
+  await upsertRecordInCache(out.service_record);
+  await upsertReminderInCache(out.reminder);
+  if (out.next_reminder) await upsertReminderInCache(out.next_reminder);
+  await refreshReminders().catch(() => undefined);
+  return out.next_reminder?.id ?? null;
 }

@@ -153,9 +153,9 @@ describe('AC-10 / AC-13 / AC-14 / AC-19: create, edit, complete, reopen, delete'
     await waitFor(() => {
       expect(fake.templateGets).toBeGreaterThan(0); // app-start sync has finished
     });
+    await user.selectOptions(screen.getByLabelText('Kind'), 'insurance_renewal');
     await user.type(screen.getByLabelText('Title'), 'Oil change');
     await user.type(screen.getByLabelText('Due date'), '2027-03-01');
-    await user.type(screen.getByLabelText('Due odometer (km)'), '30000');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(fake.reminders.size).toBe(1);
@@ -275,7 +275,11 @@ describe('AC-24 / AC-25: offline', () => {
   it('offline complete and delete of a synced reminder are queued and sent once', async () => {
     fake.reminders.set(
       IDS[0] ?? '',
-      rem(IDS[0] ?? '', { title: 'Two actions', due_date: plusDays(9) }),
+      rem(IDS[0] ?? '', {
+        title: 'Two actions',
+        due_date: plusDays(9),
+        kind: 'insurance_renewal',
+      }),
     );
     fake.reminders.set(
       IDS[1] ?? '',
