@@ -29,14 +29,12 @@ def read_reminder_odometer(
     reading (an odometer does not go down). A tie keeps the service record. Warranty keeps using
     `read_current_odometer`. `live` is None when live readings are off."""
     record = read_current_odometer(records)
-    row = live.latest() if live is not None else None
-    if row is None or row.odometer_km is None:
+    newest = live.latest_odometer() if live is not None else None
+    if newest is None:
         return record
-    if record is not None and record.km >= row.odometer_km:
+    km, observed_at = newest
+    if record is not None and record.km >= km:
         return record
     return CurrentOdometer(
-        km=row.odometer_km,
-        source="live_reading",
-        service_record_id=None,
-        date=today_kl(row.observed_at),
+        km=km, source="live_reading", service_record_id=None, date=today_kl(observed_at)
     )

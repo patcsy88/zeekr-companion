@@ -25,6 +25,20 @@ class LiveReadingRepository:
         self._session.rollback()
         return row
 
+    def latest_odometer(self) -> tuple[int, dt.datetime] | None:
+        """The newest reading's odometer and observed time, as plain values. Unlike `latest`, it
+        does not detach other rows held by the session, so reminders can call it mid-request."""
+        row = self._session.execute(
+            select(LiveReading.odometer_km, LiveReading.observed_at)
+            .where(LiveReading.odometer_km.is_not(None))
+            .order_by(desc(LiveReading.observed_at), desc(LiveReading.id))
+            .limit(1)
+        ).first()
+        self._session.rollback()
+        if row is None or row[0] is None:
+            return None
+        return row[0], row[1]
+
     def store(self, values: dict[str, Any], keep_after: dt.datetime) -> bool:
         """Insert unless a row with the same `observed_at` exists. When a row is stored, rows with
         `observed_at` before `keep_after` are deleted in the same transaction."""
