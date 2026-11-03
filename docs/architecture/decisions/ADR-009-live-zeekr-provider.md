@@ -199,3 +199,11 @@ The owner asked (2026-11-03) for the odometer to be refreshed daily from 30 days
 - The polling interval, and whether the data is stored or only shown live.
 - New data model and screens for live readings. Each needs its own design before code, as with ADR-008. A first proposal, a read-only live vehicle card, is in `docs/product/live-vehicle-card-proposal.md` (approved as a proposal 2026-10-31). Its contract ("Live vehicle card and history" in `api-contracts.md`) and data model (`live_reading` in `architecture.md`) were approved by the owner on 2026-10-31. No code, migration or deploy is approved yet.
 - Whether a supported route appears. If Zeekr Malaysia ever offers one, it replaces this proposal.
+
+## Build record: live card additions (2026-11-03, not deployed)
+
+Owner-approved: 12 V voltage, four tyre temperatures and five read-only on/off indicators (trip meters rejected). Migration `0009` adds 10 nullable columns and two CHECK constraints. `map_status` reads `mainBatteryStatus.voltage`, `tyreTemp*` and five indicator keys. The card and history gain `battery_12v_volts`, `tyres_celsius` and `indicators`. The indicators are drawn as read-only switches that send nothing. Meanings are `unverified`.
+
+- Gates: backend 1958 passed, 5 xfailed; web tests 589 passed, 7 expected fail; e2e 39 passed; ruff, mypy, gitleaks, shared-types drift and `npm audit --audit-level=high` clean. `pip-audit` could only report that the project's own package is not on PyPI.
+- One web test (`reminders.test.tsx`, create/edit/complete) failed once in a full run and passed on 4 reruns; it is undiagnosed, like the earlier flaky warranty test.
+- Not checked: the screens in a real browser or on the iPhone. Reading the new values from a real car through the app has not been done.

@@ -29,7 +29,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0008"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0009"
             )
     finally:
         engine.dispose()

@@ -22,6 +22,7 @@ from app.schemas import (
     LiveCardOut,
     LiveDeleteOut,
     LiveHistoryOut,
+    LiveIndicators,
     LiveReadingItem,
     LiveReadings,
     LiveTyres,
@@ -48,6 +49,7 @@ def months_before(moment: dt.datetime, months: int) -> dt.datetime:
 
 def _data_columns(snap: Snapshot) -> dict[str, object]:
     tyres = snap.tyres_kpa
+    temps = snap.tyres_celsius
     return {
         "odometer_km": snap.odometer_km,
         "battery_percent": (
@@ -62,6 +64,20 @@ def _data_columns(snap: Snapshot) -> dict[str, object]:
         "tyre_passenger_rear_kpa": tyres.passenger_rear if tyres else None,
         "is_charging": snap.is_charging,
         "is_plugged_in": snap.is_plugged_in,
+        "battery_12v_volts": (
+            None
+            if snap.battery_12v_volts is None
+            else Decimal(str(round(snap.battery_12v_volts, 1)))
+        ),
+        "tyre_temp_driver_front_c": temps.driver if temps else None,
+        "tyre_temp_passenger_front_c": temps.passenger if temps else None,
+        "tyre_temp_driver_rear_c": temps.driver_rear if temps else None,
+        "tyre_temp_passenger_rear_c": temps.passenger_rear if temps else None,
+        "pre_climate_active": snap.pre_climate_active,
+        "fragrance_active": snap.fragrance_active,
+        "overheat_protection_active": snap.overheat_protection_active,
+        "vtm_ts_active": snap.vtm_ts_active,
+        "engine_enable_running": snap.engine_enable_running,
     }
 
 
@@ -82,6 +98,20 @@ def _readings(row: LiveReading | None) -> LiveReadings:
         ),
         service_distance_km=row.service_distance_km,
         service_days=row.service_days,
+        battery_12v_volts=(None if row.battery_12v_volts is None else float(row.battery_12v_volts)),
+        tyres_celsius=LiveTyres(
+            driver_front=row.tyre_temp_driver_front_c,
+            passenger_front=row.tyre_temp_passenger_front_c,
+            driver_rear=row.tyre_temp_driver_rear_c,
+            passenger_rear=row.tyre_temp_passenger_rear_c,
+        ),
+        indicators=LiveIndicators(
+            pre_climate_active=row.pre_climate_active,
+            fragrance_active=row.fragrance_active,
+            overheat_protection_active=row.overheat_protection_active,
+            vtm_ts_active=row.vtm_ts_active,
+            engine_enable_running=row.engine_enable_running,
+        ),
     )
 
 

@@ -3,7 +3,18 @@ import { Link } from 'react-router-dom';
 import { request } from '../api/client';
 import type { LiveCard } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
-import { days, formatKl, km, kpa, percent, serviceKm, yesNo } from '../lib/liveVehicle';
+import {
+  celsius,
+  days,
+  formatKl,
+  km,
+  kpa,
+  percent,
+  serviceKm,
+  volts,
+  yesNo,
+} from '../lib/liveVehicle';
+import { ReadOnlyToggle } from './ReadOnlyToggle';
 import { usePullToRefresh } from '../lib/pullToRefresh';
 
 /**
@@ -123,6 +134,8 @@ function CardBody({
   }
   const r = card.readings;
   const t = r.tyres_kpa;
+  const tc = r.tyres_celsius;
+  const ind = r.indicators;
   return (
     <>
       {card.status === 'paused' ? (
@@ -166,13 +179,23 @@ function CardBody({
         <dt>Charging</dt>
         <dd>{yesNo(r.charging)}</dd>
         <dt>Tyre, driver front</dt>
-        <dd>{kpa(t.driver_front)}</dd>
+        <dd>
+          {kpa(t.driver_front)}, {celsius(tc.driver_front)}
+        </dd>
         <dt>Tyre, passenger front</dt>
-        <dd>{kpa(t.passenger_front)}</dd>
+        <dd>
+          {kpa(t.passenger_front)}, {celsius(tc.passenger_front)}
+        </dd>
         <dt>Tyre, driver rear</dt>
-        <dd>{kpa(t.driver_rear)}</dd>
+        <dd>
+          {kpa(t.driver_rear)}, {celsius(tc.driver_rear)}
+        </dd>
         <dt>Tyre, passenger rear</dt>
-        <dd>{kpa(t.passenger_rear)}</dd>
+        <dd>
+          {kpa(t.passenger_rear)}, {celsius(tc.passenger_rear)}
+        </dd>
+        <dt>12 V battery</dt>
+        <dd>{volts(r.battery_12v_volts)}</dd>
         <dt>Odometer</dt>
         <dd>{km(r.odometer_km)}</dd>
         <dt>Next service in</dt>
@@ -180,6 +203,33 @@ function CardBody({
           {serviceKm(r.service_distance_km)}, {days(r.service_days)}
         </dd>
       </dl>
+      <h3 className="small">Reported on / off</h3>
+      <dl className="details" data-testid="live-indicators">
+        <dt>Pre-climate</dt>
+        <dd>
+          <ReadOnlyToggle label="Pre-climate" value={ind.pre_climate_active} />
+        </dd>
+        <dt>Fragrance</dt>
+        <dd>
+          <ReadOnlyToggle label="Fragrance" value={ind.fragrance_active} />
+        </dd>
+        <dt>Overheat protection</dt>
+        <dd>
+          <ReadOnlyToggle label="Overheat protection" value={ind.overheat_protection_active} />
+        </dd>
+        <dt>VTM TS</dt>
+        <dd>
+          <ReadOnlyToggle label="VTM TS" value={ind.vtm_ts_active} />
+        </dd>
+        <dt>Engine enable running</dt>
+        <dd>
+          <ReadOnlyToggle label="Engine enable running" value={ind.engine_enable_running} />
+        </dd>
+      </dl>
+      <p className="muted small">
+        These are the car's own reported flags. Their exact meanings are not verified, and this page
+        cannot change any of them.
+      </p>
       <p className="muted small">
         Updates about every {card.interval_minutes} minutes while this page is open.
       </p>

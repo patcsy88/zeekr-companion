@@ -32,6 +32,14 @@ export function kpa(value: number | null): string {
   return value === null ? NO_READING : `${value} kPa`;
 }
 
+export function volts(value: number | null): string {
+  return value === null ? NO_READING : `${value.toFixed(1)} V`;
+}
+
+export function celsius(value: number | null): string {
+  return value === null ? NO_READING : `${value} °C`;
+}
+
 export function days(value: number | null): string {
   if (value === null) return NO_READING;
   const n = Math.abs(value);

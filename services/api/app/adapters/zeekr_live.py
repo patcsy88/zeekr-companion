@@ -27,11 +27,13 @@ from pydantic import SecretStr
 from app.adapters.telemetry import Reading, TyrePressures
 from app.config import ZEEKR_LIVE_FIELDS, Settings
 from app.live_limits import (
+    BATTERY_12V_VOLTS,
     BATTERY_PERCENT,
     ODOMETER_KM,
     RANGE_KM,
     SERVICE_DAYS,
     SERVICE_DISTANCE_KM,
+    TYRE_CELSIUS,
     TYRE_KPA,
 )
 
@@ -59,6 +61,13 @@ class Snapshot:
     tyres_kpa: TyrePressures | None
     is_charging: bool | None
     is_plugged_in: bool | None
+    battery_12v_volts: float | None
+    tyres_celsius: TyrePressures | None
+    pre_climate_active: bool | None
+    fragrance_active: bool | None
+    overheat_protection_active: bool | None
+    vtm_ts_active: bool | None
+    engine_enable_running: bool | None
 
 
 def _dig(status: object, path: tuple[str, ...]) -> object:
@@ -95,6 +104,37 @@ def _whole(value: object, low: int = 0, high: int | None = None) -> int | None:
 
 def _flag(value: object) -> bool | None:
     return value if isinstance(value, bool) else None
+
+
+def _onoff(value: object) -> bool | None:
+    """A real boolean, or the text "true" or "false" in any letter case. Anything else is None."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in ("true", "false"):
+            return text == "true"
+    return None
+
+
+def _volts(value: object) -> float | None:
+    number = _number(value)
+    if number is None or not BATTERY_12V_VOLTS[0] <= number <= BATTERY_12V_VOLTS[1]:
+        return None
+    return number
+
+
+def _tyre_celsius(status: object) -> TyrePressures | None:
+    names = ("tyreTempDriver", "tyreTempPassenger", "tyreTempDriverRear", "tyreTempPassengerRear")
+    values: list[int] = []
+    for name in names:
+        number = _number(_dig(status, (*_MAINT, name)))
+        if number is None or number != int(number):
+            return None
+        if not TYRE_CELSIUS[0] <= number <= TYRE_CELSIUS[1]:
+            return None
+        values.append(int(number))
+    return TyrePressures(*values)  # the same four-wheel shape; the unit is degrees Celsius here
 
 
 def _observed_at(value: object) -> dt.datetime | None:
@@ -140,6 +180,13 @@ def map_status(status: object) -> Snapshot:
         tyres_kpa=_tyres(status),
         is_charging=_flag(_dig(status, (*_ELEC, "isCharging"))),
         is_plugged_in=_flag(_dig(status, (*_ELEC, "isPluggedIn"))),
+        battery_12v_volts=_volts(_dig(status, (*_MAINT, "mainBatteryStatus", "voltage"))),
+        tyres_celsius=_tyre_celsius(status),
+        pre_climate_active=_onoff(_dig(status, (*_CLIMATE, "preClimateActive"))),
+        fragrance_active=_onoff(_dig(status, (*_CLIMATE, "fragActive"))),
+        overheat_protection_active=_onoff(_dig(status, (*_CLIMATE, "climateOverHeatProActive"))),
+        vtm_ts_active=_onoff(_dig(status, (*_CLIMATE, "vtmTsActive"))),
+        engine_enable_running=_onoff(_dig(status, (_AVS, "runningStatus", "engineEnableRunning"))),
     )
 
 

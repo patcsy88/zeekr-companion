@@ -27,6 +27,15 @@ function card(over: Partial<LiveCard> = {}): LiveCard {
       tyres_kpa: { driver_front: 236, passenger_front: 240, driver_rear: 238, passenger_rear: 233 },
       service_distance_km: 35000,
       service_days: 200,
+      battery_12v_volts: 13.1,
+      tyres_celsius: { driver_front: 43, passenger_front: 44, driver_rear: 45, passenger_rear: 46 },
+      indicators: {
+        pre_climate_active: false,
+        fragrance_active: true,
+        overheat_protection_active: false,
+        vtm_ts_active: null,
+        engine_enable_running: false,
+      },
     },
     ...over,
   };
@@ -151,6 +160,42 @@ describe('live vehicle: the card', () => {
     expect(list).toHaveTextContent('236 kPa');
     expect(list).toHaveTextContent('35,000 km, 200 days');
     expect(screen.getByTestId('live-asof')).toHaveTextContent('31 Oct 2026, 10:00 (KL)');
+  });
+
+  it('shows 12 V, tyre temperatures and read-only on/off indicators', async () => {
+    serveCard(card());
+    open();
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    expect(list).toHaveTextContent('13.1 V');
+    expect(list).toHaveTextContent('236 kPa, 43 °C');
+    expect(list).toHaveTextContent('233 kPa, 46 °C');
+    const ind = screen.getByTestId('live-indicators');
+    expect(ind).toHaveTextContent('Fragrance');
+    const fragrance = screen.getByRole('switch', { name: 'Fragrance: on' });
+    expect(fragrance).toHaveAttribute('aria-readonly', 'true');
+    expect(fragrance).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Pre-climate: off' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    const unknown = screen.getByRole('switch', { name: 'VTM TS: no reading' });
+    expect(unknown).not.toHaveAttribute('aria-checked');
+    expect(unknown).toHaveTextContent('no reading');
+  });
+
+  it('indicators are not controls: clicking one sends nothing', async () => {
+    serveCard(card());
+    const writes: string[] = [];
+    server.events.on('request:start', ({ request: r }) => {
+      if (r.method !== 'GET') writes.push(`${r.method} ${r.url}`);
+    });
+    open();
+    render(<App />);
+    await screen.findByTestId('live-indicators');
+    await userEvent.click(screen.getByRole('switch', { name: 'Fragrance: on' }));
+    expect(writes).toEqual([]);
+    server.events.removeAllListeners();
   });
 
   it('shows "no reading" for nulls and never a zero', async () => {
