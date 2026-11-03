@@ -417,3 +417,31 @@ def test_dump_flag_reads_status_once_and_prints_only_plain_status_values(
 def test_dump_without_confirmation_sends_nothing(capsys: pytest.CaptureFixture[str]) -> None:
     code, _, _, made = run(capsys, ["--dump"], env={})
     assert code == 2 and made == []
+
+
+def test_only_the_position_trust_flag_is_shown_inside_the_hidden_group() -> None:
+    status = {
+        "basicVehicleStatus": {
+            "position": {
+                "latitude": CANARY,
+                "longitude": CANARY,
+                "posCanBeTrusted": "true",
+                "altitude": 12,
+                "marsCoordinates": {"latitude": CANARY},
+            },
+        }
+    }
+    out = "\n".join(check.dump_values(status))
+    assert "position.posCanBeTrusted = 'true'" in out
+    assert "position.latitude = <hidden>" in out
+    assert "position.altitude = <hidden>" in out
+    assert "marsCoordinates.latitude = <hidden>" in out
+    assert CANARY not in out
+
+
+def test_a_long_or_structured_trust_flag_stays_hidden() -> None:
+    for bad in ("x" * 30, "a b", {"lat": CANARY}, [CANARY], None, 1.5):
+        status = {"position": {"posCanBeTrusted": bad, "latitude": CANARY}}
+        out = "\n".join(check.dump_values(status))
+        assert "x" * 30 not in out and CANARY not in out
+        assert "position.posCanBeTrusted = 'a b'" not in out
