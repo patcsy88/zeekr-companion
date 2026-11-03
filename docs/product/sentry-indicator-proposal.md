@@ -52,3 +52,7 @@ Status: **data model and contract approved by the owner on 2026-11-03; built, no
 1. Approve the data model and contract above, or change them?
 2. Column and field name: `sentry_active` or `vstd_mode_active`?
 3. After approval: build it, run the gates and commit locally. The push and the deploy are asked separately.
+
+## After the deploy
+
+- 2026-11-03: the owner reported the Sentry block shows on the live card and "is confirmed to be reflecting Sentry" (owner-reported; the comparison method was not stated). The "unverified" label is kept until the owner decides to drop it.
