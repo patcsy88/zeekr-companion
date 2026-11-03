@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import create_engine, inspect, text
 
 from tests.conftest import run_migrations
@@ -241,4 +242,42 @@ def test_live_reading_migration_downgrades_and_reapplies(fresh_database_url: str
     assert "uq_live_reading_observed_at" in {
         c["name"] for c in insp.get_unique_constraints("live_reading")
     }
+    engine.dispose()
+
+
+def test_0009_live_additions_downgrade_and_reapply_keep_the_bounds(
+    fresh_database_url: str,
+) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0008")
+        engine = create_engine(fresh_database_url)
+        cols = {c["name"] for c in inspect(engine).get_columns("live_reading")}
+        assert "battery_12v_volts" not in cols and not any("tyre_temp" in c for c in cols)
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    volt, temp = "battery_12v_volts", "tyre_temp_driver_front_c"
+    for column, bad in ((volt, 5.9), (volt, 20.1), (temp, -41), (temp, 151)):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"INSERT INTO live_reading (id, observed_at, received_at, {column}) "  # noqa: S608
+                    "VALUES (gen_random_uuid(), now(), now(), :v)"
+                ),
+                {"v": bad},
+            )
     engine.dispose()

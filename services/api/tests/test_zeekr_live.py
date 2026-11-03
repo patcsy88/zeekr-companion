@@ -453,3 +453,99 @@ def test_indicators_accept_only_real_booleans_and_true_false_text(bad: object) -
     assert snap.pre_climate_active is None and snap.fragrance_active is None
     assert snap.overheat_protection_active is None and snap.vtm_ts_active is None
     assert snap.engine_enable_running is None
+
+
+def test_source_stops_logging_in_after_the_daily_cap() -> None:
+    from app.adapters.zeekr_live import MAX_LOGINS_PER_DAY
+
+    clients: list[FakeClient] = []
+
+    def factory(_: ZeekrSettings) -> FakeClient:
+        clients.append(FakeClient(RuntimeError("down")))
+        return clients[-1]
+
+    source = ZeekrStatusSource(settings(), factory)
+    for _ in range(MAX_LOGINS_PER_DAY + 5):
+        with pytest.raises(ZeekrReadError):
+            source()
+    assert len(clients) == MAX_LOGINS_PER_DAY
+
+
+def test_the_daily_login_cap_resets_on_a_new_kl_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    import datetime as dt
+
+    from app.adapters import zeekr_live
+    from app.adapters.zeekr_live import MAX_LOGINS_PER_DAY
+
+    day = {"d": dt.date(2026, 11, 3)}
+    monkeypatch.setattr(zeekr_live, "today_kl", lambda: day["d"])
+    clients: list[FakeClient] = []
+
+    def factory(_: ZeekrSettings) -> FakeClient:
+        clients.append(FakeClient(RuntimeError("down")))
+        return clients[-1]
+
+    source = ZeekrStatusSource(settings(), factory)
+    for _ in range(MAX_LOGINS_PER_DAY + 1):
+        with pytest.raises(ZeekrReadError):
+            source()
+    day["d"] = dt.date(2026, 11, 4)
+    with pytest.raises(ZeekrReadError):
+        source()
+    assert len(clients) == MAX_LOGINS_PER_DAY + 1
+
+
+def test_the_cap_message_is_fixed() -> None:
+    from app.adapters.zeekr_live import MAX_LOGINS_PER_DAY
+
+    source = ZeekrStatusSource(settings(), lambda _: FakeClient(RuntimeError(CANARY)))
+    for _ in range(MAX_LOGINS_PER_DAY):
+        with pytest.raises(ZeekrReadError):
+            source()
+    with pytest.raises(ZeekrReadError) as caught:
+        source()
+    assert CANARY not in str(caught.value)
+
+
+def _set(path: tuple[str, ...], value: object) -> Any:
+    body = status()
+    node = body["additionalVehicleStatus"]
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    return map_status(body)
+
+
+@pytest.mark.parametrize("raw", ["13.1", 13.1, " 13.1 "])
+def test_12v_accepts_a_number_or_numeric_text(raw: object) -> None:
+    path = ("maintenanceStatus", "mainBatteryStatus", "voltage")
+    assert _set(path, raw).battery_12v_volts == 13.1
+
+
+@pytest.mark.parametrize("raw", ["43", 43.0, 43, " 43 "])
+def test_tyre_temperature_accepts_a_whole_number_or_numeric_text(raw: object) -> None:
+    snap = _set(("maintenanceStatus", "tyreTempDriver"), raw)
+    assert snap.tyres_celsius is not None and snap.tyres_celsius.driver == 43
+
+
+@pytest.mark.parametrize("edge", [-40, 150])
+def test_tyre_temperature_bounds_are_kept(edge: int) -> None:
+    snap = _set(("maintenanceStatus", "tyreTempDriver"), edge)
+    assert snap.tyres_celsius is not None and snap.tyres_celsius.driver == edge
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (True, True),
+        (False, False),
+        ("true", True),
+        ("TRUE", True),
+        (" True ", True),
+        ("false", False),
+        ("FALSE", False),
+        (" False ", False),
+    ],
+)
+def test_indicator_values_that_are_accepted(raw: object, expected: bool) -> None:
+    assert _set(("climateStatus", "vtmTsActive"), raw).vtm_ts_active is expected

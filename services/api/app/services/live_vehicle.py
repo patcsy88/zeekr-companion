@@ -193,8 +193,8 @@ class LiveVehicleService:
         return True
 
     def history(self, limit: int, since: dt.datetime | None) -> LiveHistoryOut:
-        self._repo.prune(months_before(dt.datetime.now(dt.UTC), RETENTION_MONTHS))
-        rows = self._repo.list(limit, since)
+        floor = months_before(dt.datetime.now(dt.UTC), RETENTION_MONTHS)
+        rows = self._repo.list(limit, max(since, floor) if since is not None else floor)
         items = []
         for row in rows:
             r = _readings(row)

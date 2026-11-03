@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App';
 import { setToken } from '../src/auth/session';
 import { reportReachable } from '../src/lib/connectivity';
@@ -31,6 +31,17 @@ function open(path: string) {
   window.history.pushState(null, '', path);
   setToken('tok-test', 3600);
   return userEvent.setup();
+}
+
+afterEach(() => {
+  reportReachable(true);
+});
+
+async function synced() {
+  await waitFor(() => {
+    expect(fake.templateGets).toBeGreaterThan(0); // the last request of the app-start sync
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 
 describe('Complete service', () => {
@@ -101,7 +112,42 @@ describe('Complete service', () => {
     expect(btn).toBeDisabled();
     await user.click(btn);
     expect(fake.completePosts).toHaveLength(0);
-    reportReachable(true);
+  });
+
+  it('does not submit while offline, even when the form is submitted without the button', async () => {
+    seed();
+    open(`/reminders/${ID}/complete`);
+    render(<App />);
+    await screen.findByLabelText(/Odometer/);
+    await synced();
+    reportReachable(false);
+    await screen.findByText(/needs a connection/);
+    const form = screen.getByRole('button', { name: 'Complete service' }).closest('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(fake.completePosts).toHaveLength(0);
+    expect(fake.reminders.get(ID)?.completed_on).toBeNull();
+  });
+
+  it('a double click sends the same ids every time', async () => {
+    seed();
+    const user = open(`/reminders/${ID}/complete`);
+    render(<App />);
+    const odo = await screen.findByLabelText(/Odometer/);
+    await user.clear(odo);
+    await user.type(odo, '38500');
+    await user.dblClick(screen.getByRole('button', { name: 'Complete service' }));
+    await waitFor(() => {
+      expect(fake.completePosts.length).toBeGreaterThan(0);
+    });
+    const ids = new Set(
+      (fake.completePosts as { record_id: string; next_id: string }[]).map(
+        (b) => `${b.record_id}/${b.next_id}`,
+      ),
+    );
+    expect(ids.size).toBe(1);
+    expect([...fake.records.keys()]).toHaveLength(1);
   });
 
   it('keeps Mark complete for other kinds of reminder', async () => {

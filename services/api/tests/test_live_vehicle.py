@@ -457,7 +457,7 @@ def test_a_card_request_does_not_wait_forever_for_a_slow_read(
         lock.release()
 
 
-def test_history_prunes_rows_older_than_twelve_months(
+def test_history_hides_rows_older_than_twelve_months_without_deleting(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
     old = months_before(dt.datetime.now(dt.UTC), 12) - dt.timedelta(days=1)
@@ -470,7 +470,7 @@ def test_history_prunes_rows_older_than_twelve_months(
             {"t": old},
         )
     assert client.get(HISTORY, headers=auth_headers).json()["items"] == []
-    assert count(client) == 0
+    assert count(client) == 1  # a read never deletes; the next stored reading prunes it
 
 
 @pytest.mark.parametrize("since", ["9999-12-31T23:59:59-05:00", "0001-01-01T00:00:00+05:00"])

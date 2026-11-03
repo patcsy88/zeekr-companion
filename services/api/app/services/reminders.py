@@ -179,8 +179,8 @@ class ReminderService:
             "currency": "MYR",
             "notes": data.notes,
         }
-        next_values = self._next_values(row, data)
         try:
+            next_values = self._next_values(row, data)
             return self._complete_locked(row, data, record_values, next_values)
         except (InvalidInput, Conflict):
             self._repo.release()
@@ -230,6 +230,16 @@ class ReminderService:
             raise InvalidInput(
                 "Request failed validation.",
                 [FieldIssue("body", "only a service reminder can be completed this way")],
+            )
+        known = self._current_odometer()
+        if known is not None and data.odometer < known.km:
+            raise InvalidInput(
+                "Request failed validation.",
+                [
+                    FieldIssue(
+                        "odometer", f"is lower than the latest known odometer ({known.km:,} km)"
+                    )
+                ],
             )
         if next_values is not None:
             if self._repo.existing_in_tx(Reminder, data.next_id) is not None:

@@ -743,9 +743,12 @@ Replay: the same `record_id`, `next_id` and body returns `200` with the same res
 |---|---|
 | Body fails validation, bad UUID, odometer above bound | `400 validation_error` |
 | Reminder not `kind` service, or already completed | `400 validation_error` on field `body` |
+| `odometer` lower than the current odometer for reminders (newest service record or stored live reading) | `400 validation_error` on field `odometer` (owner decision, 2026-11-03; no override) |
 | 500 reminders already exist | `400 validation_error` on field `body`; nothing is written |
 | Unknown reminder id | `404 not_found` |
 | Ids reused with different content | `409 conflict` |
+
+Review change (owner decision, 2026-11-03): an odometer lower than the current odometer for reminders is rejected, to stop a typo from becoming the newest record. A lower figure that is really right means fixing the older record first. A replay is judged before this check, so a replay of an accepted call still returns `200`.
 
 Offline: the button is disabled with a message. The three writes are not queued, so a replay cannot create a second next reminder. The existing "Mark complete" and "Edit" keep their offline behaviour for the other reminder kinds.
 
