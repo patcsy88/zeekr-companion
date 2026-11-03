@@ -824,6 +824,25 @@ Five nullable columns on `live_reading` (one voltage, four tyre temperatures). E
 5. The response, table and logs still contain no position, lock, door, VIN, plate, nickname or raw reply.
 6. Delete-all and 12-month retention remove the new columns with their rows.
 
+### Amendment: five on/off indicators (owner answers, 2026-11-03; same migration `0009`)
+
+Five more nullable boolean columns on `live_reading`. Shown as **read-only** on/off indicators, not tappable switches: the app sends no commands to the car (ADR-008, ADR-009). Meanings are `unverified`; the label says "Reported on / off" and claims nothing more.
+
+| Column | Raw Zeekr key (under `additionalVehicleStatus`) | Raw type |
+|---|---|---|
+| `pre_climate_active` | `climateStatus.preClimateActive` | boolean |
+| `fragrance_active` | `climateStatus.fragActive` | boolean |
+| `overheat_protection_active` | `climateStatus.climateOverHeatProActive` | text "true" or "false" |
+| `vtm_ts_active` | `climateStatus.vtmTsActive` | text "true" or "false" |
+| `engine_enable_running` | `runningStatus.engineEnableRunning` | text "true" or "false" |
+
+- Mapping: a real boolean, or the text "true" or "false" (any letter case), becomes true or false. Anything else (missing, empty, '0', '2', another string) becomes `NULL` and shows "no reading", never "off".
+- The names `fragrance_active` and `vtm_ts_active` are guesses at the raw keys' meaning (`fragActive`, `vtmTsActive`). They are `unverified`; the screen shows the neutral label chosen at the build step.
+- Contract: `readings` gains `indicators`, an object with the five keys `pre_climate_active`, `fragrance_active`, `overheat_protection_active`, `vtm_ts_active`, `engine_enable_running`. Each is `true`, `false` or `null`. Additive only, in the card and each history item. Old rows return `null`.
+- A reading whose only valid fields are indicators is stored (acceptance criterion 3 now counts them). Delete-all and retention cover the columns.
+- Not included: the '0' or '1' group (`airBlowerActive`, `defrost`, `cabinTempReductionStatus`, `steerWhlHeatingSts`, `dcDcConnectStatus`, `disChargeConnectStatus`, `statusOfChargerConnection`, `chargerState`, `hvBatteryOptimizeFlag`, `curtainOpenStatus`), left for later by the owner. Tyre warnings, window, lid, seat and mode fields are not booleans and stay out.
+- Acceptance criteria: (7) each of the five maps true, false and invalid correctly; (8) the card shows each as a read-only indicator with "no reading" for `null`; (9) no control on the screen can send anything.
+
 ### Owner answers, 2026-11-03
 
 1. Voltage is kept to one decimal.
