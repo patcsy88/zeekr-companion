@@ -30,7 +30,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0010"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0011"
             )
     finally:
         engine.dispose()
@@ -309,4 +309,31 @@ def test_0010_service_record_reminder_id_downgrades_and_reapplies(
     engine = create_engine(fresh_database_url)
     cols = {c["name"] for c in inspect(engine).get_columns("service_record")}
     assert "reminder_id" in cols
+    engine.dispose()
+
+
+def test_0011_sentry_column_downgrades_and_reapplies(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0010")
+        engine = create_engine(fresh_database_url)
+        cols = {c["name"] for c in inspect(engine).get_columns("live_reading")}
+        assert "sentry_active" not in cols and "engine_enable_running" in cols
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    columns = {c["name"]: c for c in inspect(engine).get_columns("live_reading")}
+    assert "sentry_active" in columns and columns["sentry_active"]["nullable"] is True
     engine.dispose()

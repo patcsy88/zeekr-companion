@@ -220,3 +220,10 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **Web.** The Complete service form refuses to submit while offline or already busy (the Enter key bypassed the disabled button). The read-only switches take keyboard focus.
 - **`reminder_id` on the service record (owner: add it; migration `0010`).** A nullable foreign key (`ON DELETE SET NULL`). The replay now also compares it, so the same ids sent to a different reminder return `409`. Existing records keep null.
 - **Tests added.** Concurrency (same and different ids), KL midnight in the daily task, 29/30/31-day window edges, migration `0009` downgrade with bounds, overflow edges, month-end and Feb 29, mapper edges, the login cap, per-field null display, the offline submit and a double click.
+
+## Build record: Sentry indicator (2026-11-03, not deployed)
+
+- Owner approved the data model and contract, the name "Sentry" with an `unverified` label, a second Zeekr read per refresh, and the column name `sentry_active` (migration `0011`).
+- `ZeekrStatusSource` makes one extra read in the same session and keeps only one key of its reply; the rest is dropped at the source. A failed or odd second read gives "no reading", is not a provider failure, and forces no new login. The daily service-reminder read also makes the second call.
+- Only the text `'1'` (on) and `'0'` (off) are accepted. The meaning is `unverified` after one on/off cycle.
+- Display only. Nothing is sent to the model. Needs a fresh encrypted export before the migration is deployed.

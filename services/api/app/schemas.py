@@ -758,6 +758,7 @@ class LiveIndicators(BaseModel):
     overheat_protection_active: bool | None
     vtm_ts_active: bool | None
     engine_enable_running: bool | None
+    sentry_active: bool | None
 
 
 class LiveReadings(BaseModel):
@@ -796,6 +797,7 @@ class LiveReadings(BaseModel):
                 overheat_protection_active=None,
                 vtm_ts_active=None,
                 engine_enable_running=None,
+                sentry_active=None,
             ),
         )
 

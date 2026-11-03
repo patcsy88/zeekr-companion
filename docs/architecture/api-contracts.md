@@ -848,6 +848,17 @@ Five more nullable boolean columns on `live_reading`. Shown as **read-only** on/
 - Not included: the '0' or '1' group (`airBlowerActive`, `defrost`, `cabinTempReductionStatus`, `steerWhlHeatingSts`, `dcDcConnectStatus`, `disChargeConnectStatus`, `statusOfChargerConnection`, `chargerState`, `hvBatteryOptimizeFlag`, `curtainOpenStatus`), left for later by the owner. Tyre warnings, window, lid, seat and mode fields are not booleans and stay out.
 - Acceptance criteria: (7) each of the five maps true, false and invalid correctly; (8) the card shows each as a read-only indicator with "no reading" for `null`; (9) no control on the screen can send anything.
 
+### Amendment: Sentry indicator (owner answers, 2026-11-03; migration `0011`)
+
+One more nullable boolean on `live_reading`, `sentry_active`, shown as a **read-only** indicator labelled "Sentry (unverified)". Display only: no write path, no camera or position data, nothing sent to the model.
+
+- Source: `vstdModeState` from a second Zeekr read (`getVehicleState`) in the same login session. The reply is reduced to that one key at the source; every other key is dropped on arrival.
+- Mapping: text `'1'` is `true`, text `'0'` is `false`. Anything else (missing, empty, other text, numbers, booleans, `None`) is `NULL` and shows "no reading".
+- Meaning is `unverified`: the key followed the owner's toggle over one on/off cycle, and its name does not say Sentry.
+- Contract: `indicators` gains a sixth key, `sentry_active` (`true`, `false` or `null`), in the card and each history item. Additive only. Old rows return `null`.
+- If the second read fails, the main reading is still stored and `sentry_active` is `NULL`. That failure is not counted toward the provider's failure count or back-off, and forces no new login.
+- Acceptance criteria: (10) `'1'`, `'0'` and every other value map as above; (11) a failed second read keeps the main reading; (12) the card and history show Sentry read-only, with "no reading" for `null`.
+
 ### Owner answers, 2026-11-03
 
 1. Voltage is kept to one decimal.

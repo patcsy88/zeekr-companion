@@ -78,6 +78,7 @@ def _data_columns(snap: Snapshot) -> dict[str, object]:
         "overheat_protection_active": snap.overheat_protection_active,
         "vtm_ts_active": snap.vtm_ts_active,
         "engine_enable_running": snap.engine_enable_running,
+        "sentry_active": snap.sentry_active,
     }
 
 
@@ -111,6 +112,7 @@ def _readings(row: LiveReading | None) -> LiveReadings:
             overheat_protection_active=row.overheat_protection_active,
             vtm_ts_active=row.vtm_ts_active,
             engine_enable_running=row.engine_enable_running,
+            sentry_active=row.sentry_active,
         ),
     )
 
