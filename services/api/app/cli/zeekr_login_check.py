@@ -1,7 +1,8 @@
 """One login to Zeekr, run by the owner, to see which field names come back (ADR-009 gate 6).
 
 Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
-            python -m app.cli.zeekr_login_check [--status] [--values] [--dump] [--show-code]
+            python -m app.cli.zeekr_login_check [--status] [--values] [--dump] [--remote-state] \\
+            [--show-code]
 
 With --dump (implies --status) it prints every plain value in the one status reply as
 `path = value`, so the owner can see all fields. Any path with a segment that looks like
@@ -14,14 +15,20 @@ With --values (implies --status) it prints the value of each path in VALUE_PATHS
 field tree, so the owner can compare them with the car. The list holds no position, lock, door,
 VIN or plate field. Values are for the owner's screen only: never paste them into the repo.
 
+With --remote-state it also makes one read of the car's remote-control state (a GET; the library
+method reads the state and sends no command) and prints it like --dump does, with the same hiding.
+Use it alone to skip the status read. It is for finding which field names exist; the meaning of
+any field stays unverified.
+
 With --show-code, a failed login also prints the server's error number (digits after a key named
 like `code`) and any phrase from a short fixed list. No other server text is ever printed.
 
 It reads the account and the six app values from environment variables, never from a file, and
 prints names and types only: no value, no VIN, no token. It makes ONE login attempt and does not
 retry. With --status it also reads the status of the first vehicle once. It calls only
-`login`, `get_vehicle_list` and `get_status`; nothing here can send a command to the car, and a
-test fails if a write method is named in this file. It is not part of the running app.
+`login`, `get_vehicle_list`, `get_status` and `get_remote_control_state`; nothing here can send a
+command to the car, and a test fails if a write method is named in this file. It is not part of
+the running app.
 Exit code 0 means the login worked, 1 means it failed, 2 means nothing was sent.
 """
 
@@ -253,6 +260,7 @@ def main(
     want_dump = "--dump" in args
     want_status = "--status" in args or want_values or want_dump
     want_hint = "--show-code" in args
+    want_remote_state = "--remote-state" in args
     if env is None:
         logging.disable(logging.CRITICAL)
 
@@ -293,6 +301,10 @@ def main(
             return 0
         print("Vehicle record fields:")
         _print(describe(vehicles[0].data))
+        if want_remote_state:
+            state = vehicles[0].get_remote_control_state()
+            print("Remote-control state values (read only, sensitive-looking paths hidden):")
+            _print(dump_values(state, "--include-lock-door" in args))
         if want_status:
             status = vehicles[0].get_status()
             if want_dump:
