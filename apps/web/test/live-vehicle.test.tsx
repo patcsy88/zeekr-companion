@@ -351,7 +351,9 @@ describe('live vehicle: the timer', () => {
     open();
     const view = render(<App />);
     await screen.findByTestId('live-readings');
-    expect(set.mock.calls.some((c) => c[1] === 9 * 60_000)).toBe(true);
+    await waitFor(() => {
+      expect(set.mock.calls.some((c) => c[1] === 9 * 60_000)).toBe(true);
+    });
     view.unmount();
     set.mockClear();
     serveCard(card({ status: 'paused', interval_minutes: 9 }));
