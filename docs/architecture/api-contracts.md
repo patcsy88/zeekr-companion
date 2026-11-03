@@ -769,3 +769,63 @@ A background task starts with the API only if `ZEEKR_LIVE_ENABLED` is true. It r
 - With the flag off, no background task runs and no Zeekr call is made.
 - The daily task does not read outside the 30-day window, after the service is completed, more than once per KL day, or when the provider has stopped.
 - Warranty and wear figures do not change when a live reading is stored.
+
+
+## Live card additions: 12 V voltage and tyre temperatures (APPROVED by the owner, 2026-11-03)
+
+Owner decision 2026-11-03: add 12 V voltage (A) and tyre temperatures (B); trip meters (C) rejected. Basis: `docs/product/live-card-additions-proposal.md`. This amends the approved "Live vehicle card and history" contract, so the owner must approve it before code. **Nothing here is built, migrated or deployed.** All meanings are `unverified`.
+
+### Data model (migration `0009`, proposed)
+
+Five nullable columns on `live_reading` (one voltage, four tyre temperatures). Existing rows keep `NULL`. No other table changes.
+
+| Column | Type | Raw Zeekr key (under `additionalVehicleStatus`) | Kept range |
+|---|---|---|---|
+| `battery_12v_volts` | `Numeric(4, 1)` | `maintenanceStatus.mainBatteryStatus.voltage` | 6 to 20 |
+| `tyre_temp_driver_front_c` | `Integer` | `maintenanceStatus.tyreTempDriver` | -40 to 150 |
+| `tyre_temp_passenger_front_c` | `Integer` | `maintenanceStatus.tyreTempPassenger` | -40 to 150 |
+| `tyre_temp_driver_rear_c` | `Integer` | `maintenanceStatus.tyreTempDriverRear` | -40 to 150 |
+| `tyre_temp_passenger_rear_c` | `Integer` | `maintenanceStatus.tyreTempPassengerRear` | -40 to 150 |
+
+- CHECK constraints `battery_12v_range` and `tyre_temp_range`, each inside the mapper's kept range (a test inserts every bound, as for `0008`).
+- Tyre temperatures follow the pressure rule: all four valid or none kept.
+- Voltage is kept to one decimal, as battery percent is; the car's precision is unverified. Open question 1.
+- Not stored: `stateOfHealth` (prints '0', probably "not reported"), trip meters, average speed, consumption.
+- The "reading with every field empty stores nothing" rule now counts the new fields too. 12 V retention (12 months) and delete-all cover the new columns.
+
+### Contract changes
+
+`readings` in the card, and each item in the history, gain two fields. Both may be `null`, shown as "no reading", never zero.
+
+```json
+{
+  "battery_12v_volts": 0.0,
+  "tyres_celsius": { "driver_front": 0, "passenger_front": 0, "driver_rear": 0, "passenger_rear": 0 }
+}
+```
+
+- Additive only. No endpoint, status, error code or existing field changes.
+- Units: volts and degrees Celsius (`unverified`).
+- No threshold, colour or warning is attached to either value; the app has no known good range.
+- Nothing is sent to the model. No extra Zeekr call is made: both come from the same status reply.
+- Placeholders such as '-1638.0' are already out of range, so they read as no reading.
+
+### Mapper and screens
+
+- `map_status` adds the five raw keys above to its allow-list; `live_limits.py` gains `BATTERY_12V_VOLTS = (6, 20)` and `TYRE_CELSIUS = (-40, 150)`.
+- Vehicle card: one "12 V battery" line and a temperature under each tyre pressure. History list: both columns. Online only, as before.
+
+### Acceptance criteria (draft)
+
+1. A reply with a valid voltage stores it; a missing, empty or out-of-range one stores `NULL`.
+2. Four valid tyre temperatures are stored together; if any is invalid, all four are `NULL`.
+3. A reading whose only valid fields are the new ones is stored.
+4. The card and history return both new fields, `null` when absent; old rows return `null`.
+5. The response, table and logs still contain no position, lock, door, VIN, plate, nickname or raw reply.
+6. Delete-all and 12-month retention remove the new columns with their rows.
+
+### Owner answers, 2026-11-03
+
+1. Voltage is kept to one decimal.
+2. Tyre temperatures are shown on the card from the start. The doc keeps the `unverified` label.
+3. The data model and contract are approved, so code may start. Changing them now needs the owner to be told first. Nothing is built or deployed yet.
