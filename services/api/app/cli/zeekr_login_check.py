@@ -130,12 +130,35 @@ def pick_values(status: object) -> list[str]:
     return lines
 
 
-_HIDDEN_KEY = re.compile(
-    r"lat|lon|gps|position|location|address|vin|plate|licen[cs]e|nick|name|phone|mobile|"
-    r"e-?mail|token|secret|password|key|sign|auth|account|user|uid|device|imei|sim|iccid",
+# Short fragments ("vin", "lat", "key", "uid") also sit inside harmless words ("driving",
+# "latest", "fluid"), so they match only as whole words after the key is split at capital
+# letters, digits and underscores. Long fragments cannot sit inside a harmless word, so they
+# match anywhere (this also catches all-lowercase keys such as "gpsstate").
+_KEY_WORDS = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
+_HIDDEN_WORDS = frozenset(
+    {"lat", "lon", "lng", "vin", "plate", "nick", "name", "phone", "mobile"}
+    | {"key", "sign", "auth", "account", "user", "uid", "device", "sim"}
+)
+_HIDDEN_FRAGMENT = re.compile(
+    r"latitude|longitude|gps|position|location|address|licen[cs]e|nickname|e-?mail|token|"
+    r"secret|password|imei|iccid",
     re.IGNORECASE,
 )
-_LOCK_DOOR_KEY = re.compile(r"lock|door|trunk|boot|bonnet|hood|tailgate", re.IGNORECASE)
+_LOCK_DOOR_WORDS = frozenset({"door", "doors", "trunk", "boot", "bonnet", "hood", "tailgate"})
+
+
+def _words(key: str) -> list[str]:
+    return [word.lower() for word in _KEY_WORDS.findall(key)]
+
+
+def _sensitive_key(key: str) -> bool:
+    return bool(_HIDDEN_FRAGMENT.search(key)) or any(w in _HIDDEN_WORDS for w in _words(key))
+
+
+def _lock_door_key(key: str) -> bool:
+    return any(w in _LOCK_DOOR_WORDS or w.startswith(("lock", "unlock")) for w in _words(key))
+
+
 _DUMP_MAX_LINES = 600
 _DUMP_MAX_DEPTH = 10
 _DUMP_MAX_ITEMS = 5
@@ -147,9 +170,7 @@ def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
     lines: list[str] = []
 
     def hidden(key: str) -> bool:
-        return bool(_HIDDEN_KEY.search(key)) or (
-            not include_lock_door and bool(_LOCK_DOOR_KEY.search(key))
-        )
+        return _sensitive_key(key) or (not include_lock_door and _lock_door_key(key))
 
     def walk(node: object, path: str, depth: int, mask: bool) -> None:
         if len(lines) >= _DUMP_MAX_LINES:

@@ -325,6 +325,73 @@ def test_dump_prints_plain_values_and_hides_sensitive_looking_paths() -> None:
     assert "$.basicVehicleStatus.blob = <long string, hidden>" in text
 
 
+@pytest.mark.parametrize(
+    "key",
+    [
+        "drivingSafetyStatus",
+        "drivingBehaviourStatus",
+        "brakeFluidLevelStatus",
+        "ventilateStatus",
+        "aveFuelConsumptionInLatestDrivingCycle",
+        "prkgCameraActive",
+        "petModeStatus",
+        "vpdActive",
+        "moveCarActive",
+        "engineSpeed",
+    ],
+)
+def test_harmless_words_that_contain_a_short_fragment_are_not_hidden(key: str) -> None:
+    assert not check._sensitive_key(key) and not check._lock_door_key(key)
+    text = "\n".join(check.dump_values({key: {"x": "1"}}))
+    assert "= '1'" in text and "<hidden>" not in text
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "latitude",
+        "lat",
+        "gpsstate",
+        "gpsState",
+        "vin",
+        "plateNo",
+        "nickName",
+        "ownerName",
+        "accessToken",
+        "keyStatus",
+        "deviceId",
+        "userVehId",
+        "position",
+        "marsCoordinates_lat",
+        "carLocatorStatUploadEn_location",
+        "authCode",
+        "moveCarAuthActive_key",
+    ],
+)
+def test_sensitive_words_are_still_hidden(key: str) -> None:
+    assert check._sensitive_key(key), key
+    assert "<hidden>" in "\n".join(check.dump_values({key: CANARY}))
+    assert CANARY not in "\n".join(check.dump_values({key: CANARY}, include_lock_door=True))
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "doorLockStatusDriver",
+        "centralLockingStatus",
+        "trunkOpenStatus",
+        "doorOpenStatusDriver",
+        "engineHoodOpenStatus",
+        "lockStatus",
+        "privateLockStatus",
+    ],
+)
+def test_lock_and_door_words_are_hidden_unless_asked(key: str) -> None:
+    assert check._lock_door_key(key), key
+    assert "<hidden>" in "\n".join(check.dump_values({key: CANARY}))
+    assert CANARY in "\n".join(check.dump_values({key: CANARY}, include_lock_door=True))
+
+
 def test_dump_hides_lock_and_door_unless_asked() -> None:
     default = "\n".join(check.dump_values(SENSITIVE_STATUS))
     assert "doorOpenStatusDriver = <hidden>" in default
