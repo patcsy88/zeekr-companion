@@ -28,6 +28,10 @@ class FakeVehicle:
             raise RuntimeError(f"token {CANARY}")
         return {"soc": 71.5, "tyres": {"fl": 2.4}, "note": CANARY}
 
+    def get_remote_control_state(self) -> dict[str, Any]:
+        self.state_calls = getattr(self, "state_calls", 0) + 1
+        return {"flagA": True, "latitude": CANARY, "doorLockStatusDriver": "1", "n": 3}
+
 
 class FakeClient:
     def __init__(
@@ -169,6 +173,19 @@ def test_describe_never_returns_a_value() -> None:
     lines = check.describe({"a": CANARY, "b": [CANARY], "c": {"d": 1}, "x" * 60: 1})
     assert not any(CANARY in line for line in lines)
     assert "$.<long key>: int" in lines
+
+
+def test_remote_state_is_read_once_only_with_its_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    code, out, _, made = run(capsys, args=["--status"])
+    assert code == 0 and not hasattr(made[0].vehicles[0], "state_calls")
+    code, out, err, made = run(capsys, args=["--remote-state"])
+    vehicle = made[0].vehicles[0]
+    assert code == 0 and vehicle.state_calls == 1 and vehicle.status_calls == 0
+    assert made[0].login_calls == 1
+    assert "$.flagA = True" in out and "$.n = 3" in out
+    assert "$.latitude = <hidden>" in out
+    assert "$.doorLockStatusDriver = <hidden>" in out
+    assert CANARY not in out + err
 
 
 def test_the_file_names_no_write_or_session_method() -> None:
