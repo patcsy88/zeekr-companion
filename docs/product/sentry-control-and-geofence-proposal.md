@@ -1,6 +1,6 @@
 # Sentry toggle and geofence alert (proposal)
 
-Status: **proposal, awaiting the owner's approval.** Nothing here is built, approved for code, or deployed. No reading, coordinate or address is copied here.
+Status: **approved by the owner on 2026-11-03 (all seven decisions below); not built, not deployed.** The engine and car states are still to be researched, so Piece B's rule is not final. No reading, coordinate or address is copied here.
 
 Owner answers on 2026-11-03: (1) the hand toggle comes first; (2) alert first, no unattended command; (3) the geofence centre is the owner's home address; (4) the position is held in memory first; (5) the engine and car states need more research; (6) the check runs at a configurable interval (minimum 5 minutes), and stale positions are configurable, tagged stale and not used.
 
@@ -104,3 +104,15 @@ Open. The state keys are not known, and the dump tool hides lock and door keys u
 7. Approve the owner-run `--include-lock-door` dump, pasting only the key names and plain values for the engine and car states?
 
 Build order if approved: A (ADR-010, CLI, owner-run test, endpoint, button), then the dump research, then B.
+
+## Owner decisions, 2026-11-03
+
+1. Approved: ADR-010 (one command, Sentry only), the data model (`car_command_log`, migration `0012`) and the contract for Piece A.
+2. Approved: the owner-run CLI as the first real send.
+3. Approved: a background check every 5 minutes or more, even with the page closed.
+4. Approved: in-memory position handling, only the derived result leaves the check.
+5. The alert says only "outside", with no distance.
+6. Delivery is in-app only for now.
+7. Approved: the owner-run `--dump --include-lock-door` read, pasting only key names and plain values for the engine and car states.
+
+Still open: the engine and car state conditions (waiting on the dump), whether the account may send commands, the real Sentry payload, and Zeekr's terms. The owner's home point and radius are not in the repo and are never to be.
