@@ -90,10 +90,15 @@ describe('Complete service', () => {
     const user = open(`/reminders/${ID}`);
     render(<App />);
     await screen.findByRole('link', { name: 'Complete service' });
+    await waitFor(() => {
+      expect(fake.templateGets).toBeGreaterThan(0); // the last request of the app-start sync
+    });
+    // A response that lands after reportReachable(false) would mark the API reachable again.
+    await new Promise((resolve) => setTimeout(resolve, 150));
     reportReachable(false);
-    const btn = await screen.findByRole('button', { name: 'Complete service' });
+    expect(await screen.findByText(/needs a connection/)).toBeInTheDocument();
+    const btn = screen.getByRole('button', { name: 'Complete service' });
     expect(btn).toBeDisabled();
-    expect(screen.getByText(/needs a connection/)).toBeInTheDocument();
     await user.click(btn);
     expect(fake.completePosts).toHaveLength(0);
     reportReachable(true);
