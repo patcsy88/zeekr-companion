@@ -7,7 +7,8 @@ Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
 With --dump (implies --status) it prints every plain value in the one status reply as
 `path = value`, so the owner can see all fields. Any path with a segment that looks like
 position, VIN, plate, name, phone, address, token or key is printed as <hidden>, and so are
-lock and door fields unless --include-lock-door is also given. Hiding works by key name, so
+lock and door fields unless --include-lock-door is also given. The one exception is the flag
+`posCanBeTrusted`, whose value is shown when it is a plain flag. Hiding works by key name, so
 it is a guard, not a guarantee: read the output before pasting it anywhere, and never paste it
 into the repo.
 
@@ -159,10 +160,22 @@ def _lock_door_key(key: str) -> bool:
     return any(w in _LOCK_DOOR_WORDS or w.startswith(("lock", "unlock")) for w in _words(key))
 
 
+# One flag inside the hidden position group is shown, by exact key name and only when it is a
+# plain flag or a short number or text. It carries no coordinate. Everything else under
+# `position` stays hidden.
+_SHOWN_IN_HIDDEN = frozenset({"posCanBeTrusted"})
+_SHOWN_MAX_LEN = 8
+
 _DUMP_MAX_LINES = 600
 _DUMP_MAX_DEPTH = 10
 _DUMP_MAX_ITEMS = 5
 _DUMP_MAX_STRING = 40
+
+
+def _plain_flag(value: object) -> bool:
+    if isinstance(value, bool | int):
+        return True
+    return isinstance(value, str) and len(value) <= _SHOWN_MAX_LEN and value.isalnum()
 
 
 def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
@@ -180,7 +193,11 @@ def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
         elif isinstance(node, dict):
             for key in sorted(node, key=str):
                 name = str(key) if len(str(key)) <= _MAX_KEY else "<long key>"
-                walk(node[key], f"{path}.{name}", depth + 1, mask or hidden(str(key)))
+                child = node[key]
+                if mask and str(key) in _SHOWN_IN_HIDDEN and _plain_flag(child):
+                    lines.append(f"{path}.{name} = {child!r}")
+                    continue
+                walk(child, f"{path}.{name}", depth + 1, mask or hidden(str(key)))
         elif isinstance(node, list):
             lines.append(f"{path} = list of {len(node)}")
             for i, item in enumerate(node[:_DUMP_MAX_ITEMS]):
