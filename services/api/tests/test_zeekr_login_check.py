@@ -276,3 +276,60 @@ def test_values_without_the_flag_prints_the_tree_not_values(
 ) -> None:
     _, out, _, _ = run(capsys, args=["--status"], vehicles=[ValuesVehicle()])
     assert "Status fields" in out and "12345" not in out
+
+
+SENSITIVE_STATUS = {
+    "additionalVehicleStatus": {
+        "maintenanceStatus": {"odometer": "13903", "tyreStatusDriver": 240},
+        "electricVehicleStatus": {"chargeLevel": "71.5", "isCharging": False},
+        "climateStatus": {"interiorTemp": "24"},
+    },
+    "basicVehicleStatus": {
+        "position": {"latitude": f"{CANARY}-lat", "longitude": f"{CANARY}-lon"},
+        "doorOpenStatusDriver": f"{CANARY}-door",
+        "centralLockingStatus": f"{CANARY}-lock",
+        "vin": f"{CANARY}-vin",
+        "plateNo": f"{CANARY}-plate",
+        "ownerName": f"{CANARY}-name",
+        "accessToken": f"{CANARY}-token",
+        "tags": [{"deviceId": f"{CANARY}-dev", "kind": "x"}],
+        "blob": "A" * 80,
+    },
+}
+
+
+def test_dump_prints_plain_values_and_hides_sensitive_looking_paths() -> None:
+    text = "\n".join(check.dump_values(SENSITIVE_STATUS))
+    assert "$.additionalVehicleStatus.maintenanceStatus.odometer = '13903'" in text
+    assert "$.additionalVehicleStatus.electricVehicleStatus.isCharging = False" in text
+    assert CANARY not in text
+    assert "$.basicVehicleStatus.position.latitude = <hidden>" in text
+    assert "$.basicVehicleStatus.tags[0].deviceId = <hidden>" in text
+    assert "$.basicVehicleStatus.blob = <long string, hidden>" in text
+
+
+def test_dump_hides_lock_and_door_unless_asked() -> None:
+    default = "\n".join(check.dump_values(SENSITIVE_STATUS))
+    assert "doorOpenStatusDriver = <hidden>" in default
+    asked = "\n".join(check.dump_values(SENSITIVE_STATUS, include_lock_door=True))
+    assert CANARY + "-door" in asked and CANARY + "-lock" in asked
+    for never in ("-lat", "-lon", "-vin", "-plate", "-name", "-token", "-dev"):
+        assert CANARY + never not in asked
+
+
+def test_dump_flag_reads_status_once_and_prints_only_plain_status_values(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, out, err, made = run(capsys, ["--dump"])
+    assert code == 0
+    assert made[0].vehicles[0].status_calls == 1
+    assert "All plain status values" in out
+    assert "$.soc = 71.5" in out
+    assert [line for line in (out + err).splitlines() if CANARY in line] == [
+        "  $.note = 'CANARY-VALUE-9f3a'"
+    ]
+
+
+def test_dump_without_confirmation_sends_nothing(capsys: pytest.CaptureFixture[str]) -> None:
+    code, _, _, made = run(capsys, ["--dump"], env={})
+    assert code == 2 and made == []

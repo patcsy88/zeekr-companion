@@ -1,7 +1,14 @@
 """One login to Zeekr, run by the owner, to see which field names come back (ADR-009 gate 6).
 
 Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
-            python -m app.cli.zeekr_login_check [--status] [--values] [--show-code]
+            python -m app.cli.zeekr_login_check [--status] [--values] [--dump] [--show-code]
+
+With --dump (implies --status) it prints every plain value in the one status reply as
+`path = value`, so the owner can see all fields. Any path with a segment that looks like
+position, VIN, plate, name, phone, address, token or key is printed as <hidden>, and so are
+lock and door fields unless --include-lock-door is also given. Hiding works by key name, so
+it is a guard, not a guarantee: read the output before pasting it anywhere, and never paste it
+into the repo.
 
 With --values (implies --status) it prints the value of each path in VALUE_PATHS instead of the
 field tree, so the owner can compare them with the car. The list holds no position, lock, door,
@@ -44,7 +51,7 @@ REQUIRED = {
     "ZEEKR_VIN_IV": "vin_iv",
 }
 
-_MAX_LINES = 300
+_MAX_LINES = 700
 _MAX_DEPTH = 6
 _MAX_KEY = 40
 
@@ -113,6 +120,56 @@ def pick_values(status: object) -> list[str]:
             lines.append(f"{path} = (absent or null)")
         else:
             lines.append(f"{path} = ({type(node).__name__}, not printed)")
+    return lines
+
+
+_HIDDEN_KEY = re.compile(
+    r"lat|lon|gps|position|location|address|vin|plate|licen[cs]e|nick|name|phone|mobile|"
+    r"e-?mail|token|secret|password|key|sign|auth|account|user|uid|device|imei|sim|iccid",
+    re.IGNORECASE,
+)
+_LOCK_DOOR_KEY = re.compile(r"lock|door|trunk|boot|bonnet|hood|tailgate", re.IGNORECASE)
+_DUMP_MAX_LINES = 600
+_DUMP_MAX_DEPTH = 10
+_DUMP_MAX_ITEMS = 5
+_DUMP_MAX_STRING = 40
+
+
+def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
+    """`path = value` for every plain value, with sensitive-looking paths shown as <hidden>."""
+    lines: list[str] = []
+
+    def hidden(key: str) -> bool:
+        return bool(_HIDDEN_KEY.search(key)) or (
+            not include_lock_door and bool(_LOCK_DOOR_KEY.search(key))
+        )
+
+    def walk(node: object, path: str, depth: int, mask: bool) -> None:
+        if len(lines) >= _DUMP_MAX_LINES:
+            return
+        if depth > _DUMP_MAX_DEPTH:
+            lines.append(f"{path} = (too deep)")
+        elif isinstance(node, dict):
+            for key in sorted(node, key=str):
+                name = str(key) if len(str(key)) <= _MAX_KEY else "<long key>"
+                walk(node[key], f"{path}.{name}", depth + 1, mask or hidden(str(key)))
+        elif isinstance(node, list):
+            lines.append(f"{path} = list of {len(node)}")
+            for i, item in enumerate(node[:_DUMP_MAX_ITEMS]):
+                walk(item, f"{path}[{i}]", depth + 1, mask)
+        elif mask:
+            lines.append(f"{path} = <hidden>")
+        elif isinstance(node, bool | int | float) or node is None:
+            lines.append(f"{path} = {node}")
+        elif isinstance(node, str):
+            if len(node) > _DUMP_MAX_STRING and " " not in node:
+                lines.append(f"{path} = <long string, hidden>")
+            else:
+                lines.append(f"{path} = {node[:_DUMP_MAX_STRING]!r}")
+        else:
+            lines.append(f"{path} = ({type(node).__name__}, not printed)")
+
+    walk(status, "$", 0, False)
     return lines
 
 
@@ -193,7 +250,8 @@ def main(
     args = sys.argv[1:] if argv is None else argv
     values = os.environ if env is None else env
     want_values = "--values" in args
-    want_status = "--status" in args or want_values
+    want_dump = "--dump" in args
+    want_status = "--status" in args or want_values or want_dump
     want_hint = "--show-code" in args
     if env is None:
         logging.disable(logging.CRITICAL)
@@ -237,7 +295,10 @@ def main(
         _print(describe(vehicles[0].data))
         if want_status:
             status = vehicles[0].get_status()
-            if want_values:
+            if want_dump:
+                print("All plain status values (sensitive-looking paths hidden, one read):")
+                _print(dump_values(status, "--include-lock-door" in args))
+            elif want_values:
                 print("Status values (fixed list, one read):")
                 _print(pick_values(status))
             else:
