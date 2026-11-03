@@ -14,6 +14,8 @@ import {
   percent,
   serviceKm,
   yesNo,
+  celsius,
+  volts,
   type Point,
 } from '../lib/liveVehicle';
 
@@ -151,6 +153,20 @@ export function LiveHistoryPage() {
                     {kpa(i.tyres_kpa.driver_front)}, {kpa(i.tyres_kpa.passenger_front)},{' '}
                     {kpa(i.tyres_kpa.driver_rear)}, {kpa(i.tyres_kpa.passenger_rear)} · Service in{' '}
                     {serviceKm(i.service_distance_km)}, {days(i.service_days)}
+                  </p>
+                  <p className="small muted">
+                    12 V {volts(i.battery_12v_volts)} · Tyre temperatures{' '}
+                    {celsius(i.tyres_celsius.driver_front)},{' '}
+                    {celsius(i.tyres_celsius.passenger_front)},{' '}
+                    {celsius(i.tyres_celsius.driver_rear)},{' '}
+                    {celsius(i.tyres_celsius.passenger_rear)}
+                  </p>
+                  <p className="small muted">
+                    Pre-climate {yesNo(i.indicators.pre_climate_active)} · Fragrance{' '}
+                    {yesNo(i.indicators.fragrance_active)} · Overheat protection{' '}
+                    {yesNo(i.indicators.overheat_protection_active)} · VTM TS{' '}
+                    {yesNo(i.indicators.vtm_ts_active)} · Engine enable running{' '}
+                    {yesNo(i.indicators.engine_enable_running)}
                   </p>
                   {gap && older ? (
                     <p className="notice info" data-testid="live-gap">

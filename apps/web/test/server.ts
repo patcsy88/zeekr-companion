@@ -683,6 +683,20 @@ export const OFF_CARD = {
     },
     service_distance_km: null,
     service_days: null,
+    battery_12v_volts: null,
+    tyres_celsius: {
+      driver_front: null,
+      passenger_front: null,
+      driver_rear: null,
+      passenger_rear: null,
+    },
+    indicators: {
+      pre_climate_active: null,
+      fragrance_active: null,
+      overheat_protection_active: null,
+      vtm_ts_active: null,
+      engine_enable_running: null,
+    },
   },
 };
 

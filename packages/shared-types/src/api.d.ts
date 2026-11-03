@@ -838,8 +838,23 @@ export interface components {
             /** Retention Months */
             retention_months: number;
         };
+        /** LiveIndicators */
+        LiveIndicators: {
+            /** Engine Enable Running */
+            engine_enable_running: boolean | null;
+            /** Fragrance Active */
+            fragrance_active: boolean | null;
+            /** Overheat Protection Active */
+            overheat_protection_active: boolean | null;
+            /** Pre Climate Active */
+            pre_climate_active: boolean | null;
+            /** Vtm Ts Active */
+            vtm_ts_active: boolean | null;
+        };
         /** LiveReadingItem */
         LiveReadingItem: {
+            /** Battery 12V Volts */
+            battery_12v_volts: number | null;
             /** Battery Percent */
             battery_percent: number | null;
             /** Charging */
@@ -849,6 +864,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            indicators: components["schemas"]["LiveIndicators"];
             /**
              * Observed At
              * Format: date-time
@@ -869,14 +885,18 @@ export interface components {
             service_days: number | null;
             /** Service Distance Km */
             service_distance_km: number | null;
+            tyres_celsius: components["schemas"]["LiveTyres"];
             tyres_kpa: components["schemas"]["LiveTyres"];
         };
         /** LiveReadings */
         LiveReadings: {
+            /** Battery 12V Volts */
+            battery_12v_volts: number | null;
             /** Battery Percent */
             battery_percent: number | null;
             /** Charging */
             charging: boolean | null;
+            indicators: components["schemas"]["LiveIndicators"];
             /** Odometer Km */
             odometer_km: number | null;
             /** Plugged In */
@@ -887,6 +907,7 @@ export interface components {
             service_days: number | null;
             /** Service Distance Km */
             service_distance_km: number | null;
+            tyres_celsius: components["schemas"]["LiveTyres"];
             tyres_kpa: components["schemas"]["LiveTyres"];
         };
         /** LiveTyres */

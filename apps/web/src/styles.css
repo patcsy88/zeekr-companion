@@ -370,3 +370,40 @@ select {
   max-height: 6rem;
   border-bottom: 1px solid currentColor;
 }
+
+.ro-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.ro-track {
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: #b8bcc4;
+  position: relative;
+  display: inline-block;
+}
+.ro-knob {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+}
+.ro-toggle-on .ro-track {
+  background: #2f7d4f;
+}
+.ro-toggle-on .ro-knob {
+  left: 1.125rem;
+}
+.ro-toggle-unknown .ro-track {
+  background: transparent;
+  border: 1px dashed #8a8f98;
+}
+.ro-toggle-unknown .ro-knob {
+  display: none;
+}

@@ -117,6 +117,20 @@ def test_real_read_is_stored_and_shown(
         "passenger_rear": 233,
     }
     assert r["service_distance_km"] == 35000 and r["service_days"] == 200
+    assert r["battery_12v_volts"] == 13.1
+    assert r["tyres_celsius"] == {
+        "driver_front": 43,
+        "passenger_front": 44,
+        "driver_rear": 45,
+        "passenger_rear": 46,
+    }
+    assert r["indicators"] == {
+        "pre_climate_active": False,
+        "fragrance_active": True,
+        "overheat_protection_active": False,
+        "vtm_ts_active": True,
+        "engine_enable_running": False,
+    }
     assert source.calls == 1 and count(client) == 1
 
 
@@ -542,6 +556,29 @@ def test_every_value_the_mapper_keeps_fits_the_table(client: TestClient) -> None
                 "tyre_passenger_rear_kpa",
             )
             for v in lim.TYRE_KPA
+        ),
+        row(battery_12v_volts=lim.BATTERY_12V_VOLTS[0]),
+        row(battery_12v_volts=lim.BATTERY_12V_VOLTS[1]),
+        *(
+            row(**{col: v})
+            for col in (
+                "tyre_temp_driver_front_c",
+                "tyre_temp_passenger_front_c",
+                "tyre_temp_driver_rear_c",
+                "tyre_temp_passenger_rear_c",
+            )
+            for v in lim.TYRE_CELSIUS
+        ),
+        *(
+            row(**{col: v})
+            for col in (
+                "pre_climate_active",
+                "fragrance_active",
+                "overheat_protection_active",
+                "vtm_ts_active",
+                "engine_enable_running",
+            )
+            for v in (True, False)
         ),
     ]
     with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]

@@ -34,7 +34,11 @@ def status(**overrides: Any) -> dict[str, Any]:
                 "tyreStatusPassenger": "240",
                 "tyreStatusDriverRear": "238",
                 "tyreStatusPassengerRear": "233",
-                "mainBatteryStatus": {"stateOfHealth": "0"},
+                "mainBatteryStatus": {"stateOfHealth": "0", "voltage": 13.1},
+                "tyreTempDriver": 43,
+                "tyreTempPassenger": 44,
+                "tyreTempDriverRear": 45,
+                "tyreTempPassengerRear": 46,
             },
             "electricVehicleStatus": {
                 "chargeLevel": "64.0",
@@ -43,7 +47,14 @@ def status(**overrides: Any) -> dict[str, Any]:
                 "isCharging": False,
                 "isPluggedIn": True,
             },
-            "climateStatus": {"updateTime": UPDATE_MS},
+            "climateStatus": {
+                "updateTime": UPDATE_MS,
+                "preClimateActive": False,
+                "fragActive": True,
+                "climateOverHeatProActive": "false",
+                "vtmTsActive": "TRUE",
+            },
+            "runningStatus": {"engineEnableRunning": "false"},
             "drivingSafetyStatus": {"centralLockingStatus": CANARY},
         },
         "basicVehicleStatus": {
@@ -82,6 +93,13 @@ def test_snapshot_holds_nothing_from_dropped_fields() -> None:
         "tyres_kpa",
         "is_charging",
         "is_plugged_in",
+        "battery_12v_volts",
+        "tyres_celsius",
+        "pre_climate_active",
+        "fragrance_active",
+        "overheat_protection_active",
+        "vtm_ts_active",
+        "engine_enable_running",
     }
 
 
@@ -390,3 +408,48 @@ def test_provider_passes_the_settings_to_the_library_once_read(
     assert provider.read_odometer().value == 4321
     assert seen[0].username == f"{CANARY}-zeekr_username"
     assert seen[0].prod_secret == f"{CANARY}-zeekr_prod_secret"
+
+
+def test_map_keeps_12v_tyre_temperatures_and_indicators() -> None:
+    snap = map_status(status())
+    assert snap.battery_12v_volts == 13.1
+    assert snap.tyres_celsius == TyrePressures(43, 44, 45, 46)
+    assert snap.pre_climate_active is False
+    assert snap.fragrance_active is True
+    assert snap.overheat_protection_active is False
+    assert snap.vtm_ts_active is True
+    assert snap.engine_enable_running is False
+
+
+@pytest.mark.parametrize("bad", ["", None, "abc", 5.9, 20.1, True, "nan", [], -3])
+def test_unusable_12v_voltage_is_no_reading(bad: object) -> None:
+    body = status()
+    body["additionalVehicleStatus"]["maintenanceStatus"]["mainBatteryStatus"]["voltage"] = bad
+    assert map_status(body).battery_12v_volts is None
+
+
+def test_12v_voltage_bounds_are_kept() -> None:
+    for edge in (6, 20):
+        body = status()
+        body["additionalVehicleStatus"]["maintenanceStatus"]["mainBatteryStatus"]["voltage"] = edge
+        assert map_status(body).battery_12v_volts == edge
+
+
+@pytest.mark.parametrize("bad", ["", None, "abc", 151, -41, 43.5, True])
+def test_one_bad_tyre_temperature_drops_all_four(bad: object) -> None:
+    body = status()
+    body["additionalVehicleStatus"]["maintenanceStatus"]["tyreTempPassengerRear"] = bad
+    assert map_status(body).tyres_celsius is None
+
+
+@pytest.mark.parametrize("bad", ["", None, "0", "1", "2", 0, 1, "yes", [], {}])
+def test_indicators_accept_only_real_booleans_and_true_false_text(bad: object) -> None:
+    body = status()
+    climate = body["additionalVehicleStatus"]["climateStatus"]
+    for key in ("preClimateActive", "fragActive", "climateOverHeatProActive", "vtmTsActive"):
+        climate[key] = bad
+    body["additionalVehicleStatus"]["runningStatus"]["engineEnableRunning"] = bad
+    snap = map_status(body)
+    assert snap.pre_climate_active is None and snap.fragrance_active is None
+    assert snap.overheat_protection_active is None and snap.vtm_ts_active is None
+    assert snap.engine_enable_running is None

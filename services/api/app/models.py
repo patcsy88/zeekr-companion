@@ -406,8 +406,31 @@ class LiveReading(Base):
     tyre_passenger_rear_kpa: Mapped[int | None] = mapped_column(Integer)
     is_charging: Mapped[bool | None] = mapped_column(Boolean)
     is_plugged_in: Mapped[bool | None] = mapped_column(Boolean)
+    battery_12v_volts: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    tyre_temp_driver_front_c: Mapped[int | None] = mapped_column(Integer)
+    tyre_temp_passenger_front_c: Mapped[int | None] = mapped_column(Integer)
+    tyre_temp_driver_rear_c: Mapped[int | None] = mapped_column(Integer)
+    tyre_temp_passenger_rear_c: Mapped[int | None] = mapped_column(Integer)
+    pre_climate_active: Mapped[bool | None] = mapped_column(Boolean)
+    fragrance_active: Mapped[bool | None] = mapped_column(Boolean)
+    overheat_protection_active: Mapped[bool | None] = mapped_column(Boolean)
+    vtm_ts_active: Mapped[bool | None] = mapped_column(Boolean)
+    engine_enable_running: Mapped[bool | None] = mapped_column(Boolean)
 
     __table_args__ = (
+        CheckConstraint(
+            "battery_12v_volts IS NULL OR battery_12v_volts BETWEEN 6 AND 20",
+            name="battery_12v_range",
+        ),
+        CheckConstraint(
+            "(tyre_temp_driver_front_c IS NULL OR tyre_temp_driver_front_c BETWEEN -40 AND 150)"
+            " AND (tyre_temp_passenger_front_c IS NULL"
+            " OR tyre_temp_passenger_front_c BETWEEN -40 AND 150)"
+            " AND (tyre_temp_driver_rear_c IS NULL OR tyre_temp_driver_rear_c BETWEEN -40 AND 150)"
+            " AND (tyre_temp_passenger_rear_c IS NULL"
+            " OR tyre_temp_passenger_rear_c BETWEEN -40 AND 150)",
+            name="tyre_temp_range",
+        ),
         CheckConstraint(
             "odometer_km IS NULL OR odometer_km BETWEEN 0 AND 10000000", name="odometer_range"
         ),

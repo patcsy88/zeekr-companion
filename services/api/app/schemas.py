@@ -752,6 +752,14 @@ class LiveTyres(BaseModel):
     passenger_rear: int | None
 
 
+class LiveIndicators(BaseModel):
+    pre_climate_active: bool | None
+    fragrance_active: bool | None
+    overheat_protection_active: bool | None
+    vtm_ts_active: bool | None
+    engine_enable_running: bool | None
+
+
 class LiveReadings(BaseModel):
     odometer_km: int | None
     battery_percent: float | None
@@ -761,6 +769,9 @@ class LiveReadings(BaseModel):
     tyres_kpa: LiveTyres
     service_distance_km: int | None
     service_days: int | None
+    battery_12v_volts: float | None
+    tyres_celsius: LiveTyres
+    indicators: LiveIndicators
 
     @classmethod
     def empty(cls) -> LiveReadings:
@@ -775,6 +786,17 @@ class LiveReadings(BaseModel):
             ),
             service_distance_km=None,
             service_days=None,
+            battery_12v_volts=None,
+            tyres_celsius=LiveTyres(
+                driver_front=None, passenger_front=None, driver_rear=None, passenger_rear=None
+            ),
+            indicators=LiveIndicators(
+                pre_climate_active=None,
+                fragrance_active=None,
+                overheat_protection_active=None,
+                vtm_ts_active=None,
+                engine_enable_running=None,
+            ),
         )
 
 
