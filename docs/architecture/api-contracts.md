@@ -859,6 +859,25 @@ One more nullable boolean on `live_reading`, `sentry_active`, shown as a **read-
 - If the second read fails, the main reading is still stored and `sentry_active` is `NULL`. That failure is not counted toward the provider's failure count or back-off, and forces no new login.
 - Acceptance criteria: (10) `'1'`, `'0'` and every other value map as above; (11) a failed second read keeps the main reading; (12) the card and history show Sentry read-only, with "no reading" for `null`.
 
+### Amendment: Sentry command (ADR-010; owner approved 2026-11-03; migration `0012`)
+
+The one command the app may send to the car. Nothing else is added: no other command, no schedule, no automatic send.
+
+| Method | Path | Meaning |
+|---|---|---|
+| `POST` | `/api/v1/vehicle/sentry` | Body `{"desired": "on" \| "off"}`. Sends one Sentry command, waits about 15 seconds, reads the state back. `200`, `400`, `401`, `404`, `409`, `502` |
+| `GET` | `/api/v1/vehicle/sentry/log?limit=` | The last commands, newest first. `limit` 1 to 100, default 20. `200`, `400`, `401` |
+
+- Token required, `no-store`, `400 validation_error` (never 422) for any body but exactly `on` or `off`.
+- `200` body: `desired`, `sent` (false only when the car already reported the wanted state, so nothing was sent), `state_after` (`on`, `off` or `null`) and `confirmed` (`state_after == desired`). `confirmed: false` means the car had not reported the change at the read-back; it is not a failure and the command is not repeated.
+- `404 not_found`: live readings are off (`ZEEKR_LIVE_ENABLED` false). Nothing is sent.
+- `409 conflict`: another send is in progress, a status read holds the Zeekr lock for more than 5 seconds, or the last logged command was less than 60 seconds ago.
+- `502 upstream_error` (new code, used by this endpoint only): the car's service refused the command, or the login or first read failed. The message is fixed text, never Zeekr's. A refusal is not retried.
+- It uses the provider's one logged-in session, its daily login cap and the same lock, so a send and a status read never overlap. It does not change the provider's failure count or back-off.
+- Table `car_command_log`: `id`, `created_at` (UTC), `desired` (`on` or `off`), `source` (`manual`), `result` (`sent`, `refused` or `failed`), `state_after` (`on`, `off` or null). CHECK constraints refuse any other value. No payload, reply body, VIN or position. Kept 12 months. A send that finds the car already in the wanted state sends and logs nothing.
+- The web button always asks first and shows only fixed wording, taken from `confirmed` and the status code.
+- Acceptance criteria: (13) the body is exactly `on` or `off`, anything else is 400 and sends nothing; (14) one send is one library call with the constant payload; (15) the state shown after is what the car reports, and an unreadable state after is `null`; (16) a refusal is 502 with fixed text and no retry; (17) a second send within 60 seconds, or while one is in progress, is 409 and sends nothing; (18) the log holds no payload or reply; (19) only the Sentry command module names the write method.
+
 ### Owner answers, 2026-11-03
 
 1. Voltage is kept to one decimal.

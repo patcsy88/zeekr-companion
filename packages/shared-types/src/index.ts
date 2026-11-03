@@ -51,6 +51,9 @@ export type LiveHistory = Schemas["LiveHistoryOut"];
 export type LiveReadingItem = Schemas["LiveReadingItem"];
 export type LiveDelete = Schemas["LiveDeleteOut"];
 
+export type SentryCommandResult = Schemas["SentryCommandOut"];
+export type CommandLog = Schemas["CommandLogOut"];
+
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];
 export type ApiError = Schemas["ErrorBody"];

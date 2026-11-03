@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.errors import Unauthenticated
 from app.repositories.advisory import AdvisoryRepository
+from app.repositories.car_command_log import CarCommandLogRepository
 from app.repositories.expenses import ExpenseRepository
 from app.repositories.live_readings import LiveReadingRepository
 from app.repositories.reminders import ReminderRepository
@@ -19,6 +20,7 @@ from app.services.auth import AuthService
 from app.services.expenses import ExpenseService
 from app.services.live_vehicle import LiveVehicleService
 from app.services.reminders import ReminderService
+from app.services.sentry_command import SentryCommandService
 from app.services.service_records import ServiceRecordService
 from app.services.vehicle import VehicleService
 from app.services.warranty import WarrantyClaimService, WarrantyCoverageService
@@ -92,6 +94,17 @@ def get_live_vehicle_service(request: Request, session: SessionDep) -> LiveVehic
     )
 
 
+def get_sentry_command_service(request: Request, session: SessionDep) -> SentryCommandService:
+    state = request.app.state
+    return SentryCommandService(
+        CarCommandLogRepository(session),
+        state.live_telemetry,
+        state.live_lock,
+        state.sentry_send_lock,
+        state.sentry_sleep,
+    )
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
@@ -102,3 +115,4 @@ WarrantyCoverageServiceDep = Annotated[
 WarrantyClaimServiceDep = Annotated[WarrantyClaimService, Depends(get_warranty_claim_service)]
 AdvisoryServiceDep = Annotated[AdvisoryService, Depends(get_advisory_service)]
 LiveVehicleServiceDep = Annotated[LiveVehicleService, Depends(get_live_vehicle_service)]
+SentryCommandServiceDep = Annotated[SentryCommandService, Depends(get_sentry_command_service)]

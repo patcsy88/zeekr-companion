@@ -15,6 +15,7 @@ import {
   yesNo,
 } from '../lib/liveVehicle';
 import { ReadOnlyToggle } from './ReadOnlyToggle';
+import { SentryControl } from './SentryControl';
 import { usePullToRefresh } from '../lib/pullToRefresh';
 
 /**
@@ -29,6 +30,7 @@ export function LiveVehicleCard() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [sentryNote, setSentryNote] = useState<string | null>(null);
   const inflight = useRef(false);
   const active = session.signedIn && online;
 
@@ -97,7 +99,9 @@ export function LiveVehicleCard() {
           </button>
         ) : null}
       </div>
-      <p className="muted small">Read-only. Nothing is sent to the car.</p>
+      <p className="muted small">
+        Readings only. The one thing this app can send to the car is Sentry on or off, below.
+      </p>
       {!session.signedIn || !online ? (
         <p className="muted" data-testid="live-offline">
           Needs a connection.
@@ -105,8 +109,13 @@ export function LiveVehicleCard() {
       ) : card === null ? (
         <p role="status">{failed ? 'Could not load live readings.' : 'Loading…'}</p>
       ) : (
-        <CardBody card={card} failed={failed} note={note} />
+        <CardBody card={card} failed={failed} note={note} onSentryResult={setSentryNote} />
       )}
+      {sentryNote ? (
+        <p role="status" className="notice info" data-testid="sentry-result">
+          {sentryNote}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -115,10 +124,12 @@ function CardBody({
   card,
   failed,
   note,
+  onSentryResult,
 }: {
   card: LiveCard;
   failed: boolean;
   note: string | null;
+  onSentryResult: (text: string | null) => void;
 }) {
   if (card.status === 'off') {
     return (
@@ -230,9 +241,11 @@ function CardBody({
           <ReadOnlyToggle label="Sentry" value={ind.sentry_active} />
         </dd>
       </dl>
+      <SentryControl current={ind.sentry_active} onResult={onSentryResult} />
       <p className="muted small">
         These are the car's own reported flags. Apart from Sentry, their exact meanings are not
-        verified, and this page cannot change any of them.
+        verified, and this page cannot change any of them. Sentry may use the car's 12 V battery
+        while it is on.
       </p>
       <p className="muted small">
         Updates about every {card.interval_minutes} minutes while this page is open.

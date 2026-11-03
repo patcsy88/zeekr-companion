@@ -458,3 +458,27 @@ class LiveReading(Base):
             name="tyre_range",
         ),
     )
+
+
+class CarCommandLog(Base):
+    """One command sent to the car from the app (ADR-010). No payload, reply body, VIN or
+    position: only what was asked, the outcome, and the state the car reported afterwards."""
+
+    __tablename__ = "car_command_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    desired: Mapped[str] = mapped_column(String(3), nullable=False)
+    source: Mapped[str] = mapped_column(String(10), nullable=False)
+    result: Mapped[str] = mapped_column(String(10), nullable=False)
+    state_after: Mapped[str | None] = mapped_column(String(3))
+
+    __table_args__ = (
+        CheckConstraint("desired IN ('on', 'off')", name="desired_valid"),
+        CheckConstraint("source IN ('manual')", name="source_valid"),
+        CheckConstraint("result IN ('sent', 'refused', 'failed')", name="result_valid"),
+        CheckConstraint(
+            "state_after IS NULL OR state_after IN ('on', 'off')", name="state_after_valid"
+        ),
+        Index("ix_car_command_log_created_at", "created_at"),
+    )

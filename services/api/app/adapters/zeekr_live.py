@@ -298,17 +298,32 @@ class ZeekrStatusSource:
         self._logins += 1
         return True
 
+    def _vehicles(self) -> Any:
+        if self._client is None:
+            if not self._allow_login():
+                raise ZeekrReadError("Zeekr login limit for today reached")
+            client = self._factory(self._settings)
+            client.login()
+            self._client = client
+        vehicles = self._client.get_vehicle_list()
+        if not vehicles:
+            raise ZeekrReadError("Zeekr returned no vehicle")
+        return vehicles
+
+    def vehicle(self) -> Any:
+        """The logged-in vehicle, for the one command (ADR-010). Same login cap and session."""
+        try:
+            return self._vehicles()[0]
+        except ZeekrReadError:
+            self._client = None
+            raise
+        except Exception:
+            self._client = None
+            raise ZeekrReadError("Zeekr read failed") from None
+
     def __call__(self) -> Mapping[str, Any]:
         try:
-            if self._client is None:
-                if not self._allow_login():
-                    raise ZeekrReadError("Zeekr login limit for today reached")
-                client = self._factory(self._settings)
-                client.login()
-                self._client = client
-            vehicles = self._client.get_vehicle_list()
-            if not vehicles:
-                raise ZeekrReadError("Zeekr returned no vehicle")
+            vehicles = self._vehicles()
             status = vehicles[0].get_status()
         except ZeekrReadError:
             self._client = None
@@ -367,6 +382,11 @@ class ZeekrLiveTelemetryProvider:
     def fetches(self) -> int:
         """Real reads attempted, so a caller can tell a fresh read from a cached one."""
         return self._fetches
+
+    @property
+    def source(self) -> Callable[[], Mapping[str, Any]]:
+        """The status source, so the one command can reuse its login (ADR-010)."""
+        return self._source
 
     @property
     def snapshot(self) -> Snapshot | None:

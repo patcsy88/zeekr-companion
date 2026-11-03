@@ -342,6 +342,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicle/sentry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Sentry
+         * @description Sends one Sentry on or off command and reads the state back. The only command the app
+         *     can send (ADR-010). Waits about 15 seconds for the car to report.
+         */
+        post: operations["send_sentry_api_v1_vehicle_sentry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicle/sentry/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sentry Log */
+        get: operations["sentry_log_api_v1_vehicle_sentry_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warranty-claims": {
         parameters: {
             query?: never;
@@ -635,6 +673,43 @@ export interface components {
             kind: "review_reminder";
             /** Title */
             title: string;
+        };
+        /** CommandLogItem */
+        CommandLogItem: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Desired
+             * @enum {string}
+             */
+            desired: "on" | "off";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "sent" | "refused" | "failed";
+            /**
+             * Source
+             * @constant
+             */
+            source: "manual";
+            /** State After */
+            state_after: ("on" | "off") | null;
+        };
+        /** CommandLogOut */
+        CommandLogOut: {
+            /** Items */
+            items: components["schemas"]["CommandLogItem"][];
+            /** Retention Months */
+            retention_months: number;
         };
         /** CurrentOdometer */
         CurrentOdometer: {
@@ -1040,6 +1115,28 @@ export interface components {
         ReminderTemplateList: {
             /** Items */
             items: components["schemas"]["ReminderTemplate"][];
+        };
+        /** SentryCommandIn */
+        SentryCommandIn: {
+            /**
+             * Desired
+             * @enum {string}
+             */
+            desired: "on" | "off";
+        };
+        /** SentryCommandOut */
+        SentryCommandOut: {
+            /** Confirmed */
+            confirmed: boolean;
+            /**
+             * Desired
+             * @enum {string}
+             */
+            desired: "on" | "off";
+            /** Sent */
+            sent: boolean;
+            /** State After */
+            state_after: ("on" | "off") | null;
         };
         /**
          * ServiceCompleteIn
@@ -3249,6 +3346,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VehicleOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    send_sentry_api_v1_vehicle_sentry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SentryCommandIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SentryCommandOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description upstream_error: the car's service refused or could not be reached */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sentry_log_api_v1_vehicle_sentry_log_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommandLogOut"];
                 };
             };
             /** @description validation_error: body or parameters failed validation */

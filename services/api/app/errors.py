@@ -42,3 +42,9 @@ class RateLimited(AppError):
     def __init__(self, message: str, retry_after_seconds: int) -> None:
         super().__init__(message)
         self.retry_after_seconds = retry_after_seconds
+
+
+class UpstreamFailed(AppError):
+    """The car's service refused or could not be reached. The message is fixed, never Zeekr's."""
+
+    code = "upstream_error"

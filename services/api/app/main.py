@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -15,7 +16,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.adapters.zeekr_live import build_live_provider
 from app.config import Settings
 from app.db import create_db_engine, create_session_factory
-from app.errors import AppError, Conflict, InvalidInput, NotFound, RateLimited, Unauthenticated
+from app.errors import (
+    AppError,
+    Conflict,
+    InvalidInput,
+    NotFound,
+    RateLimited,
+    Unauthenticated,
+    UpstreamFailed,
+)
 from app.middleware import BodyLimitMiddleware, NoStoreMiddleware
 from app.observability import init_sentry
 from app.openapi_docs import install as install_openapi_docs
@@ -25,6 +34,7 @@ from app.routers import (
     expenses,
     live_vehicle,
     reminders,
+    sentry,
     service_records,
     vehicle,
     warranty,
@@ -41,6 +51,7 @@ _STATUS: dict[type[AppError], int] = {
     NotFound: 404,
     Conflict: 409,
     RateLimited: 429,
+    UpstreamFailed: 502,
 }
 
 
@@ -137,6 +148,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # may log in. The lock makes a read and its store one step, so two pages cause one read.
     app.state.live_telemetry = build_live_provider(settings)
     app.state.live_lock = threading.Lock()
+    app.state.sentry_send_lock = threading.Lock()
+    app.state.sentry_sleep = time.sleep  # a test replaces it so nothing waits
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.auth_service = AuthService(
@@ -179,6 +192,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         warranty.router,
         advisory.router,
         live_vehicle.router,
+        sentry.router,
     ):
         app.include_router(router, prefix="/api/v1")
     return app
