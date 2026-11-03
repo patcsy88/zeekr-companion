@@ -31,6 +31,7 @@ export function LiveVehicleCard() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [sentryNote, setSentryNote] = useState<string | null>(null);
+  const [sentrySeen, setSentrySeen] = useState<SentrySeen | null>(null);
   const inflight = useRef(false);
   const active = session.signedIn && online;
 
@@ -109,7 +110,16 @@ export function LiveVehicleCard() {
       ) : card === null ? (
         <p role="status">{failed ? 'Could not load live readings.' : 'Loading…'}</p>
       ) : (
-        <CardBody card={card} failed={failed} note={note} onSentryResult={setSentryNote} />
+        <CardBody
+          card={card}
+          failed={failed}
+          note={note}
+          onSentryResult={setSentryNote}
+          sentrySeen={sentrySeen}
+          onSentrySeen={(on) => {
+            setSentrySeen({ on, at: new Date().toISOString(), basis: card.received_at });
+          }}
+        />
       )}
       {sentryNote ? (
         <p role="status" className="notice info" data-testid="sentry-result">
@@ -120,16 +130,28 @@ export function LiveVehicleCard() {
   );
 }
 
+/** What the car reported right after a send. It holds only while the card still shows the
+ * reading it was read against; a newer card reading replaces it. */
+interface SentrySeen {
+  on: boolean;
+  at: string;
+  basis: string | null;
+}
+
 function CardBody({
   card,
   failed,
   note,
   onSentryResult,
+  sentrySeen,
+  onSentrySeen,
 }: {
   card: LiveCard;
   failed: boolean;
   note: string | null;
   onSentryResult: (text: string | null) => void;
+  sentrySeen: SentrySeen | null;
+  onSentrySeen: (on: boolean) => void;
 }) {
   if (card.status === 'off') {
     return (
@@ -147,6 +169,7 @@ function CardBody({
   const t = r.tyres_kpa;
   const tc = r.tyres_celsius;
   const ind = r.indicators;
+  const seen = sentrySeen !== null && sentrySeen.basis === card.received_at ? sentrySeen : null;
   return (
     <>
       {card.status === 'paused' ? (
@@ -241,7 +264,17 @@ function CardBody({
           <ReadOnlyToggle label="Sentry" value={ind.sentry_active} />
         </dd>
       </dl>
-      <SentryControl current={ind.sentry_active} onResult={onSentryResult} />
+      {seen ? (
+        <p role="status" className="notice info" data-testid="sentry-seen">
+          Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}. This is newer
+          than the readings above.
+        </p>
+      ) : null}
+      <SentryControl
+        current={seen ? seen.on : ind.sentry_active}
+        onResult={onSentryResult}
+        onSeen={onSentrySeen}
+      />
       <p className="muted small">
         These are the car's own reported flags. Apart from Sentry, their exact meanings are not
         verified, and this page cannot change any of them. Sentry may use the car's 12 V battery

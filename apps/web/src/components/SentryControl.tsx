@@ -16,8 +16,12 @@ type Phase = 'idle' | 'confirm' | 'sending';
 export function SentryControl({
   current,
   onResult,
+  onSeen,
 }: {
   current: boolean | null;
+  /** The state the car reported after a send, so the page can show it before the next card
+   * reading arrives. */
+  onSeen: (on: boolean) => void;
   /** The outcome text is shown by the parent, so it survives this control being unmounted when
    * the app goes offline mid-send. */
   onResult: (text: string | null) => void;
@@ -47,6 +51,7 @@ export function SentryControl({
         timeoutMs: SEND_TIMEOUT_MS,
       });
       const after = r.data.state_after;
+      if (after !== null) onSeen(after === 'on');
       onResult(
         r.data.confirmed
           ? `The car reports Sentry ${after ?? desired}.`
