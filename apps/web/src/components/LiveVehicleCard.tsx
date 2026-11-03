@@ -225,14 +225,14 @@ function CardBody({
         <dd>
           <ReadOnlyToggle label="Engine enable running" value={ind.engine_enable_running} />
         </dd>
-        <dt>Sentry (unverified)</dt>
+        <dt>Sentry</dt>
         <dd>
           <ReadOnlyToggle label="Sentry" value={ind.sentry_active} />
         </dd>
       </dl>
       <p className="muted small">
-        These are the car's own reported flags. Their exact meanings are not verified, and this page
-        cannot change any of them.
+        These are the car's own reported flags. Apart from Sentry, their exact meanings are not
+        verified, and this page cannot change any of them.
       </p>
       <p className="muted small">
         Updates about every {card.interval_minutes} minutes while this page is open.

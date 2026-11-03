@@ -225,5 +225,5 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 
 - Owner approved the data model and contract, the name "Sentry" with an `unverified` label, a second Zeekr read per refresh, and the column name `sentry_active` (migration `0011`).
 - `ZeekrStatusSource` makes one extra read in the same session and keeps only one key of its reply; the rest is dropped at the source. A failed or odd second read gives "no reading", is not a provider failure, and forces no new login. The daily service-reminder read also makes the second call.
-- Only the text `'1'` (on) and `'0'` (off) are accepted. The meaning is `unverified` after one on/off cycle.
+- Only the text `'1'` (on) and `'0'` (off) are accepted. The meaning was `unverified` after one on/off cycle; the owner later reported it verified against the car, and the label was dropped (owner-reported; method not stated).
 - Display only. Nothing is sent to the model. Needs a fresh encrypted export before the migration is deployed.
