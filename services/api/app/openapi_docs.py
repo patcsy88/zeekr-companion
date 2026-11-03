@@ -41,6 +41,7 @@ RATE_LIMITED = {
         },
     )
 }
+UPSTREAM = {502: _err("upstream_error: the car's service refused or could not be reached")}
 INTERNAL = {500: _err("internal_error: unexpected server error; details is empty")}
 
 

@@ -1,6 +1,6 @@
 # ADR-010: One command to the car, Sentry on and off
 
-Status: **accepted by the owner on 2026-11-03 (approvals recorded in `docs/product/sentry-control-and-geofence-proposal.md`). The payload is unverified: nothing has been sent from this app yet.**
+Status: **accepted by the owner on 2026-11-03 (approvals recorded in `docs/product/sentry-control-and-geofence-proposal.md`). The payload is verified for both directions on the owner's car (see the build records).**
 
 ## Context
 
@@ -28,3 +28,9 @@ ADR-008 and ADR-009 say the app sends no commands to the car, and tests ban the 
 - Any other command, including the library's charge and travel plan writers.
 - Sending from a schedule, a rule or the model.
 - Logging or storing the payload, the reply body, the VIN or any position.
+
+## Build records
+
+- **First send, owner-run (2026-11-04).** The owner ran `app.cli.zeekr_sentry_send --on`: state before off, Zeekr accepted the call, state after 15 seconds on, and the owner saw Sentry come on in the car (owner-observed). The owner then ran `--off`: state before on, accepted, state after off, and the owner observed Sentry off. So `RSM` / `rsm` = `6` with `start` and `stop` is **confirmed** on this car, with the second account, for one on/off cycle. Not covered: other cars or software versions, or whether Zeekr changes it later. The "unverified" label on the payload is dropped.
+- **Endpoint, log and button (2026-11-04; not deployed).** `POST /api/v1/vehicle/sentry`, `GET /api/v1/vehicle/sentry/log`, table `car_command_log` (migration `0012`) and a confirm-first button on the live card, as in `api-contracts.md` (Amendment: Sentry command). Decisions inside the approved scope: the 60-second spacing is counted from the last logged command; the send shares the provider's lock, session and login cap; a status read that holds the lock for over 5 seconds makes the send a 409; the web request waits up to 45 seconds because the server waits about 15 for the car. The new error code `upstream_error` (502) is used by this endpoint only. Tests use a fake vehicle; the autouse guard still blocks the real client, and a test fails if any file but `zeekr_sentry_command.py` names the write method.
+- **Not verified:** the button on a phone, behaviour with two pages open, how Zeekr treats repeated sends, the effect on the 12 V battery, and whether a send is slower than 45 seconds on a bad day.

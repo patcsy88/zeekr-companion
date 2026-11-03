@@ -117,7 +117,7 @@ def test_only_this_module_names_the_write_method() -> None:
 def test_only_the_send_cli_imports_the_command_module() -> None:
     root = Path(app.__file__).parent
     for path in root.rglob("*.py"):
-        if path.name in {"zeekr_sentry_send.py", "zeekr_sentry_command.py"}:
+        if path.name in {"zeekr_sentry_send.py", "zeekr_sentry_command.py", "sentry_command.py"}:
             continue
         assert "zeekr_sentry_command" not in path.read_text(), path
 

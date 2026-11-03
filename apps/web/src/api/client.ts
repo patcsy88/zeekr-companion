@@ -53,6 +53,8 @@ export interface RequestOptions {
   body?: unknown;
   /** The login endpoint is the only call made without a token. */
   auth?: boolean;
+  /** Only the Sentry command waits longer than the default: the server waits for the car. */
+  timeoutMs?: number;
 }
 
 export interface ApiResult<T> {
@@ -66,7 +68,8 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
  * Only the contract's paths are allowed: /auth/token, /vehicle, /service-records, /reminders,
  * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and
  * the {uuid} forms of the three collections, with a plain query string on lists. The advisory
- * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well.
+ * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well, and so are
+ * /vehicle/sentry and /vehicle/sentry/log (ADR-010).
  * Anything else (traversal, encoded slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -96,6 +99,18 @@ export function assertContractPath(path: string): void {
           parts[2] === 'history' &&
           (query === undefined || QUERY_RE.test(query))));
     if (!liveOk) throw new ClientError('Refused a request outside the API contract.');
+    return;
+  }
+  if (parts[1] === 'vehicle' && parts[2] === 'sentry') {
+    // The one command (ADR-010): POST /vehicle/sentry, and GET /vehicle/sentry/log with a limit.
+    const sentryOk =
+      extra.length === 0 &&
+      parts[0] === '' &&
+      ((parts.length === 3 && query === undefined) ||
+        (parts.length === 4 &&
+          parts[3] === 'log' &&
+          (query === undefined || QUERY_RE.test(query))));
+    if (!sentryOk) throw new ClientError('Refused a request outside the API contract.');
     return;
   }
   const ok =
@@ -188,7 +203,7 @@ export async function request<T = undefined>(opts: RequestOptions): Promise<ApiR
       headers,
       body,
       cache: 'no-store',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
     });
   } catch {
     return notFromApi();

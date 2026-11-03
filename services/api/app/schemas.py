@@ -830,3 +830,34 @@ class LiveDeleteOut(BaseModel):
 LiveHistoryLimit = Annotated[
     int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(1000))
 ]
+
+
+# --- Sentry command (ADR-010) -----------------------------------------------------------------
+
+
+class SentryCommandIn(_Input):
+    desired: Literal["on", "off"]
+
+
+class SentryCommandOut(BaseModel):
+    desired: Literal["on", "off"]
+    sent: bool
+    state_after: Literal["on", "off"] | None
+    confirmed: bool
+
+
+class CommandLogItem(BaseModel):
+    id: uuid.UUID
+    created_at: UtcDateTime
+    desired: Literal["on", "off"]
+    source: Literal["manual"]
+    result: Literal["sent", "refused", "failed"]
+    state_after: Literal["on", "off"] | None
+
+
+class CommandLogOut(BaseModel):
+    items: list[CommandLogItem]
+    retention_months: int
+
+
+CommandLogLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(100))]
