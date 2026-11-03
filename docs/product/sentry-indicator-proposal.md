@@ -55,4 +55,4 @@ Status: **data model and contract approved by the owner on 2026-11-03; built, no
 
 ## After the deploy
 
-- 2026-11-03: the owner reported the Sentry block shows on the live card and "is confirmed to be reflecting Sentry" (owner-reported; the comparison method was not stated). The "unverified" label is kept until the owner decides to drop it.
+- 2026-11-03: the owner reported the Sentry block shows on the live card and "is confirmed to be reflecting Sentry" (owner-reported; the comparison method was not stated). Later the same day the owner said "Sentry is now verified" and the "unverified" label was dropped from the card and history page (owner-reported; the comparison method was not stated).

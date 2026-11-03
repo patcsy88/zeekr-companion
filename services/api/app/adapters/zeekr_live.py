@@ -52,7 +52,7 @@ MAX_LOGINS_PER_DAY = 10
 
 # The second read (`get_remote_control_state`) is reduced to this one key at the source, so no
 # other key of that reply (event ids, gps state, modes) reaches `map_status`. The raw key name
-# is `vstdModeState`; its meaning as Sentry is unverified (it followed the owner's toggle).
+# is `vstdModeState`; the owner confirmed it reflects Sentry (2026-11-03).
 REMOTE_STATE_KEY = "_remoteControlState"
 SENTRY_KEY = "vstdModeState"
 
