@@ -30,7 +30,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0009"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0010"
             )
     finally:
         engine.dispose()
@@ -280,4 +280,33 @@ def test_0009_live_additions_downgrade_and_reapply_keep_the_bounds(
                 ),
                 {"v": bad},
             )
+    engine.dispose()
+
+
+def test_0010_service_record_reminder_id_downgrades_and_reapplies(
+    fresh_database_url: str,
+) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0009")
+        engine = create_engine(fresh_database_url)
+        cols = {c["name"] for c in inspect(engine).get_columns("service_record")}
+        assert "reminder_id" not in cols
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    cols = {c["name"] for c in inspect(engine).get_columns("service_record")}
+    assert "reminder_id" in cols
     engine.dispose()

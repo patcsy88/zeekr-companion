@@ -750,6 +750,8 @@ Replay: the same `record_id`, `next_id` and body returns `200` with the same res
 
 Review change (owner decision, 2026-11-03): an odometer lower than the current odometer for reminders is rejected, to stop a typo from becoming the newest record. A lower figure that is really right means fixing the older record first. A replay is judged before this check, so a replay of an accepted call still returns `200`.
 
+Data model change (owner decision, 2026-11-03, migration `0010`): `service_record` gains a nullable `reminder_id` (foreign key to `reminder`, `ON DELETE SET NULL`). Complete service sets it. A replay must match the same reminder, so the same ids sent to another reminder return `409`. Records made any other way keep `reminder_id` null and are never a replay. The field is not in any response.
+
 Offline: the button is disabled with a message. The three writes are not queued, so a replay cannot create a second next reminder. The existing "Mark complete" and "Edit" keep their offline behaviour for the other reminder kinds.
 
 Web: for a service reminder that is not completed, the detail page shows "Complete service" (replacing "Mark complete") and a form with Actual service date, Service centre, Odometer (km), Cost (MYR, zero allowed), Description and Notes. The odometer is prefilled from the current odometer and can be changed. Insurance and road-tax reminders keep "Mark complete".

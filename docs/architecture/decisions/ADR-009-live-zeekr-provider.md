@@ -218,5 +218,5 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **History GET no longer deletes.** It hides rows older than 12 months; the next stored reading prunes them.
 - **Lock release.** The next-reminder calculation now runs inside the block that releases the row lock on error.
 - **Web.** The Complete service form refuses to submit while offline or already busy (the Enter key bypassed the disabled button). The read-only switches take keyboard focus.
-- **Not changed.** The replay still compares the reminder's next reminder and the record content, because the service record has no `reminder_id`; adding one needs a migration and is left for the owner to decide.
+- **`reminder_id` on the service record (owner: add it; migration `0010`).** A nullable foreign key (`ON DELETE SET NULL`). The replay now also compares it, so the same ids sent to a different reminder return `409`. Existing records keep null.
 - **Tests added.** Concurrency (same and different ids), KL midnight in the daily task, 29/30/31-day window edges, migration `0009` downgrade with bounds, overflow edges, month-end and Feb 29, mapper edges, the login cap, per-field null display, the offline submit and a double click.

@@ -178,6 +178,7 @@ class ReminderService:
             "cost_minor": data.cost_minor,
             "currency": "MYR",
             "notes": data.notes,
+            "reminder_id": reminder_id,
         }
         try:
             next_values = self._next_values(row, data)
@@ -264,7 +265,16 @@ class ReminderService:
         record_values: dict[str, object],
         next_values: dict[str, object] | None,
     ) -> bool:
-        fields = ("date", "odometer", "provider", "description", "cost_minor", "currency", "notes")
+        fields = (
+            "date",
+            "odometer",
+            "provider",
+            "description",
+            "cost_minor",
+            "currency",
+            "notes",
+            "reminder_id",
+        )
         if not all(getattr(record, f) == record_values[f] for f in fields):
             return False
         if next_values is None:
