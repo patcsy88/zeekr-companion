@@ -194,3 +194,76 @@ def test_nothing_in_the_reading_reaches_the_log(
     install(client, ZeekrReadError("secret-canary-value"))
     job(client).run_once(NOW)
     assert "secret-canary-value" not in caplog.text
+
+
+def _store_reading(client: TestClient, when: dt.datetime) -> None:
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        conn.execute(
+            text(
+                "INSERT INTO live_reading (id, observed_at, received_at, odometer_km) "
+                "VALUES (gen_random_uuid(), :t, :t, 100)"
+            ),
+            {"t": when},
+        )
+
+
+def test_window_edges_at_29_30_and_31_days() -> None:
+    today = dt.date(2026, 11, 3)
+    assert in_window([today + dt.timedelta(days=29)], today)
+    assert in_window([today + dt.timedelta(days=30)], today)
+    assert not in_window([today + dt.timedelta(days=31)], today)
+
+
+def test_a_reading_after_kl_midnight_counts_as_today_even_on_the_previous_utc_day(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    add_reminder(client, auth_headers)
+    _store_reading(client, dt.datetime(2026, 11, 3, 16, 30, tzinfo=dt.UTC))  # 00:30 KL on the 4th
+    source = install(client, fresh(kl(9, day=4)))
+    assert job(client).run_once(kl(9, day=4)) == "already read today"
+    assert source.calls == 0
+
+
+def test_a_reading_before_kl_midnight_does_not_count_as_today(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    add_reminder(client, auth_headers)
+    _store_reading(client, dt.datetime(2026, 11, 3, 15, 30, tzinfo=dt.UTC))  # 23:30 KL on the 3rd
+    source = install(client, fresh(kl(9, day=4)))
+    assert job(client).run_once(kl(9, day=4)) == "read"
+    assert source.calls == 1
+
+
+def test_a_new_kl_day_starts_at_midnight_kl(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    add_reminder(client, auth_headers)
+    install(client, fresh(kl(9)), fresh(kl(9, day=4)))
+    j = job(client)
+    assert j.run_once(kl(23, 59)) == "read"
+    assert j.run_once(kl(0, 0, day=4)) == "too early"
+    assert j.run_once(kl(8, 0, day=4)) == "read"
+    # The fake clock does not advance, so the provider's own spacing may skip the second source
+    # call; this test is about the day rule only.
+
+
+def test_completing_through_the_endpoint_stops_the_reads(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rid = add_reminder(client, auth_headers, template_ref="awd-performance-service:2:1")
+    other = add_reminder(client, auth_headers, due_date="2027-10-07")
+    assert other
+    source = install(client, fresh(NOW))
+    assert job(client).run_once(NOW) == "read"
+    body = {
+        "record_id": new_id(),
+        "next_id": new_id(),
+        "date": "2026-11-03",
+        "odometer": 5000,
+        "provider": "Zeekr",
+        "cost_minor": 0,
+    }
+    done = client.post(f"{URL}/{rid}/complete-service", json=body, headers=auth_headers)
+    assert done.status_code == 201
+    assert job(client).run_once(NOW + dt.timedelta(days=1)) == "no service due soon"
+    assert source.calls == 1

@@ -76,6 +76,7 @@ function open(path = '/vehicle') {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  server.events.removeAllListeners();
 });
 
 describe('live vehicle: request paths', () => {
@@ -195,7 +196,59 @@ describe('live vehicle: the card', () => {
     await screen.findByTestId('live-indicators');
     await userEvent.click(screen.getByRole('switch', { name: 'Fragrance: on' }));
     expect(writes).toEqual([]);
-    server.events.removeAllListeners();
+  });
+
+  it('indicators can be focused and pressing keys sends nothing', async () => {
+    serveCard(card());
+    const writes: string[] = [];
+    server.events.on('request:start', ({ request: r }) => {
+      if (r.method !== 'GET') writes.push(`${r.method} ${r.url}`);
+    });
+    const user = open();
+    render(<App />);
+    await screen.findByTestId('live-indicators');
+    const sw = screen.getByRole('switch', { name: 'Fragrance: on' });
+    sw.focus();
+    expect(sw).toHaveFocus();
+    await user.keyboard('{Enter} ');
+    expect(writes).toEqual([]);
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('a null 12 V, temperature or indicator shows no reading, never 0 or Off', async () => {
+    const base = card();
+    serveCard(
+      card({
+        readings: {
+          ...base.readings,
+          battery_12v_volts: null,
+          tyres_celsius: {
+            driver_front: null,
+            passenger_front: null,
+            driver_rear: null,
+            passenger_rear: null,
+          },
+          indicators: {
+            pre_climate_active: null,
+            fragrance_active: null,
+            overheat_protection_active: null,
+            vtm_ts_active: null,
+            engine_enable_running: null,
+          },
+        },
+      }),
+    );
+    open();
+    render(<App />);
+    await screen.findByTestId('live-indicators');
+    expect(screen.queryByText(/0 V/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 °C/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Off')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('switch')).toHaveLength(5);
+    for (const sw of screen.getAllByRole('switch')) {
+      expect(sw).not.toHaveAttribute('aria-checked');
+      expect(sw).toHaveTextContent('no reading');
+    }
   });
 
   it('shows "no reading" for nulls and never a zero', async () => {

@@ -52,6 +52,7 @@ function CompleteService({ id }: { id: string }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!online || busy) return;
     const next: Errors = {};
     if (!isIsoDate(date)) next.date = 'Enter a valid date.';
     if (!/^\d{1,8}$/.test(odoValue.trim()) || Number(odoValue) > 10_000_000)

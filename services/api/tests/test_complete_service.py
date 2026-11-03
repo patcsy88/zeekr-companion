@@ -329,3 +329,140 @@ def test_patch_and_complete_still_work_with_live_readings_on(
     assert done.status_code == 201 and done.json()["next_reminder"]["due_odometer"] == 78500
     assert client.get(f"{URL}/{rem['id']}", headers=auth_headers).status_code == 200
     assert client.post(URL, json=reminder(), headers=auth_headers).status_code == 201
+
+
+# --- review follow-ups (2026-11-03) -----------------------------------------------------------
+
+
+def _post(client: TestClient, headers: dict[str, str], rid: str, body: dict[str, Any]) -> Any:
+    return client.post(f"{URL}/{rid}/complete-service", json=body, headers=headers)
+
+
+def test_odometer_below_the_latest_service_record_is_rejected(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    client.post(SR, json=record_body(odometer=50000), headers=auth_headers)
+    rem = make(client, auth_headers)
+    r = _post(client, auth_headers, rem["id"], complete_body(odometer=5000))
+    assert r.status_code == 400 and r.json()["error"]["code"] == "validation_error"
+    assert r.json()["error"]["details"][0]["field"] == "odometer"
+    assert counts(client) == (1, 1)
+
+
+def test_odometer_equal_to_the_latest_is_accepted(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    client.post(SR, json=record_body(odometer=38500), headers=auth_headers)
+    rem = make(client, auth_headers)
+    assert _post(client, auth_headers, rem["id"], complete_body()).status_code == 201
+
+
+def test_odometer_below_a_live_reading_is_rejected(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _turn_live_on(client)
+    _live_row(client, 60000, dt.datetime.now(dt.UTC) - dt.timedelta(minutes=5))
+    rem = make(client, auth_headers)
+    r = _post(client, auth_headers, rem["id"], complete_body(odometer=38500))
+    assert r.status_code == 400
+    assert counts(client) == (1, 0)
+
+
+def test_overflow_edge_9_960_000_is_allowed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers)
+    r = _post(client, auth_headers, rem["id"], complete_body(odometer=9_960_000))
+    assert r.status_code == 201 and r.json()["next_reminder"]["due_odometer"] == 10_000_000
+
+
+def test_overflow_is_ignored_without_a_template_ref(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers, template_ref=None)
+    r = _post(client, auth_headers, rem["id"], complete_body(odometer=9_990_000))
+    assert r.status_code == 201 and r.json()["next_reminder"] is None
+
+
+def test_overflow_error_releases_the_lock(client: TestClient, auth_headers: dict[str, str]) -> None:
+    rem = make(client, auth_headers)
+    assert (
+        _post(client, auth_headers, rem["id"], complete_body(odometer=9_990_000)).status_code == 400
+    )
+    assert _post(client, auth_headers, rem["id"], complete_body()).status_code == 201
+
+
+def test_replay_without_a_template_ref_returns_200(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers, template_ref=None)
+    b = complete_body()
+    assert _post(client, auth_headers, rem["id"], b).status_code == 201
+    again = _post(client, auth_headers, rem["id"], b)
+    assert again.status_code == 200 and again.json()["next_reminder"] is None
+    assert counts(client) == (1, 1)
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [("2026-08-31", "2028-08-31"), ("2024-02-29", "2026-02-28"), ("2025-02-28", "2027-02-28")],
+)
+def test_next_due_date_through_the_endpoint(
+    client: TestClient, auth_headers: dict[str, str], day: str, expected: str
+) -> None:
+    rem = make(client, auth_headers)
+    r = _post(client, auth_headers, rem["id"], complete_body(date=day))
+    assert r.status_code == 201 and r.json()["next_reminder"]["due_date"] == expected
+
+
+def test_a_positive_cost_round_trips(client: TestClient, auth_headers: dict[str, str]) -> None:
+    rem = make(client, auth_headers)
+    r = _post(client, auth_headers, rem["id"], complete_body(cost_minor=12345))
+    assert r.status_code == 201 and r.json()["service_record"]["cost_minor"] == 12345
+
+
+def test_malformed_template_ref_makes_no_next(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    for ref in ("x:1", "awd-performance-service:2"):
+        rem = make(client, auth_headers, template_ref=ref)
+        r = _post(client, auth_headers, rem["id"], complete_body())
+        assert r.status_code == 201 and r.json()["next_reminder"] is None
+
+
+def _race(client: TestClient, headers: dict[str, str], jobs: list[tuple[str, dict[str, Any]]]):
+    import threading
+
+    barrier = threading.Barrier(len(jobs))
+    out: list[Any] = [None] * len(jobs)
+
+    def run(i: int) -> None:
+        barrier.wait()
+        out[i] = _post(client, headers, *jobs[i])
+
+    threads = [threading.Thread(target=run, args=(i,)) for i in range(len(jobs))]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    return out
+
+
+def test_two_submits_with_the_same_ids_make_one_record(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers)
+    b = complete_body()
+    codes = sorted(r.status_code for r in _race(client, auth_headers, [(rem["id"], b)] * 2))
+    assert codes == [200, 201]
+    assert counts(client) == (2, 1)
+
+
+def test_two_submits_with_different_ids_complete_once(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers)
+    jobs = [(rem["id"], complete_body()), (rem["id"], complete_body())]
+    codes = sorted(r.status_code for r in _race(client, auth_headers, jobs))
+    assert codes == [201, 400]
+    assert counts(client) == (2, 1)

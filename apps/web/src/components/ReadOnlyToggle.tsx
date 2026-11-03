@@ -6,6 +6,7 @@ export function ReadOnlyToggle({ label, value }: { label: string; value: boolean
     <span
       className={`ro-toggle ro-toggle-${state}`}
       role="switch"
+      tabIndex={0}
       aria-checked={value === null ? undefined : value}
       aria-readonly="true"
       aria-label={`${label}: ${value === null ? 'no reading' : value ? 'on' : 'off'}`}

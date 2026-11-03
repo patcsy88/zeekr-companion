@@ -25,6 +25,7 @@ from typing import Any
 from pydantic import SecretStr
 
 from app.adapters.telemetry import Reading, TyrePressures
+from app.clock import today_kl
 from app.config import ZEEKR_LIVE_FIELDS, Settings
 from app.live_limits import (
     BATTERY_12V_VOLTS,
@@ -44,6 +45,9 @@ _AVS = "additionalVehicleStatus"
 _MAINT = (_AVS, "maintenanceStatus")
 _ELEC = (_AVS, "electricVehicleStatus")
 _CLIMATE = (_AVS, "climateStatus")
+
+
+MAX_LOGINS_PER_DAY = 10
 
 
 class ZeekrReadError(Exception):
@@ -226,6 +230,12 @@ def _silent_logger() -> logging.Logger:
     logger.handlers = [logging.NullHandler()]
     logger.propagate = False
     logger.setLevel(logging.CRITICAL + 1)
+    # The library's own module loggers write request headers at DEBUG, and its HTTP stack can log
+    # URLs; keep all of them off whatever the root level is.
+    for name in ("zeekr_ev_api", "urllib3", "requests"):
+        quiet = logging.getLogger(name)
+        quiet.setLevel(logging.CRITICAL + 1)
+        quiet.propagate = False
     return logger
 
 
@@ -258,10 +268,23 @@ class ZeekrStatusSource:
         self._settings = settings
         self._factory = client_factory
         self._client: Any = None
+        self._login_day: dt.date | None = None
+        self._logins = 0
+
+    def _allow_login(self) -> bool:
+        today = today_kl()
+        if self._login_day != today:
+            self._login_day, self._logins = today, 0
+        if self._logins >= MAX_LOGINS_PER_DAY:
+            return False
+        self._logins += 1
+        return True
 
     def __call__(self) -> Mapping[str, Any]:
         try:
             if self._client is None:
+                if not self._allow_login():
+                    raise ZeekrReadError("Zeekr login limit for today reached")
                 client = self._factory(self._settings)
                 client.login()
                 self._client = client

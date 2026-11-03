@@ -207,3 +207,16 @@ Owner-approved: 12 V voltage, four tyre temperatures and five read-only on/off i
 - Gates: backend 1958 passed, 5 xfailed; web tests 589 passed, 7 expected fail; e2e 39 passed; ruff, mypy, gitleaks, shared-types drift and `npm audit --audit-level=high` clean. `pip-audit` could only report that the project's own package is not on PyPI.
 - One web test (`reminders.test.tsx`, create/edit/complete) failed once in a full run and passed on 4 reruns; it is undiagnosed, like the earlier flaky warranty test.
 - Not checked: the screens in a real browser or on the iPhone. Reading the new values from a real car through the app has not been done.
+
+## Build record: review follow-ups (2026-11-03, not deployed)
+
+Two read-only review agents (security, QA) reported no High finding. Actioned, with the owner's answers:
+
+- **Odometer guard (owner: reject).** Complete service returns `400` on field `odometer` when the figure is lower than the current odometer for reminders. No override.
+- **Login cap (owner: in-memory daily cap, not a database flag).** The status source makes at most 10 logins per Kuala Lumpur day per process. After that a read fails with fixed text and no call goes out. The counter is in memory, so an API restart resets it; this is a partial guard only. Accepted risk: a crash loop with a polling page can still reach 10 logins per restart.
+- **Library logging.** The `zeekr_ev_api`, `urllib3` and `requests` loggers are set above CRITICAL and do not propagate. The library writes request headers at DEBUG, so this matters if the root level is ever lowered.
+- **History GET no longer deletes.** It hides rows older than 12 months; the next stored reading prunes them.
+- **Lock release.** The next-reminder calculation now runs inside the block that releases the row lock on error.
+- **Web.** The Complete service form refuses to submit while offline or already busy (the Enter key bypassed the disabled button). The read-only switches take keyboard focus.
+- **Not changed.** The replay still compares the reminder's next reminder and the record content, because the service record has no `reminder_id`; adding one needs a migration and is left for the owner to decide.
+- **Tests added.** Concurrency (same and different ids), KL midnight in the daily task, 29/30/31-day window edges, migration `0009` downgrade with bounds, overflow edges, month-end and Feb 29, mapper edges, the login cap, per-field null display, the offline submit and a double click.
