@@ -315,9 +315,11 @@ button.link {
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabs a {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
-  padding: 0.9rem;
+  padding: 0.9rem 0.15rem;
+  font-size: 0.72rem;
   color: var(--muted);
   text-decoration: none;
   font-weight: 600;
@@ -329,7 +331,16 @@ button.link {
 .narrow {
   max-width: 28rem;
 }
+@media (min-width: 26rem) {
+  .tabs a {
+    font-size: 0.85rem;
+  }
+}
 @media (min-width: 40rem) {
+  .tabs a {
+    padding: 0.9rem;
+    font-size: 1rem;
+  }
   h1 {
     font-size: 1.7rem;
   }
