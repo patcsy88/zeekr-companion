@@ -4,7 +4,8 @@ Three parts, kept apart:
 - `map_status` keeps a short allow-list of fields from one status reply and drops the rest
   (position, locks, doors, VIN, plate, nickname and everything not named here).
 - `ZeekrStatusSource` wraps the `zeekr-ev-api` client. It calls `login`, `get_vehicle_list` and
-  `get_status` and nothing else, and it raises only fixed messages, never the server's text.
+  `get_status` and `get_remote_control_state` (both reads) and nothing else, and it raises only
+  fixed messages, never the server's text.
 - `ZeekrLiveTelemetryProvider` serves `read_*` readings from one cached snapshot, spaces calls out,
   backs off after a failure and stops after repeated failures.
 
@@ -49,6 +50,12 @@ _CLIMATE = (_AVS, "climateStatus")
 
 MAX_LOGINS_PER_DAY = 10
 
+# The second read (`get_remote_control_state`) is reduced to this one key at the source, so no
+# other key of that reply (event ids, gps state, modes) reaches `map_status`. The raw key name
+# is `vstdModeState`; its meaning as Sentry is unverified (it followed the owner's toggle).
+REMOTE_STATE_KEY = "_remoteControlState"
+SENTRY_KEY = "vstdModeState"
+
 
 class ZeekrReadError(Exception):
     """A read failed. The message is fixed text; it never carries anything the server sent."""
@@ -72,6 +79,7 @@ class Snapshot:
     overheat_protection_active: bool | None
     vtm_ts_active: bool | None
     engine_enable_running: bool | None
+    sentry_active: bool | None
 
 
 def _dig(status: object, path: tuple[str, ...]) -> object:
@@ -118,6 +126,15 @@ def _onoff(value: object) -> bool | None:
         text = value.strip().lower()
         if text in ("true", "false"):
             return text == "true"
+    return None
+
+
+def _sentry(value: object) -> bool | None:
+    """Only the two strings seen on the car: "1" is on, "0" is off. Anything else is None."""
+    if value == "1":
+        return True
+    if value == "0":
+        return False
     return None
 
 
@@ -191,6 +208,7 @@ def map_status(status: object) -> Snapshot:
         overheat_protection_active=_onoff(_dig(status, (*_CLIMATE, "climateOverHeatProActive"))),
         vtm_ts_active=_onoff(_dig(status, (*_CLIMATE, "vtmTsActive"))),
         engine_enable_running=_onoff(_dig(status, (_AVS, "runningStatus", "engineEnableRunning"))),
+        sentry_active=_sentry(_dig(status, (REMOTE_STATE_KEY, SENTRY_KEY))),
     )
 
 
@@ -258,7 +276,7 @@ def _build_client(settings: ZeekrSettings) -> Any:
 
 
 class ZeekrStatusSource:
-    """Returns one raw status reply. The only library calls are the three read-only ones."""
+    """Returns one raw status reply. The only library calls are the four read-only ones."""
 
     def __init__(
         self,
@@ -300,7 +318,18 @@ class ZeekrStatusSource:
             raise ZeekrReadError("Zeekr read failed") from None
         if not isinstance(status, Mapping):
             raise ZeekrReadError("Zeekr status was not an object")
-        return status
+        return {**status, REMOTE_STATE_KEY: self._sentry_state(vehicles)}
+
+    def _sentry_state(self, vehicles: Any) -> dict[str, Any]:
+        """One extra read. If it fails the main reading still stands and Sentry is 'no reading';
+        the failure is not counted against the provider and nothing from it is logged."""
+        try:
+            state = vehicles[0].get_remote_control_state()
+        except Exception:
+            return {}
+        if not isinstance(state, Mapping):
+            return {}
+        return {SENTRY_KEY: state.get(SENTRY_KEY)}
 
 
 class ZeekrLiveTelemetryProvider:

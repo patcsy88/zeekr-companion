@@ -696,6 +696,7 @@ export const OFF_CARD = {
       overheat_protection_active: null,
       vtm_ts_active: null,
       engine_enable_running: null,
+      sentry_active: null,
     },
   },
 };

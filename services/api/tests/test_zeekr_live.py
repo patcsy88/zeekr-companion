@@ -100,6 +100,7 @@ def test_snapshot_holds_nothing_from_dropped_fields() -> None:
         "overheat_protection_active",
         "vtm_ts_active",
         "engine_enable_running",
+        "sentry_active",
     }
 
 
@@ -141,12 +142,19 @@ class FakeVehicle:
     def __init__(self, body: Any) -> None:
         self.body = body
         self.calls: list[str] = []
+        self.state: Any = {"vstdModeState": "1", "gpsstate": CANARY, "visitorModeEventId": CANARY}
 
     def get_status(self) -> Any:
         self.calls.append("get_status")
         if isinstance(self.body, Exception):
             raise self.body
         return self.body
+
+    def get_remote_control_state(self) -> Any:
+        self.calls.append("get_remote_control_state")
+        if isinstance(self.state, Exception):
+            raise self.state
+        return self.state
 
 
 class FakeClient:
@@ -175,7 +183,12 @@ def test_source_logs_in_once_and_reuses_the_client() -> None:
     source()
     source()
     assert client.logins == 1
-    assert client.vehicle.calls == ["get_status", "get_status"]
+    assert client.vehicle.calls == [
+        "get_status",
+        "get_remote_control_state",
+        "get_status",
+        "get_remote_control_state",
+    ]
 
 
 def test_source_failure_message_is_fixed_and_hides_the_cause() -> None:
@@ -549,3 +562,65 @@ def test_tyre_temperature_bounds_are_kept(edge: int) -> None:
 )
 def test_indicator_values_that_are_accepted(raw: object, expected: bool) -> None:
     assert _set(("climateStatus", "vtmTsActive"), raw).vtm_ts_active is expected
+
+
+def _with_sentry(value: object) -> dict[str, Any]:
+    body = status()
+    body[zeekr_live.REMOTE_STATE_KEY] = {zeekr_live.SENTRY_KEY: value}
+    return body
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("1", True), ("0", False)], ids=["on", "off"])
+def test_sentry_maps_only_the_two_strings_seen(raw: str, expected: bool) -> None:
+    assert map_status(_with_sentry(raw)).sentry_active is expected
+
+
+@pytest.mark.parametrize(
+    "bad", ["", " ", "2", "true", "false", "TRUE", 1, 0, True, False, None, [], {}, "1 ", "01"]
+)
+def test_sentry_anything_else_is_no_reading(bad: object) -> None:
+    assert map_status(_with_sentry(bad)).sentry_active is None
+
+
+def test_sentry_is_no_reading_when_the_second_read_is_missing() -> None:
+    assert map_status(status()).sentry_active is None
+    assert map_status({zeekr_live.REMOTE_STATE_KEY: "x"}).sentry_active is None
+
+
+def test_source_returns_the_status_plus_only_the_one_sentry_key() -> None:
+    reply = ZeekrStatusSource(settings(), lambda _: FakeClient())()
+    assert reply[zeekr_live.REMOTE_STATE_KEY] == {"vstdModeState": "1"}
+    assert CANARY not in repr(reply[zeekr_live.REMOTE_STATE_KEY])
+    assert map_status(reply).sentry_active is True
+    assert CANARY not in repr(map_status(reply))
+
+
+@pytest.mark.parametrize("state", [RuntimeError(f"token {CANARY}"), None, "x", [], 5])
+def test_a_failed_or_odd_second_read_keeps_the_main_reading(state: object) -> None:
+    client = FakeClient()
+    client.vehicle.state = state
+    source = ZeekrStatusSource(settings(), lambda _: client)
+    reply = source()
+    assert reply[zeekr_live.REMOTE_STATE_KEY] == {}
+    snap = map_status(reply)
+    assert snap.sentry_active is None and snap.odometer_km == 4321
+    source()
+    assert client.logins == 1  # the failure did not force a new login
+
+
+def test_a_failed_second_read_is_not_a_provider_failure() -> None:
+    client = FakeClient()
+    client.vehicle.state = RuntimeError(CANARY)
+    provider = ZeekrLiveTelemetryProvider(
+        ZeekrStatusSource(settings(), lambda _: client), min_interval_s=0.0
+    )
+    assert provider.read_odometer().value == 4321
+    assert provider.failures == 0 and not provider.stopped
+
+
+def test_the_second_read_does_not_add_logins() -> None:
+    client = FakeClient()
+    source = ZeekrStatusSource(settings(), lambda _: client)
+    for _ in range(3):
+        source()
+    assert client.logins == 1

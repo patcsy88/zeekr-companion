@@ -11,7 +11,12 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import text
 
-from app.adapters.zeekr_live import ZeekrLiveTelemetryProvider, ZeekrReadError
+from app.adapters.zeekr_live import (
+    REMOTE_STATE_KEY,
+    SENTRY_KEY,
+    ZeekrLiveTelemetryProvider,
+    ZeekrReadError,
+)
 from app.config import Settings
 from app.services.live_vehicle import months_before
 from tests.conftest import make_settings  # noqa: F401
@@ -55,6 +60,7 @@ class Source:
 def with_time(moment: dt.datetime, **kw: Any) -> dict[str, Any]:
     body = status(**kw)
     body["additionalVehicleStatus"]["climateStatus"]["updateTime"] = ms(moment)
+    body[REMOTE_STATE_KEY] = {SENTRY_KEY: "1"}
     return body
 
 
@@ -130,6 +136,7 @@ def test_real_read_is_stored_and_shown(
         "overheat_protection_active": False,
         "vtm_ts_active": True,
         "engine_enable_running": False,
+        "sentry_active": True,
     }
     assert source.calls == 1 and count(client) == 1
 
@@ -503,7 +510,7 @@ def test_the_module_calls_only_the_three_read_only_library_methods() -> None:
     from app.adapters import zeekr_live
 
     tree = ast.parse(inspect.getsource(zeekr_live))
-    allowed = {"login", "get_vehicle_list", "get_status"}
+    allowed = {"login", "get_vehicle_list", "get_status", "get_remote_control_state"}
     called = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
@@ -577,6 +584,7 @@ def test_every_value_the_mapper_keeps_fits_the_table(client: TestClient) -> None
                 "overheat_protection_active",
                 "vtm_ts_active",
                 "engine_enable_running",
+                "sentry_active",
             )
             for v in (True, False)
         ),

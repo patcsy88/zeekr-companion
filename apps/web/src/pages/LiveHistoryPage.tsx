@@ -166,7 +166,8 @@ export function LiveHistoryPage() {
                     {yesNo(i.indicators.fragrance_active)} · Overheat protection{' '}
                     {yesNo(i.indicators.overheat_protection_active)} · VTM TS{' '}
                     {yesNo(i.indicators.vtm_ts_active)} · Engine enable running{' '}
-                    {yesNo(i.indicators.engine_enable_running)}
+                    {yesNo(i.indicators.engine_enable_running)} · Sentry (unverified){' '}
+                    {yesNo(i.indicators.sentry_active)}
                   </p>
                   {gap && older ? (
                     <p className="notice info" data-testid="live-gap">

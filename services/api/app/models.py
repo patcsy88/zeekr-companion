@@ -419,6 +419,7 @@ class LiveReading(Base):
     overheat_protection_active: Mapped[bool | None] = mapped_column(Boolean)
     vtm_ts_active: Mapped[bool | None] = mapped_column(Boolean)
     engine_enable_running: Mapped[bool | None] = mapped_column(Boolean)
+    sentry_active: Mapped[bool | None] = mapped_column(Boolean)
 
     __table_args__ = (
         CheckConstraint(

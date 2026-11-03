@@ -1,6 +1,6 @@
 # Live vehicle card: Sentry indicator (proposal)
 
-Status: **proposal, awaiting the owner's approval of the data model and contract.** On 2026-11-03 the owner agreed to the name "Sentry", the `unverified` label and a second Zeekr call on each refresh. No code, no migration and no deploy is approved. No reading is copied here.
+Status: **data model and contract approved by the owner on 2026-11-03; built, not deployed.** Name: `sentry_active` (owner's choice). On 2026-11-03 the owner agreed to the name "Sentry", the `unverified` label and a second Zeekr call on each refresh. No code, no migration and no deploy is approved. No reading is copied here.
 
 ## Evidence
 
@@ -18,7 +18,7 @@ Status: **proposal, awaiting the owner's approval of the data model and contract
 
 ## Data model (needs approval)
 
-- One nullable boolean column on `live_reading`, following `pre_climate_active` and the other indicators from migration `0009`. Proposed name: `sentry_active`. Alternative: `vstd_mode_active`, which matches the raw key and does not claim a meaning. **Owner to choose.**
+- One nullable boolean column on `live_reading`, following `pre_climate_active` and the other indicators from migration `0009`. Name: `sentry_active` (owner chose it over `vstd_mode_active`).
 - Migration `0011`: add the column, no default, no backfill. Existing rows keep null ("no reading"). Needs a fresh encrypted export before the deploy.
 - Retention (12 months) and delete-all already cover the table.
 

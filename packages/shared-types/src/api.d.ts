@@ -848,6 +848,8 @@ export interface components {
             overheat_protection_active: boolean | null;
             /** Pre Climate Active */
             pre_climate_active: boolean | null;
+            /** Sentry Active */
+            sentry_active: boolean | null;
             /** Vtm Ts Active */
             vtm_ts_active: boolean | null;
         };
