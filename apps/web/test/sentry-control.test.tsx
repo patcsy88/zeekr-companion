@@ -202,6 +202,44 @@ describe('sentry control', () => {
     expect(posts).toHaveLength(1);
   });
 
+  it('after a send, the page shows what the car reported and offers the next action from it', async () => {
+    serve(false);
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    const seen = await screen.findByTestId('sentry-seen');
+    expect(seen).toHaveTextContent('Sentry: on, read from the car at');
+    expect(seen).toHaveTextContent('newer than the readings above');
+    expect(screen.getByRole('button', { name: 'Turn Sentry off' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Turn Sentry on' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the reported state even when the car had not yet shown the change', async () => {
+    serve(false, () =>
+      HttpResponse.json({ desired: 'on', sent: true, state_after: 'off', confirmed: false }),
+    );
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    expect(await screen.findByTestId('sentry-seen')).toHaveTextContent('Sentry: off');
+    expect(screen.getByRole('button', { name: 'Turn Sentry on' })).toBeInTheDocument();
+  });
+
+  it('shows no read-from-the-car line when the state after is unknown or the send failed', async () => {
+    serve(false, () =>
+      HttpResponse.json({ desired: 'on', sent: true, state_after: null, confirmed: false }),
+    );
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    await screen.findByTestId('sentry-result');
+    expect(screen.queryByTestId('sentry-seen')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turn Sentry on' })).toBeInTheDocument();
+  });
+
   it('the read-only indicators still send nothing when clicked', async () => {
     const posts = serve(true);
     open();
