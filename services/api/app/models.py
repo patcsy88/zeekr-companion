@@ -112,6 +112,9 @@ class ServiceRecord(Base):
     cost_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    reminder_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("reminder.id", ondelete="SET NULL")
+    )
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

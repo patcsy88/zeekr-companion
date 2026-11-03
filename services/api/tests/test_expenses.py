@@ -796,7 +796,9 @@ def test_ac46_expenses_and_service_records_are_independent(
 def test_ac46_no_foreign_key_or_link_column(client: TestClient) -> None:
     insp = inspect(client.app.state.engine)  # type: ignore[attr-defined]
     assert insp.get_foreign_keys("expense") == []
-    assert insp.get_foreign_keys("service_record") == []
+    # 0010 (2026-11-03) links a service record to the reminder it completed; nothing links it to
+    # an expense.
+    assert [fk["referred_table"] for fk in insp.get_foreign_keys("service_record")] == ["reminder"]
 
 
 # --- misc -----------------------------------------------------------------------------------

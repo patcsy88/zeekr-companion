@@ -466,3 +466,43 @@ def test_two_submits_with_different_ids_complete_once(
     codes = sorted(r.status_code for r in _race(client, auth_headers, jobs))
     assert codes == [201, 400]
     assert counts(client) == (2, 1)
+
+
+def test_the_record_keeps_the_reminder_it_completed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers)
+    b = complete_body()
+    assert _post(client, auth_headers, rem["id"], b).status_code == 201
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        got = conn.execute(
+            text("SELECT reminder_id FROM service_record WHERE id = :i"), {"i": b["record_id"]}
+        ).scalar_one()
+    assert str(got) == rem["id"]
+
+
+def test_the_same_ids_sent_to_a_different_reminder_are_a_conflict(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    first = make(client, auth_headers, template_ref=None)
+    other = make(client, auth_headers, template_ref=None)
+    b = complete_body()
+    assert _post(client, auth_headers, first["id"], b).status_code == 201
+    client.patch(f"{URL}/{other['id']}", json={"completed_on": "2026-11-01"}, headers=auth_headers)
+    r = _post(client, auth_headers, other["id"], b)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "conflict"
+
+
+def test_a_record_not_made_by_complete_service_is_never_a_replay(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    rem = make(client, auth_headers, template_ref=None)
+    b = complete_body()
+    made = client.post(
+        SR,
+        json=record_body(id=b["record_id"], odometer=38500, date="2026-11-01"),
+        headers=auth_headers,
+    )
+    assert made.status_code in (200, 201)
+    r = _post(client, auth_headers, rem["id"], b)
+    assert r.status_code in (400, 409)
