@@ -89,14 +89,14 @@ describe('sentry control', () => {
     const posts = serve(false);
     const user = open();
     render(<App />);
-    const button = await screen.findByRole('button', { name: 'Turn Sentry on' });
+    const button = await screen.findByRole('switch', { name: 'Sentry: off' });
     await user.click(button);
     expect(screen.getByRole('group', { name: 'Confirm Sentry command' })).toHaveTextContent(
       'sends a real command to the car: Sentry on',
     );
     expect(posts).toEqual([]);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.getByRole('button', { name: 'Turn Sentry on' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Sentry: off' })).toBeInTheDocument();
     expect(posts).toEqual([]);
   });
 
@@ -104,14 +104,14 @@ describe('sentry control', () => {
     serve(true);
     open();
     render(<App />);
-    expect(await screen.findByRole('button', { name: 'Turn Sentry off' })).toBeInTheDocument();
+    expect(await screen.findByRole('switch', { name: 'Sentry: on' })).toBeInTheDocument();
   });
 
   it('sends once after confirming and shows what the car reported', async () => {
     const posts = serve(false);
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     await waitFor(() => {
       expect(screen.getByTestId('sentry-result')).toHaveTextContent('The car reports Sentry on.');
@@ -125,7 +125,7 @@ describe('sentry control', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     const result = await screen.findByTestId('sentry-result');
     expect(result).toHaveTextContent('still reports Sentry off');
@@ -138,10 +138,10 @@ describe('sentry control', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     expect(await screen.findByTestId('sentry-result')).toHaveTextContent(
-      'has not reported the state yet',
+      'has not reported the state, so the switch is unchanged',
     );
   });
 
@@ -155,7 +155,7 @@ describe('sentry control', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     const result = await screen.findByTestId('sentry-result');
     expect(result).toHaveTextContent(wording);
@@ -166,7 +166,7 @@ describe('sentry control', () => {
     serve(false, () => HttpResponse.error());
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     expect(await screen.findByTestId('sentry-result')).toHaveTextContent(
       'Check the car before trying again',
@@ -178,7 +178,7 @@ describe('sentry control', () => {
     open();
     render(<App />);
     expect(await screen.findByTestId('sentry-unknown')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Turn Sentry/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sentry-switch')).not.toBeInTheDocument();
     expect(posts).toEqual([]);
   });
 
@@ -193,7 +193,7 @@ describe('sentry control', () => {
     });
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     const send = screen.getByRole('button', { name: 'Send Sentry on' });
     await user.dblClick(send);
     expect(await screen.findByTestId('sentry-sending')).toBeInTheDocument();
@@ -206,13 +206,13 @@ describe('sentry control', () => {
     serve(false);
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     const seen = await screen.findByTestId('sentry-seen');
     expect(seen).toHaveTextContent('Sentry: on, read from the car at');
     expect(seen).toHaveTextContent('newer than the readings above');
-    expect(screen.getByRole('button', { name: 'Turn Sentry off' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Turn Sentry on' })).not.toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Sentry: on' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Sentry: off' })).not.toBeInTheDocument();
   });
 
   it('keeps the reported state even when the car had not yet shown the change', async () => {
@@ -221,10 +221,10 @@ describe('sentry control', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     expect(await screen.findByTestId('sentry-seen')).toHaveTextContent('Sentry: off');
-    expect(screen.getByRole('button', { name: 'Turn Sentry on' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Sentry: off' })).toBeInTheDocument();
   });
 
   it('shows no read-from-the-car line when the state after is unknown or the send failed', async () => {
@@ -233,11 +233,92 @@ describe('sentry control', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Turn Sentry on' }));
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     await screen.findByTestId('sentry-result');
     expect(screen.queryByTestId('sentry-seen')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Turn Sentry on' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Sentry: off' })).toBeInTheDocument();
+  });
+
+  it('Sentry is its own control, outside the read-only indicator list', async () => {
+    serve(true);
+    open();
+    render(<App />);
+    const list = await screen.findByTestId('live-indicators');
+    expect(list).not.toHaveTextContent('Sentry');
+    const sw = screen.getByRole('switch', { name: 'Sentry: on' });
+    expect(list).not.toContainElement(sw);
+    expect(sw).not.toHaveAttribute('aria-readonly');
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('flipping the switch sends nothing until Send is pressed, and the switch does not move', async () => {
+    const posts = serve(false);
+    const user = open();
+    render(<App />);
+    const sw = await screen.findByRole('switch', { name: 'Sentry: off' });
+    await user.click(sw);
+    expect(posts).toEqual([]);
+    expect(sw).toHaveAttribute('aria-checked', 'false');
+    await user.click(sw);
+    expect(screen.queryByRole('group', { name: 'Confirm Sentry command' })).not.toBeInTheDocument();
+    expect(posts).toEqual([]);
+  });
+
+  it('the switch follows the state the API returns, not the one that was asked for', async () => {
+    serve(false, () =>
+      HttpResponse.json({ desired: 'on', sent: true, state_after: 'off', confirmed: false }),
+    );
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    const result = await screen.findByTestId('sentry-result');
+    expect(result).toHaveTextContent('did not take effect');
+    expect(result).toHaveTextContent('still reports Sentry off');
+    expect(screen.getByRole('switch', { name: 'Sentry: off' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
+
+  it('the switch moves to on when the API confirms it, and is disabled while sending', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    serve(false, async () => {
+      await gate;
+      return HttpResponse.json({ desired: 'on', sent: true, state_after: 'on', confirmed: true });
+    });
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    expect(await screen.findByTestId('sentry-sending')).toBeInTheDocument();
+    expect(screen.getByTestId('sentry-switch')).toBeDisabled();
+    release();
+    const sw = await screen.findByRole('switch', { name: 'Sentry: on' });
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('sentry-result')).toHaveTextContent('The car reports Sentry on.');
+  });
+
+  it('a refused send leaves the switch where the car last reported it', async () => {
+    serve(true, () =>
+      HttpResponse.json(
+        { error: { code: 'upstream_error', message: CANARY, details: [] } },
+        { status: 502 },
+      ),
+    );
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: on' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry off' }));
+    expect(await screen.findByTestId('sentry-result')).toHaveTextContent('did not accept');
+    expect(screen.getByRole('switch', { name: 'Sentry: on' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
   it('the read-only indicators still send nothing when clicked', async () => {
@@ -245,7 +326,7 @@ describe('sentry control', () => {
     open();
     render(<App />);
     await screen.findByTestId('live-indicators');
-    await userEvent.click(screen.getByRole('switch', { name: 'Sentry: on' }));
+    await userEvent.click(screen.getByRole('switch', { name: /^Fragrance:/ }));
     expect(posts).toEqual([]);
   });
 });

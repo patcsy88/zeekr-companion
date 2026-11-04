@@ -26,7 +26,7 @@ router = APIRouter(tags=["sentry"], dependencies=[Depends(require_auth)])
 )
 def send_sentry(body: SentryCommandIn, service: SentryCommandServiceDep) -> SentryCommandOut:
     """Sends one Sentry on or off command and reads the state back. The only command the app
-    can send (ADR-010). Waits about 15 seconds for the car to report."""
+    can send (ADR-010). Waits SENTRY_CONFIRM_WAIT_SECONDS (default 15) for the car to report."""
     return service.send(body.desired)
 
 

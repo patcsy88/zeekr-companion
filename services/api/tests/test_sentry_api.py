@@ -136,7 +136,7 @@ def test_on_sends_one_command_waits_and_reads_back(
         "confirmed": True,
     }
     assert vehicle.sent == [("start", "RSM", {"serviceParameters": [{"key": "rsm", "value": "6"}]})]
-    assert install.sleeps == [svc.WAIT_S]
+    assert install.sleeps == [15.0]
     assert rows(client) == [("on", "manual", "sent", "on")]
     assert response.headers["cache-control"] == "no-store"
     assert CANARY not in response.text
@@ -327,3 +327,30 @@ def test_the_table_refuses_a_payload_shaped_value(client: TestClient) -> None:
                 " VALUES (gen_random_uuid(), now(), 'RSM', 'manual', 'sent')"
             )
         )
+
+
+def test_the_wait_setting_defaults_to_15_and_refuses_values_outside_5_to_30(
+    database_url: str,
+) -> None:
+    from pydantic import ValidationError
+
+    from tests.conftest import make_settings
+
+    assert make_settings(database_url).sentry_confirm_wait_seconds == 15
+    for good in (5, 30):
+        assert make_settings(database_url, sentry_confirm_wait_seconds=good)
+    for bad in (4, 31, 0, -1):
+        with pytest.raises(ValidationError):
+            make_settings(database_url, sentry_confirm_wait_seconds=bad)
+
+
+def test_a_configured_wait_is_what_the_server_sleeps(
+    client: TestClient, auth_headers: dict[str, str], install: Any
+) -> None:
+    app = client.app
+    app.state.settings = app.state.settings.model_copy(  # type: ignore[attr-defined]
+        update={"sentry_confirm_wait_seconds": 22}
+    )
+    install(FakeVehicle(["0", "1"]))
+    assert client.post(URL, json={"desired": "on"}, headers=auth_headers).status_code == 200
+    assert install.sleeps == [22.0]

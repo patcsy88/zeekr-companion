@@ -354,7 +354,7 @@ export interface paths {
         /**
          * Send Sentry
          * @description Sends one Sentry on or off command and reads the state back. The only command the app
-         *     can send (ADR-010). Waits about 15 seconds for the car to report.
+         *     can send (ADR-010). Waits SENTRY_CONFIRM_WAIT_SECONDS (default 15) for the car to report.
          */
         post: operations["send_sentry_api_v1_vehicle_sentry_post"];
         delete?: never;

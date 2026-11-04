@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     zeekr_live_enabled: bool = False
     # Spacing between real Zeekr reads and the page's refresh interval. Below 5 refuses to start.
     zeekr_live_interval_minutes: int = Field(default=5, ge=5, le=1440)
+    # Seconds from the Sentry command to the read-back (ADR-010). Outside 5 to 30 refuses to start.
+    sentry_confirm_wait_seconds: int = Field(default=15, ge=5, le=30)
     zeekr_username: SecretStr | None = None
     zeekr_password: SecretStr | None = None
     zeekr_country_code: str | None = Field(default=None, max_length=8)

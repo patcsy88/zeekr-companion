@@ -247,7 +247,8 @@ describe('live vehicle: the card', () => {
     expect(screen.queryByText(/0 V/)).not.toBeInTheDocument();
     expect(screen.queryByText(/0 °C/)).not.toBeInTheDocument();
     expect(screen.queryByText('Off')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('switch')).toHaveLength(6);
+    expect(screen.getAllByRole('switch')).toHaveLength(5);
+    expect(screen.getByTestId('sentry-unknown')).toHaveTextContent('Sentry: no reading');
     for (const sw of screen.getAllByRole('switch')) {
       expect(sw).not.toHaveAttribute('aria-checked');
       expect(sw).toHaveTextContent('no reading');
