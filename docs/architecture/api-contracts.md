@@ -865,7 +865,7 @@ The one command the app may send to the car. Nothing else is added: no other com
 
 | Method | Path | Meaning |
 |---|---|---|
-| `POST` | `/api/v1/vehicle/sentry` | Body `{"desired": "on" \| "off"}`. Sends one Sentry command, waits about 15 seconds, reads the state back. `200`, `400`, `401`, `404`, `409`, `502` |
+| `POST` | `/api/v1/vehicle/sentry` | Body `{"desired": "on" \| "off"}`. Sends one Sentry command, waits `SENTRY_CONFIRM_WAIT_SECONDS` (default 15), reads the state back. `200`, `400`, `401`, `404`, `409`, `502` |
 | `GET` | `/api/v1/vehicle/sentry/log?limit=` | The last commands, newest first. `limit` 1 to 100, default 20. `200`, `400`, `401` |
 
 - Token required, `no-store`, `400 validation_error` (never 422) for any body but exactly `on` or `off`.
@@ -875,7 +875,8 @@ The one command the app may send to the car. Nothing else is added: no other com
 - `502 upstream_error` (new code, used by this endpoint only): the car's service refused the command, or the login or first read failed. The message is fixed text, never Zeekr's. A refusal is not retried.
 - It uses the provider's one logged-in session, its daily login cap and the same lock, so a send and a status read never overlap. It does not change the provider's failure count or back-off.
 - Table `car_command_log`: `id`, `created_at` (UTC), `desired` (`on` or `off`), `source` (`manual`), `result` (`sent`, `refused` or `failed`), `state_after` (`on`, `off` or null). CHECK constraints refuse any other value. No payload, reply body, VIN or position. Kept 12 months. A send that finds the car already in the wanted state sends and logs nothing.
-- The web button always asks first and shows only fixed wording, taken from `confirmed` and the status code.
+- **Setting (owner approved 2026-11-04):** `SENTRY_CONFIRM_WAIT_SECONDS`, integer, default 15, 5 to 30; outside that range the API refuses to start. The name is the agent's proposal, approved by the owner. No endpoint, field or table changed.
+- The web switch is separate from the read-only indicators. It shows the state the car last reported, always asks first when flipped, and after the send moves to the `state_after` the API returns (never to the state that was asked for). `confirmed: false` is shown as "did not take effect". It shows only fixed wording, taken from `confirmed` and the status code.
 - Acceptance criteria: (13) the body is exactly `on` or `off`, anything else is 400 and sends nothing; (14) one send is one library call with the constant payload; (15) the state shown after is what the car reports, and an unreadable state after is `null`; (16) a refusal is 502 with fixed text and no retry; (17) a second send within 60 seconds, or while one is in progress, is 409 and sends nothing; (18) the log holds no payload or reply; (19) only the Sentry command module names the write method.
 
 ### Owner answers, 2026-11-03

@@ -101,7 +101,8 @@ export function LiveVehicleCard() {
         ) : null}
       </div>
       <p className="muted small">
-        Readings only. The one thing this app can send to the car is Sentry on or off, below.
+        Readings only, except the Sentry switch below: it is the one thing this app can send to the
+        car.
       </p>
       {!session.signedIn || !online ? (
         <p className="muted" data-testid="live-offline">
@@ -259,11 +260,8 @@ function CardBody({
         <dd>
           <ReadOnlyToggle label="Engine enable running" value={ind.engine_enable_running} />
         </dd>
-        <dt>Sentry</dt>
-        <dd>
-          <ReadOnlyToggle label="Sentry" value={ind.sentry_active} />
-        </dd>
       </dl>
+      <h3 className="small">Sentry (the one control)</h3>
       {seen ? (
         <p role="status" className="notice info" data-testid="sentry-seen">
           Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}. This is newer

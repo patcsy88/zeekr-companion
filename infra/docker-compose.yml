@@ -49,6 +49,7 @@ services:
       # Optional live Zeekr readings (ADR-009). Off and empty by default; values live in infra/.env only.
       ZEEKR_LIVE_ENABLED: ${ZEEKR_LIVE_ENABLED:-false}
       ZEEKR_LIVE_INTERVAL_MINUTES: ${ZEEKR_LIVE_INTERVAL_MINUTES:-5}
+      SENTRY_CONFIRM_WAIT_SECONDS: ${SENTRY_CONFIRM_WAIT_SECONDS:-15}
       ZEEKR_USERNAME: ${ZEEKR_USERNAME:-}
       ZEEKR_PASSWORD: ${ZEEKR_PASSWORD:-}
       ZEEKR_COUNTRY_CODE: ${ZEEKR_COUNTRY_CODE:-}

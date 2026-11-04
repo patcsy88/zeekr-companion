@@ -24,7 +24,6 @@ from app.services.live_vehicle import months_before
 
 RETENTION_MONTHS = 12
 MIN_SPACING_S = 60.0
-WAIT_S = 15.0  # the car reports late, as the owner's first runs showed
 LIVE_LOCK_WAIT_S = 5.0
 log = logging.getLogger("app.sentry_command")
 
@@ -48,6 +47,7 @@ class SentryCommandService:
         live_lock: threading.Lock,
         send_lock: threading.Lock,
         sleep: Callable[[float], None],
+        wait_s: float,
         now: Callable[[], dt.datetime] = lambda: dt.datetime.now(dt.UTC),
     ) -> None:
         self._repo = repo
@@ -55,6 +55,7 @@ class SentryCommandService:
         self._live_lock = live_lock
         self._send_lock = send_lock
         self._sleep = sleep
+        self._wait_s = wait_s
         self._now = now
 
     def send(self, desired: str) -> SentryCommandOut:
@@ -87,7 +88,7 @@ class SentryCommandService:
         if before == desired:
             return SentryCommandOut(desired=desired, sent=False, state_after=before, confirmed=True)
         accepted = send_sentry(vehicle, desired)
-        self._sleep(WAIT_S)
+        self._sleep(self._wait_s)
         try:
             after = _label(vehicle.get_remote_control_state())
         except Exception:
