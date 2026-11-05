@@ -175,3 +175,10 @@ Still open: the engine and car state conditions (waiting on the dump), whether t
 6. **Never logged or exposed:** the query and the coordinates stay out of logs, errors, exports, the API and model prompts. A failed lookup shows only "home point not set", and the geofence stays off.
 7. **Fallback if Nominatim is refused or fails:** the manual override, or Geoapify (needs a new approval, an account and a key).
 8. Still open: the car-state condition (waiting on the owner's sleeping-car reading), and the contract and data model.
+
+## Owner decisions, 2026-11-05 (car-state condition)
+
+1. **Reading taken by the owner with the car asleep in Park:** `$.basicVehicleStatus.usageMode = '0'` and `$.additionalVehicleStatus.drivingBehaviourStatus.gearAutoStatus = '0'`. Only these two values are recorded. The "Deep Sleep" label is still the public project's, so it stays `unverified`.
+2. **Condition accepted:** `gearAutoStatus = '0'` and `usageMode = '0'`.
+3. **Consequence the owner accepted:** the rule fires only once the car has gone to sleep in Park. It does not fire while the car is awake in Park (`usageMode '2'` or `'13'` has been read in that state), outside the geofence, with Sentry off.
+4. Still open: the Piece B contract and data model, for the owner's approval before any code.
