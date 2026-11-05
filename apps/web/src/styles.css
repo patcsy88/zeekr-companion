@@ -318,8 +318,8 @@ button.link {
   flex: 1 1 0;
   min-width: 0;
   text-align: center;
-  padding: 0.9rem 0.15rem;
-  font-size: 0.72rem;
+  padding: 0.9rem 0.1rem;
+  font-size: 0.5rem;
   color: var(--muted);
   text-decoration: none;
   font-weight: 600;
@@ -331,14 +331,19 @@ button.link {
 .narrow {
   max-width: 28rem;
 }
-@media (max-width: 22.4rem) {
+@media (min-width: 22.5rem) {
   .tabs a {
-    font-size: 0.55rem;
+    font-size: 0.56rem;
   }
 }
 @media (min-width: 26rem) {
   .tabs a {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+  }
+}
+@media (min-width: 30rem) {
+  .tabs a {
+    font-size: 0.85rem;
   }
 }
 @media (min-width: 40rem) {

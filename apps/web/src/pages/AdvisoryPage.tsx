@@ -63,7 +63,7 @@ export function AdvisoryPage() {
           request<AdvisoryStatus>({ method: 'GET', path: '/advisory/status' }),
         ]);
         if (!live) return;
-        setItems(p.data.items);
+        setItems(p.data.items.filter((x) => x.condition !== 'sentry_off_outside_geofence'));
         setStatus(s.data);
         setError(null);
       } catch (e) {
