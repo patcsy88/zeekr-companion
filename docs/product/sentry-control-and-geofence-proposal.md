@@ -86,6 +86,21 @@ Today the app reads Zeekr only while the Vehicle page is open, plus once a day f
 
 Open. The state keys are not known, and the dump tool hides lock and door keys unless `--include-lock-door` is passed. Proposed: an owner-run `--dump` with that flag, read on the Mac, with the owner pasting only the **key names and plain values** for the engine, power, gear, lock and door keys and nothing position-like. The dump holds the owner's password hash and must not be pasted whole. The conditions are written into the contract only after that.
 
+#### Gear positions read on the owner's car (2026-11-05, `unverified`)
+
+Source: owner-run `--dump` on the Mac, with the owner stating the gear selector position for each read. The key is `$.additionalVehicleStatus.drivingBehaviourStatus.gearAutoStatus`. Only this key and its value are recorded here. No other reading is copied into the repo.
+
+| Gear selector | `gearAutoStatus` |
+| ------------- | ---------------- |
+| Park (P)      | `'0'`            |
+| Reverse (R)   | `'1'`            |
+| Neutral (N)   | `'2'`            |
+| Drive (D)     | `'3'`            |
+
+- Each mapping comes from the owner's label on one or more pastes (P was read in several parked dumps and once on its own, D twice, R and N once each). Status: `unverified`.
+- A value is only as fresh as the last cloud upload. Whether it updates while the car is moving is not known, because `speed` read 0 in every sample.
+- This table records the gear key only. The engine and car-state conditions for the rule are **not decided**. The owner is working that out, and nothing is written into the contract until the owner says.
+
 ## Risks (both pieces)
 
 - Zeekr's response to a command, and to an all-day background read from a different address, is unknown.
