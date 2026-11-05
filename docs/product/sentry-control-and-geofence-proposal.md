@@ -164,3 +164,14 @@ Still open: the engine and car state conditions (waiting on the dump), whether t
 3. Check interval: 5 minutes (the approved minimum).
 4. The geofence centre is the owner's home. It is **not** recorded in the repo, in any doc, in tests, in logs or in the model prompts. It goes in the host `infra/.env` only. How the owner's address becomes coordinates is open: the app does no address lookup, and a lookup would be a new external service that needs the owner's approval (see the proposal above).
 5. Car-state condition: the owner proposed `gearAutoStatus = '0'` and `usageMode = '0'`. **Not yet accepted.** `usageMode '0'` has never been read on the owner's car (only `'2'` and `'13'`), so the condition may never be true. Waiting on a reading with the car asleep in Park.
+
+## Owner decisions, 2026-11-05 (geocoding)
+
+1. **Service approved: the public Nominatim API (OpenStreetMap).** Free, no account, no key. Source: the OSMF Nominatim usage policy, read 2026-11-05 (1 request per second at most, identifying User-Agent, attribution, results cached, periodic app use discouraged, no personal data).
+2. **Lookup is built into the app, and runs once.** On first start with the geofence on, the app makes one HTTPS request, saves the coordinates and never calls the service again. A changed query triggers a new lookup.
+3. **Street-level query only** (street, town, postcode; no house number). Nominatim sees the query text and the host's IP address.
+4. **Saved result:** a small file on the host data volume, not a database table, holding the coordinates and a hash of the query. Approved.
+5. **Setting name approved:** `GEOFENCE_HOME_QUERY`, set in the host `infra/.env` only. `GEOFENCE_HOME_LAT` and `GEOFENCE_HOME_LON` stay as a manual override that skips the lookup.
+6. **Never logged or exposed:** the query and the coordinates stay out of logs, errors, exports, the API and model prompts. A failed lookup shows only "home point not set", and the geofence stays off.
+7. **Fallback if Nominatim is refused or fails:** the manual override, or Geoapify (needs a new approval, an account and a key).
+8. Still open: the car-state condition (waiting on the owner's sleeping-car reading), and the contract and data model.
