@@ -10,6 +10,7 @@ from app.errors import Unauthenticated
 from app.repositories.advisory import AdvisoryRepository
 from app.repositories.car_command_log import CarCommandLogRepository
 from app.repositories.expenses import ExpenseRepository
+from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
@@ -18,6 +19,7 @@ from app.repositories.warranty import WarrantyClaimRepository, WarrantyCoverageR
 from app.services.advisory import AdvisoryService
 from app.services.auth import AuthService
 from app.services.expenses import ExpenseService
+from app.services.geofence_settings import GeofenceSettingsService
 from app.services.live_vehicle import LiveVehicleService
 from app.services.reminders import ReminderService
 from app.services.sentry_command import SentryCommandService
@@ -107,6 +109,10 @@ def get_sentry_command_service(request: Request, session: SessionDep) -> SentryC
     )
 
 
+def get_geofence_settings_service(request: Request, session: SessionDep) -> GeofenceSettingsService:
+    return GeofenceSettingsService(GeofenceSettingsRepository(session), request.app.state.settings)
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
@@ -118,3 +124,6 @@ WarrantyClaimServiceDep = Annotated[WarrantyClaimService, Depends(get_warranty_c
 AdvisoryServiceDep = Annotated[AdvisoryService, Depends(get_advisory_service)]
 LiveVehicleServiceDep = Annotated[LiveVehicleService, Depends(get_live_vehicle_service)]
 SentryCommandServiceDep = Annotated[SentryCommandService, Depends(get_sentry_command_service)]
+GeofenceSettingsServiceDep = Annotated[
+    GeofenceSettingsService, Depends(get_geofence_settings_service)
+]

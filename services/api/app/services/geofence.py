@@ -25,14 +25,16 @@ from fastapi import FastAPI
 
 from app.adapters.zeekr_live import GeofenceInput
 from app.repositories.advisory import AdvisoryRepository, ProposalCapReached
+from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
 from app.services import advisory_checks as checks
 from app.services.advisory import MAX_PROPOSALS
 from app.services.geofence_home import Fetch, HomePoint, HomeResolver
+from app.services.geofence_settings import DEFAULT_CODES_SET as DEFAULT_CODES
+from app.services.geofence_settings import Effective, effective
 from app.services.live_vehicle import CLOCK_SKEW, LiveVehicleService
 
 CONDITION = "sentry_off_outside_geofence"
-PARKED_ASLEEP = "0"  # gearAutoStatus Park, and usageMode Deep Sleep (owner decision, 2026-11-05)
 EARTH_RADIUS_KM = 6371.0
 FIRST_CHECK_S = 60.0
 ENDED_SUFFIX = ":end"
@@ -62,6 +64,8 @@ def evaluate(
     radius_km: float,
     stale_minutes: int,
     now: dt.datetime,
+    gear_codes: frozenset[str] = DEFAULT_CODES,
+    usage_mode_codes: frozenset[str] = DEFAULT_CODES,
 ) -> Verdict:
     if home is None:
         return Verdict("no_home")
@@ -87,8 +91,8 @@ def evaluate(
     )
     holds = (
         outside
-        and reading.gear == PARKED_ASLEEP
-        and reading.usage_mode == PARKED_ASLEEP
+        and reading.gear in gear_codes
+        and reading.usage_mode in usage_mode_codes
         and reading.sentry_active is False
     )
     return Verdict("alert" if holds else "clear", minutes)
@@ -102,10 +106,19 @@ class GeofenceCheck:
         self._resolver_settings: Any = None
         self.last_age_minutes: int | None = None
 
+    def _effective(self) -> Effective:
+        with self._app.state.session_factory() as session:
+            saved = GeofenceSettingsRepository(session).get()
+        return effective(self._app.state.settings, saved)
+
     @property
     def interval_seconds(self) -> float:
-        minutes: int = self._app.state.settings.geofence_interval_minutes
-        return minutes * 60.0
+        """Read from the saved settings each time, so a change applies after the current wait."""
+        try:
+            return self._effective().interval_minutes * 60.0
+        except Exception:
+            minutes: int = self._app.state.settings.geofence_interval_minutes
+            return minutes * 60.0
 
     def _home(self) -> HomePoint | None:
         settings = self._app.state.settings
@@ -132,12 +145,15 @@ class GeofenceCheck:
             LiveVehicleService(
                 LiveReadingRepository(session), provider, settings, app.state.live_lock
             ).card(moment)
+        current = self._effective()
         verdict = evaluate(
             provider.geofence_input,
             home,
-            radius_km=settings.geofence_radius_km,
-            stale_minutes=settings.geofence_stale_minutes,
+            radius_km=current.radius_km,
+            stale_minutes=current.stale_minutes,
             now=moment,
+            gear_codes=current.gear_codes,
+            usage_mode_codes=current.usage_mode_codes,
         )
         self.last_age_minutes = verdict.age_minutes
         if verdict.result in ("alert", "clear"):

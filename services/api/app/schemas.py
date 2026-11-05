@@ -871,3 +871,98 @@ class CommandLogOut(BaseModel):
 
 
 CommandLogLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(100))]
+
+
+# Geofence settings (Piece C, approved 2026-11-05). The codes are the pick lists; nothing else is
+# accepted. Gear labels are the owner's readings. Usage-mode labels are the public integration's.
+GEAR_OPTIONS: tuple[tuple[int, str, bool], ...] = (
+    (0, "P", True),
+    (1, "R", True),
+    (2, "N", True),
+    (3, "D", True),
+)
+USAGE_MODE_OPTIONS: tuple[tuple[int, str, bool], ...] = (
+    (0, "Deep Sleep", False),
+    (1, "Parked", False),
+    (2, "Unlocked", False),
+    (3, "System Active", False),
+    (4, "Ready to Go", False),
+    (13, "Active", False),
+)
+GEOFENCE_MAX_CODES = 5
+
+
+def _code_list(allowed: tuple[tuple[int, str, bool], ...]):  # type: ignore[no-untyped-def]
+    codes = {code for code, _, _ in allowed}
+
+    def check(value: list[int]) -> list[int]:
+        if not 1 <= len(value) <= GEOFENCE_MAX_CODES:
+            raise ValueError(f"must hold 1 to {GEOFENCE_MAX_CODES} codes")
+        if len(set(value)) != len(value):
+            raise ValueError("must not repeat a code")
+        if any(code not in codes for code in value):
+            raise ValueError("holds a code that is not in the pick list")
+        return sorted(value)
+
+    return check
+
+
+class GeofenceSettingsIn(_Input):
+    radius_km: Annotated[float, Field(strict=True, gt=0, le=100, allow_inf_nan=False)]
+    interval_minutes: Annotated[int, Field(strict=True, ge=5, le=1440)]
+    stale_minutes: Annotated[int, Field(strict=True, ge=1, le=30)]
+    gear_codes: Annotated[
+        list[Annotated[int, Field(strict=True)]], AfterValidator(_code_list(GEAR_OPTIONS))
+    ]
+    usage_mode_codes: Annotated[
+        list[Annotated[int, Field(strict=True)]], AfterValidator(_code_list(USAGE_MODE_OPTIONS))
+    ]
+
+    @field_validator("radius_km", mode="after")
+    @classmethod
+    def _two_decimals(cls, value: float) -> float:
+        rounded = round(value, 2)
+        if rounded <= 0:
+            raise ValueError("must be above 0")
+        return rounded
+
+
+class GeofenceValuesOut(BaseModel):
+    radius_km: float
+    interval_minutes: int
+    stale_minutes: int
+    gear_codes: list[int]
+    usage_mode_codes: list[int]
+
+
+class GeofenceSourcesOut(BaseModel):
+    radius_km: Literal["saved", "env"]
+    interval_minutes: Literal["saved", "env"]
+    stale_minutes: Literal["saved", "env"]
+    gear_codes: Literal["saved", "env"]
+    usage_mode_codes: Literal["saved", "env"]
+
+
+class GeofenceOptionOut(BaseModel):
+    code: int
+    label: str
+    verified: bool
+
+
+class GeofenceLimitsOut(BaseModel):
+    radius_km_max: float
+    interval_minutes_min: int
+    interval_minutes_max: int
+    stale_minutes_min: int
+    stale_minutes_max: int
+    max_codes: int
+    gear_options: list[GeofenceOptionOut]
+    usage_mode_options: list[GeofenceOptionOut]
+
+
+class GeofenceSettingsOut(BaseModel):
+    settings: GeofenceValuesOut
+    sources: GeofenceSourcesOut
+    limits: GeofenceLimitsOut
+    enabled: bool
+    home_set: bool

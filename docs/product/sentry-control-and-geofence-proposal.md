@@ -251,9 +251,9 @@ Drafted 2026-11-05 from the owner's decisions above. **Approved by the owner on 
 
 The owner approved the Piece B contract and data model above, as drafted ("Approve"): the `closed` status, the `sentry_off_outside_geofence` condition, migration `0013`, no model call for this kind, a dismissed alert staying dismissed for its episode, and the settings list. Changing it now needs the owner to be told first. Build starts with tests. A deploy is owner-run and needs a fresh encrypted export first because of the migration.
 
-## Piece C: a Geofence settings tab (DRAFT, needs the owner's approval before any code)
+## Piece C: a Geofence settings tab (approved and implemented, not deployed)
 
-Drafted 2026-11-05 from the owner's request and answers. Nothing here is built.
+Drafted 2026-11-05 from the owner's request and answers. **Data model and contract approved by the owner on 2026-11-05, with the answers below.** **Implemented 2026-11-05 (API, web tab, migration `0014`); not deployed, not run against the real car.**
 
 ### Owner answers (2026-11-05)
 
@@ -297,4 +297,10 @@ Drafted 2026-11-05 from the owner's request and answers. Nothing here is built.
 1. **Stale limit maximum.** The host now has 1440. A long limit lets an alert open on a reading up to 24 hours old. Keep 1440 as the tab's maximum, or cap it lower (for example 180)?
 2. **Code entry.** Free numbers, or a pick-list of the known gear labels (P `0`, R `1`, N `2`, D `3`, from your readings only) and the `usageMode` labels (unverified, from the public integration)?
 3. **Reset.** Add a "Use the `.env` values" button that deletes the saved row?
+
+### Owner answers to the open questions (2026-11-05), now part of the approved draft
+
+1. **Stale limit maximum is 30 minutes** in the tab (minimum 1). A `.env` value above 30 still starts the API (the host has 1440 today) and applies until a row is saved. The tab will show it as above its limit and refuse to save it until it is changed to 30 or less.
+2. **Pick lists.** Gear codes: P `0`, R `1`, N `2`, D `3` (labels from the owner's readings only). Usage-mode codes: `0` Deep Sleep, `1` Parked, `2` Unlocked, `3` System Active, `4` Ready to Go, `13` Active (`unverified`, the public integration's labels). The API accepts only these codes, 1 to 5 distinct values each.
+3. **Reset: yes.** Contract addition: `DELETE /api/v1/geofence/settings` removes the saved row and returns `200` with the settings as they then stand (`env` values). Safe to repeat.
 

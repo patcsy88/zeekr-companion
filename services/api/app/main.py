@@ -34,6 +34,7 @@ from app.routers import (
     advisory,
     auth,
     expenses,
+    geofence,
     live_vehicle,
     reminders,
     sentry,
@@ -204,6 +205,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         advisory.router,
         live_vehicle.router,
         sentry.router,
+        geofence.router,
     ):
         app.include_router(router, prefix="/api/v1")
     return app

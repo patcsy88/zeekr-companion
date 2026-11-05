@@ -912,3 +912,20 @@ An in-app notice when the car is parked outside the home area with Sentry off. R
 - **Check:** every `GEOFENCE_INTERVAL_MINUTES` (minimum 5), with the page closed, through the same provider, spacing, lock and login cap as the Vehicle card. Needs `ZEEKR_LIVE_ENABLED`. The position is held in memory and dropped.
 - **Home point:** `GEOFENCE_HOME_QUERY` is looked up once with public Nominatim (street-level query, one request) and kept in a small file on a named volume with a hash of the query; `GEOFENCE_HOME_LAT` and `GEOFENCE_HOME_LON` skip the lookup. A failed lookup leaves the geofence off ("home not set").
 - **Migration `0013`:** no new table or column. It widens the `condition_valid` and `status_valid` checks. Downgrade deletes geofence rows first.
+
+### Amendment: geofence settings (Piece C; owner approved 2026-11-05; migration `0014`)
+
+New table `geofence_settings`, at most one row (`id` fixed at 1 by a check). This replaces the Piece B "no new table" rule. Columns: `radius_km`, `interval_minutes`, `stale_minutes`, `gear_codes`, `usage_mode_codes` (small integer lists) and `updated_at` (UTC). No home address, coordinate, position or distance is stored. Downgrade drops the table.
+
+| Method | Path | Meaning |
+|---|---|---|
+| `GET` | `/api/v1/geofence/settings` | `settings`, `sources` (`saved` or `env`, per value), `limits` (with the pick lists), `enabled` and `home_set` (booleans only). `200`, `401` |
+| `PUT` | `/api/v1/geofence/settings` | Saves all five values. `200` with the same body, `400 validation_error` (never 422), `401` |
+| `DELETE` | `/api/v1/geofence/settings` | Removes the saved row. `200` with the settings as they then stand (`env`). Safe to repeat. `401` |
+
+- **Limits:** radius above 0 up to 100 km; interval 5 to 1440 minutes; stale limit 1 to **30** minutes; 1 to 5 distinct codes each.
+- **Pick lists (the only accepted codes):** gear P `0`, R `1`, N `2`, D `3` (the owner's readings only); usage mode `0` Deep Sleep, `1` Parked, `2` Unlocked, `3` System Active, `4` Ready to Go, `13` Active (`unverified`, the public integration's labels).
+- No row means the host `.env` values apply; a saved row wins. A host stale value above 30 still starts the API and applies until a row is saved; the tab shows it and refuses to save it.
+- The check reads the row at each run. A new interval applies after the current wait. The rule version stays 1 and the alert `inputs` are unchanged.
+- `GEOFENCE_ENABLED` and the home point stay in the host `.env`. Token required, `no-store`, no new error code. The geofence still only alerts; nothing is sent to the car.
+
