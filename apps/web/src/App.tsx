@@ -7,6 +7,7 @@ import { useSession } from './data/hooks';
 import { AdvisoryPage } from './pages/AdvisoryPage';
 import { GeofencePage } from './pages/GeofencePage';
 import { LiveHistoryPage } from './pages/LiveHistoryPage';
+import { SentryPage } from './pages/SentryPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
 import { ExpenseDetailPage } from './pages/ExpenseDetailPage';
@@ -74,6 +75,7 @@ function Layout() {
           <Route path="/records/new" element={<NewRecordPage />} />
           <Route path="/records/:id" element={<RecordDetailPage />} />
           <Route path="/records/:id/edit" element={<EditRecordPage />} />
+          <Route path="/sentry" element={<SentryPage />} />
           <Route path="/geofence" element={<GeofencePage />} />
           <Route path="/reminders" element={<RemindersPage />} />
           <Route path="/reminders/new" element={<NewReminderPage />} />
@@ -106,6 +108,7 @@ function Layout() {
         <NavLink to="/reminders">Reminders</NavLink>
         <NavLink to="/expenses">Expenses</NavLink>
         <NavLink to="/warranty">Warranty</NavLink>
+        <NavLink to="/sentry">Sentry</NavLink>
         <NavLink to="/geofence">Geofence</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>

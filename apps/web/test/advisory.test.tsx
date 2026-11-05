@@ -158,22 +158,19 @@ describe('advisory: the page', () => {
     expect(screen.queryByRole('button', { name: /Accept/ })).toBeNull();
   });
 
-  it('shows the geofence alert as a notice with no Accept and no position', async () => {
+  it('leaves the geofence alert to the Sentry tab', async () => {
     serve([
       proposal({
         condition: 'sentry_off_outside_geofence',
         inputs: { reading_age_minutes: 4 },
         suggestion: null,
       }),
+      proposal({ id: 'c0000000-0000-4000-8000-000000000002', condition: 'charging_cost_drift' }),
     ]);
     open();
     render(<App />);
-    expect(await screen.findByText(/outside your home area with Sentry off/)).toBeInTheDocument();
-    expect(screen.getByText('minutes since the car last reported')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.queryByText(/model is switched off/)).toBeNull();
-    expect(screen.queryByRole('button', { name: /Accept/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+    await screen.findByText(/Charging cost per kWh/);
+    expect(screen.queryByText(/outside your home area/)).toBeNull();
   });
 
   it('Accept opens the reminder form prefilled and marks it accepted only after saving', async () => {
