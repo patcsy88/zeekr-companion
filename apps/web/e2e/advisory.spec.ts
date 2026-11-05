@@ -49,7 +49,11 @@ test('ADR-008: run the checks, accept a suggestion into a reminder, and the serv
 
   await page.goto('/');
   await signIn(page);
-  await page.getByRole('link', { name: 'Advisory', exact: true }).click();
+  // The tab is hidden (owner decision), and the token is held in memory, so go there in-app.
+  await page.evaluate(() => {
+    window.history.pushState(null, '', '/advisory');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
   await page.getByRole('button', { name: 'Run checks now' }).click();
   await expect(page.getByTestId('advisory-run')).toBeVisible();
   await expect(page.getByTestId('advisory-status')).toContainText('Model: off');
