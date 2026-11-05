@@ -182,3 +182,67 @@ Still open: the engine and car state conditions (waiting on the dump), whether t
 2. **Condition accepted:** `gearAutoStatus = '0'` and `usageMode = '0'`.
 3. **Consequence the owner accepted:** the rule fires only once the car has gone to sleep in Park. It does not fire while the car is awake in Park (`usageMode '2'` or `'13'` has been read in that state), outside the geofence, with Sentry off.
 4. Still open: the Piece B contract and data model, for the owner's approval before any code.
+
+## Piece B: contract and data model (DRAFT, needs the owner's approval before any code)
+
+Drafted 2026-11-05 from the owner's decisions above. Nothing here is built. It changes the approved Advisory contract in two places (marked **CHANGE**), so the owner must be told and must approve first.
+
+### Conflicts found while drafting
+
+1. **CHANGE: a new `status` value `closed`.** The approved Advisory `status` is `proposed | accepted | dismissed`, and a database check requires `decided_at` to be set exactly when the status is not `proposed`. The alert "closes by itself", which none of those three values means. Proposed: add `closed` (set by the check, never by a client), with `decided_at` set when it closes. `PATCH` still accepts only `accepted` or `dismissed`.
+2. **CHANGE: a new `condition` value `sentry_off_outside_geofence`.** The `advisory_proposal` table has a check constraint listing the three existing conditions. So "no new table" holds, but a **migration (`0013`) is needed** to widen the `condition` and `status` checks. It adds no column and no data. A fresh encrypted export is needed before the owner deploys it.
+3. **The proposal text above says the alert states a distance band.** The owner decided on 2026-11-03 that the alert says only "outside", with no distance. That decision wins, and the line is superseded.
+
+### Data model
+
+- No new table and no new column. Migration `0013` only replaces the `condition_valid` check (adds `sentry_off_outside_geofence`) and the `status_valid` and `decided_matches_status` checks (add `closed`; `closed` requires `decided_at`).
+- Each alert is one `advisory_proposal` row. `dedupe_key` is unique, so it is `geofence:<episode>`, where the episode is the UTC time the alert opened, to the second. A new alert after an old one closed gets a new key.
+- `inputs` holds `{ "reading_age_minutes": 0 }` only. **No position, no distance, no radius, no home point** is stored.
+- `source_refs` is `[]`. `suggestion` is `null`. `urgency` is `null`.
+- **Proposed: no model call for this kind.** The text is fixed by code, and `explanation_status` is `disabled`. The alert is the same with the model off. This is for the owner to decide.
+- The position and the home point live in memory only. The geocoded home point is held in a small file on the host data volume (approved above), not in the database.
+
+### Contract
+
+- `GET /advisory/proposals`: the existing `status` filter gains `closed`. The default (`proposed`) shows the open alert. `all` includes closed ones.
+- Proposal object: `condition` gains `sentry_off_outside_geofence`; `status` gains `closed`. No new field, endpoint or error code.
+- `PATCH`: unchanged. `accepted` or `dismissed` on an open alert is allowed. On a `closed` alert: `409 conflict`, as for any decided item.
+- `POST /advisory/checks`: unchanged. It does not run the geofence check. The geofence check runs only on its own schedule.
+- `GET /advisory/status`: unchanged. No settings endpoint is added.
+- No endpoint sends anything to the car. The geofence never sends the Sentry command.
+
+### Check behaviour
+
+1. Runs every `GEOFENCE_INTERVAL_MINUTES` (default 5, minimum 5) while `GEOFENCE_ENABLED` is true. Off by default.
+2. Takes the provider's cached snapshot and its spacing, the login cap, back-off and stop-after-failures rules. It cannot read more often than the interval.
+3. A reading older than `GEOFENCE_STALE_MINUTES` (default 30) is stale: the run records "skipped, stale" and opens or closes nothing.
+4. Fresh reading: the alert should be open if the distance from home exceeds `GEOFENCE_RADIUS_KM` (default 5), `gearAutoStatus` is `'0'`, `usageMode` is `'0'` and Sentry reads off. Otherwise it should be closed.
+5. If none is open and it should be: open one. If one is open and it should not be: set it to `closed`. At most one is open.
+6. If the home point is missing or the lookup failed: the run records "home point not set" and does nothing else.
+7. A dismissed alert stays dismissed for that episode. The next alert opens only after the condition stopped holding and came back.
+8. The log line per run holds the result, the reading's age and the reason skipped. It holds no position and no distance.
+
+### Settings (host `infra/.env` only; names approved 2026-11-05 except where noted)
+
+`GEOFENCE_ENABLED` (default off), `GEOFENCE_HOME_QUERY`, `GEOFENCE_HOME_LAT` and `GEOFENCE_HOME_LON` (manual override), `GEOFENCE_RADIUS_KM` (5), `GEOFENCE_INTERVAL_MINUTES` (5, minimum 5), `GEOFENCE_STALE_MINUTES` (30). The setting names are proposed, and the owner approved the home-query name only.
+
+### Acceptance criteria and tests (to be written first)
+
+- Distance: points inside, on the edge of and outside the radius, including a pole-crossing and an antimeridian case.
+- Rule: each of the four conditions failing alone opens nothing; all four holding opens exactly one alert; a repeat run opens no second one.
+- Closing: each condition stopping closes the alert; a stale reading closes and opens nothing.
+- Dismiss: a dismissed alert does not reopen in the same episode.
+- Privacy: a test fails if the position, the distance, the home point or the query appears in a proposal row, a log line, an error, an export, a model prompt or an API response.
+- Lookup: one request only; no second request on restart when the saved result matches the query hash; a failed lookup leaves the geofence off and reports "home point not set". Tests use a fake HTTP client and never call Nominatim.
+- Background: never reads more often than the interval; stops after the existing failure limit; does nothing when `GEOFENCE_ENABLED` is false.
+- Migration: upgrade and downgrade on a database that already has the three older conditions.
+- The existing Advisory tests, the web tests and the shared-types drift check still pass.
+
+### Risks specific to this draft
+
+- The rule fires only once the car has gone to sleep (owner accepted). A car that stays awake in Park outside the geofence raises no alert.
+- Cloud data can be hours old. A stale reading raises nothing, so the alert can be late or missing.
+- The position's own timestamp key is still unknown. The fallback is the reading's own time, which can make a stale position look fresh.
+- An all-day background read may be noticed by Zeekr, may drain the 12 V battery, and is unverified under their terms.
+- Nominatim's policy discourages personal data. The query is street level only, sent once.
+- The alert shows in-app only. If nobody opens the app, nobody is told.
