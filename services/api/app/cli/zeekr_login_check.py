@@ -2,7 +2,7 @@
 
 Usage:  ZEEKR_LOGIN_CHECK_CONFIRM=one-attempt \\
             python -m app.cli.zeekr_login_check [--status] [--values] [--dump] [--remote-state] \\
-            [--show-code]
+            [--show-code] [--include-lock-door] [--show-all]
 
 With --dump (implies --status) it prints every plain value in the one status reply as
 `path = value`, so the owner can see all fields. Any path with a segment that looks like
@@ -11,6 +11,11 @@ lock and door fields unless --include-lock-door is also given. The one exception
 `posCanBeTrusted`, whose value is shown when it is a plain flag. Hiding works by key name, so
 it is a guard, not a guarantee: read the output before pasting it anywhere, and never paste it
 into the repo.
+
+With --show-all (use with --dump and/or --remote-state) nothing is hidden: position, VIN, plate,
+name, key, token, lock and door values are all printed in full, and so are long strings, and the
+values of the vehicle record are printed too. The output is for the owner's screen only. It can
+hold the position, the VIN and the plate, so it must never be pasted into chat or the repo.
 
 With --values (implies --status) it prints the value of each path in VALUE_PATHS instead of the
 field tree, so the owner can compare them with the car. The list holds no position, lock, door,
@@ -178,15 +183,24 @@ def _plain_flag(value: object) -> bool:
     return isinstance(value, str) and len(value) <= _SHOWN_MAX_LEN and value.isalnum()
 
 
-def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
-    """`path = value` for every plain value, with sensitive-looking paths shown as <hidden>."""
+def dump_values(
+    status: object, include_lock_door: bool = False, show_all: bool = False
+) -> list[str]:
+    """`path = value` for every plain value, with sensitive-looking paths shown as <hidden>.
+
+    With `show_all` nothing is hidden or shortened (owner's screen only).
+    """
     lines: list[str] = []
+    max_lines = 100_000 if show_all else _DUMP_MAX_LINES
+    max_items = 100_000 if show_all else _DUMP_MAX_ITEMS
 
     def hidden(key: str) -> bool:
+        if show_all:
+            return False
         return _sensitive_key(key) or (not include_lock_door and _lock_door_key(key))
 
     def walk(node: object, path: str, depth: int, mask: bool) -> None:
-        if len(lines) >= _DUMP_MAX_LINES:
+        if len(lines) >= max_lines:
             return
         if depth > _DUMP_MAX_DEPTH:
             lines.append(f"{path} = (too deep)")
@@ -200,14 +214,16 @@ def dump_values(status: object, include_lock_door: bool = False) -> list[str]:
                 walk(child, f"{path}.{name}", depth + 1, mask or hidden(str(key)))
         elif isinstance(node, list):
             lines.append(f"{path} = list of {len(node)}")
-            for i, item in enumerate(node[:_DUMP_MAX_ITEMS]):
+            for i, item in enumerate(node[:max_items]):
                 walk(item, f"{path}[{i}]", depth + 1, mask)
         elif mask:
             lines.append(f"{path} = <hidden>")
         elif isinstance(node, bool | int | float) or node is None:
             lines.append(f"{path} = {node}")
         elif isinstance(node, str):
-            if len(node) > _DUMP_MAX_STRING and " " not in node:
+            if show_all:
+                lines.append(f"{path} = {node!r}")
+            elif len(node) > _DUMP_MAX_STRING and " " not in node:
                 lines.append(f"{path} = <long string, hidden>")
             else:
                 lines.append(f"{path} = {node[:_DUMP_MAX_STRING]!r}")
@@ -280,11 +296,11 @@ def _silent_logger() -> logging.Logger:
     return logger
 
 
-def _print(lines: list[str]) -> None:
-    for line in lines[:_MAX_LINES]:
+def _print(lines: list[str], limit: int = _MAX_LINES) -> None:
+    for line in lines[:limit]:
         print(f"  {line}")
-    if len(lines) > _MAX_LINES:
-        print(f"  ... {len(lines) - _MAX_LINES} more lines not shown")
+    if len(lines) > limit:
+        print(f"  ... {len(lines) - limit} more lines not shown")
 
 
 def main(
@@ -299,6 +315,8 @@ def main(
     want_status = "--status" in args or want_values or want_dump
     want_hint = "--show-code" in args
     want_remote_state = "--remote-state" in args
+    show_all = "--show-all" in args
+    lock_door = "--include-lock-door" in args
     if env is None:
         logging.disable(logging.CRITICAL)
 
@@ -339,15 +357,23 @@ def main(
             return 0
         print("Vehicle record fields:")
         _print(describe(vehicles[0].data))
+        if show_all:
+            print("WARNING: --show-all. Nothing below is hidden. Do not paste it anywhere.")
+            print("Vehicle record values (nothing hidden):")
+            _print(dump_values(vehicles[0].data, True, True), 100_000)
         if want_remote_state:
             state = vehicles[0].get_remote_control_state()
-            print("Remote-control state values (read only, sensitive-looking paths hidden):")
-            _print(dump_values(state, "--include-lock-door" in args))
+            note = "nothing hidden" if show_all else "sensitive-looking paths hidden"
+            print(f"Remote-control state values (read only, {note}):")
+            _print(dump_values(state, lock_door, show_all), 100_000 if show_all else _MAX_LINES)
         if want_status:
             status = vehicles[0].get_status()
             if want_dump:
-                print("All plain status values (sensitive-looking paths hidden, one read):")
-                _print(dump_values(status, "--include-lock-door" in args))
+                note = "nothing hidden" if show_all else "sensitive-looking paths hidden"
+                print(f"All plain status values ({note}, one read):")
+                _print(
+                    dump_values(status, lock_door, show_all), 100_000 if show_all else _MAX_LINES
+                )
             elif want_values:
                 print("Status values (fixed list, one read):")
                 _print(pick_values(status))
