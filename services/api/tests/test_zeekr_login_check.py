@@ -445,3 +445,30 @@ def test_a_long_or_structured_trust_flag_stays_hidden() -> None:
         out = "\n".join(check.dump_values(status))
         assert "x" * 30 not in out and CANARY not in out
         assert "position.posCanBeTrusted = 'a b'" not in out
+
+
+def test_show_all_prints_every_value_including_sensitive_ones() -> None:
+    status = dict(SENSITIVE_STATUS)
+    status["basicVehicleStatus"] = {
+        **SENSITIVE_STATUS["basicVehicleStatus"],
+        "tags": [{"deviceId": f"{CANARY}-dev-{i}"} for i in range(8)],
+    }
+    out = "\n".join(check.dump_values(status, show_all=True))
+    for part in ("-lat", "-lon", "-vin", "-plate", "-name", "-token", "-door", "-lock"):
+        assert CANARY + part in out
+    assert "A" * 80 in out and "<hidden>" not in out and "hidden" not in out
+    assert f"{CANARY}-dev-7" in out
+
+
+def test_show_all_is_off_by_default_and_needs_its_flag(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code, out, err, _ = run(capsys, ["--remote-state"])
+    assert code == 0 and "$.latitude = <hidden>" in out and "WARNING" not in out
+    code, out, err, _ = run(capsys, ["--remote-state", "--dump", "--show-all"])
+    assert code == 0 and "WARNING: --show-all" in out
+    assert "$.latitude = '" + CANARY + "'" in out
+    assert "$.doorLockStatusDriver = '1'" in out
+    assert "$.vin = '" + CANARY + "-vin'" in out
+    assert "hidden" not in out.replace("nothing hidden", "").replace("Nothing below is hidden", "")
+    assert CANARY + "-VALUE" not in err
