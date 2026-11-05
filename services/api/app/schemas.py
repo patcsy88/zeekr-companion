@@ -846,6 +846,11 @@ class SentryCommandOut(BaseModel):
     confirmed: bool
 
 
+class SentryStateOut(BaseModel):
+    state: Literal["on", "off"] | None
+    at: UtcDateTime | None
+
+
 class CommandLogItem(BaseModel):
     id: uuid.UUID
     created_at: UtcDateTime

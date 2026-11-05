@@ -69,7 +69,7 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
  * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and
  * the {uuid} forms of the three collections, with a plain query string on lists. The advisory
  * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well, and so are
- * /vehicle/sentry and /vehicle/sentry/log (ADR-010).
+ * /vehicle/sentry, /vehicle/sentry/log, /vehicle/sentry/state and /vehicle/sentry/events (ADR-010).
  * Anything else (traversal, encoded slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -109,7 +109,10 @@ export function assertContractPath(path: string): void {
       ((parts.length === 3 && query === undefined) ||
         (parts.length === 4 &&
           parts[3] === 'log' &&
-          (query === undefined || QUERY_RE.test(query))));
+          (query === undefined || QUERY_RE.test(query))) ||
+        (parts.length === 4 &&
+          (parts[3] === 'state' || parts[3] === 'events') &&
+          query === undefined));
     if (!sentryOk) throw new ClientError('Refused a request outside the API contract.');
     return;
   }
@@ -239,4 +242,32 @@ export async function request<T = undefined>(opts: RequestOptions): Promise<ApiR
   if (res.status !== 204 && !jsonOk) return notFromApi();
   reportReachable(true);
   return { status: res.status, data: parsed as T };
+}
+
+/**
+ * Opens the Sentry events stream (ADR-010) with the Bearer header, which `EventSource` cannot send.
+ * The caller reads the body and aborts with the signal. A 401 ends the session like any request.
+ */
+export async function openSentryEvents(signal: AbortSignal): Promise<Response> {
+  const path = '/vehicle/sentry/events';
+  assertContractPath(path);
+  const token = getToken();
+  if (token === null) throw new ApiError(401, 'unauthenticated', 'Sign in to continue.');
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: 'GET',
+      headers: { Accept: 'text/event-stream', Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+      signal,
+    });
+  } catch {
+    throw new NetworkError();
+  }
+  if (res.status === 401) expire();
+  const type = res.headers.get('content-type') ?? '';
+  if (!res.ok || !type.startsWith('text/event-stream') || res.body === null) {
+    throw new NetworkError();
+  }
+  return res;
 }

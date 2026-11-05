@@ -703,6 +703,18 @@ export const OFF_CARD = {
 
 const liveHandlers = [
   http.get('*/api/v1/live-vehicle', () => HttpResponse.json(OFF_CARD)),
+  http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
+  http.get('*/api/v1/vehicle/sentry/events', ({ request }) => {
+    // Open and silent, like an idle stream; it ends when the page aborts.
+    const body = new ReadableStream({
+      start(controller) {
+        request.signal.addEventListener('abort', () => {
+          controller.close();
+        });
+      },
+    });
+    return new HttpResponse(body, { headers: { 'Content-Type': 'text/event-stream' } });
+  }),
   http.get('*/api/v1/live-vehicle/history', () =>
     HttpResponse.json({ items: [], interval_minutes: 5, retention_months: 12 }),
   ),
