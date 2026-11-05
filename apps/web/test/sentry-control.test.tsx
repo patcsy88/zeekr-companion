@@ -27,7 +27,7 @@ function card(sentry: boolean | null): LiveCard {
 }
 
 function open() {
-  window.history.pushState(null, '', '/vehicle');
+  window.history.pushState(null, '', '/sentry');
   setToken('tok-test', 3600);
   return userEvent.setup();
 }
@@ -240,14 +240,22 @@ describe('sentry control', () => {
     expect(screen.getByRole('switch', { name: 'Sentry: off' })).toBeInTheDocument();
   });
 
-  it('Sentry is its own control, outside the read-only indicator list', async () => {
+  it('the Vehicle page has no Sentry control, and the indicator list does not mention Sentry', async () => {
     serve(true);
-    open();
+    window.history.pushState(null, '', '/vehicle');
+    setToken('tok-test', 3600);
     render(<App />);
     const list = await screen.findByTestId('live-indicators');
     expect(list).not.toHaveTextContent('Sentry');
-    const sw = screen.getByRole('switch', { name: 'Sentry: on' });
-    expect(list).not.toContainElement(sw);
+    expect(screen.queryByRole('switch', { name: /^Sentry/ })).toBeNull();
+    expect(screen.queryByTestId('sentry-switch')).toBeNull();
+  });
+
+  it('the Sentry tab holds the control', async () => {
+    serve(true);
+    open();
+    render(<App />);
+    const sw = await screen.findByRole('switch', { name: 'Sentry: on' });
     expect(sw).not.toHaveAttribute('aria-readonly');
     expect(sw).toHaveAttribute('aria-checked', 'true');
   });
@@ -323,7 +331,8 @@ describe('sentry control', () => {
 
   it('the read-only indicators still send nothing when clicked', async () => {
     const posts = serve(true);
-    open();
+    window.history.pushState(null, '', '/vehicle');
+    setToken('tok-test', 3600);
     render(<App />);
     await screen.findByTestId('live-indicators');
     await userEvent.click(screen.getByRole('switch', { name: /^Fragrance:/ }));

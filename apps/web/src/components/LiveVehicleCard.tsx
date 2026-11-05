@@ -15,9 +15,7 @@ import {
   yesNo,
 } from '../lib/liveVehicle';
 import { ReadOnlyToggle } from './ReadOnlyToggle';
-import { SentryControl } from './SentryControl';
 import { usePullToRefresh } from '../lib/pullToRefresh';
-import { useSentryPush, type PushedSentry } from '../lib/sentryPush';
 
 /**
  * Read-only live readings from the car (ADR-009). Online only: nothing here is stored on the
@@ -31,12 +29,8 @@ export function LiveVehicleCard() {
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [sentryNote, setSentryNote] = useState<string | null>(null);
-  const [sentrySeen, setSentrySeen] = useState<SentrySeen | null>(null);
-  const [pushed, setPushed] = useState<PushedSentry | null>(null);
   const inflight = useRef(false);
   const active = session.signedIn && online;
-  useSentryPush(active, setPushed);
 
   const load = useCallback(async (manual: boolean) => {
     if (inflight.current) return;
@@ -104,8 +98,7 @@ export function LiveVehicleCard() {
         ) : null}
       </div>
       <p className="muted small">
-        Readings only, except the Sentry switch below: it is the one thing this app can send to the
-        car.
+        Readings only. Nothing here is sent to the car. The Sentry switch is on the Sentry tab.
       </p>
       {!session.signedIn || !online ? (
         <p className="muted" data-testid="live-offline">
@@ -114,51 +107,20 @@ export function LiveVehicleCard() {
       ) : card === null ? (
         <p role="status">{failed ? 'Could not load live readings.' : 'Loading…'}</p>
       ) : (
-        <CardBody
-          card={card}
-          failed={failed}
-          note={note}
-          onSentryResult={setSentryNote}
-          sentrySeen={sentrySeen}
-          pushed={pushed}
-          onSentrySeen={(on) => {
-            setSentrySeen({ on, at: new Date().toISOString(), basis: card.received_at });
-          }}
-        />
+        <CardBody card={card} failed={failed} note={note} />
       )}
-      {sentryNote ? (
-        <p role="status" className="notice info" data-testid="sentry-result">
-          {sentryNote}
-        </p>
-      ) : null}
     </section>
   );
-}
-
-/** What the car reported right after a send. It holds only while the card still shows the
- * reading it was read against; a newer card reading replaces it. */
-interface SentrySeen {
-  on: boolean;
-  at: string;
-  basis: string | null;
 }
 
 function CardBody({
   card,
   failed,
   note,
-  onSentryResult,
-  sentrySeen,
-  pushed,
-  onSentrySeen,
 }: {
   card: LiveCard;
   failed: boolean;
   note: string | null;
-  onSentryResult: (text: string | null) => void;
-  sentrySeen: SentrySeen | null;
-  pushed: PushedSentry | null;
-  onSentrySeen: (on: boolean) => void;
 }) {
   if (card.status === 'off') {
     return (
@@ -176,11 +138,6 @@ function CardBody({
   const t = r.tyres_kpa;
   const tc = r.tyres_celsius;
   const ind = r.indicators;
-  const local = sentrySeen !== null && sentrySeen.basis === card.received_at ? sentrySeen : null;
-  // A state pushed from another page counts only while it is newer than the card's own reading.
-  const remote =
-    pushed !== null && (card.received_at === null || pushed.at > card.received_at) ? pushed : null;
-  const seen = local && remote ? (remote.at > local.at ? remote : local) : (remote ?? local);
   return (
     <>
       {card.status === 'paused' ? (
@@ -271,22 +228,9 @@ function CardBody({
           <ReadOnlyToggle label="Engine enable running" value={ind.engine_enable_running} />
         </dd>
       </dl>
-      <h3 className="small">Sentry (the one control)</h3>
-      {seen ? (
-        <p role="status" className="notice info" data-testid="sentry-seen">
-          Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}. This is newer
-          than the readings above.
-        </p>
-      ) : null}
-      <SentryControl
-        current={seen ? seen.on : ind.sentry_active}
-        onResult={onSentryResult}
-        onSeen={onSentrySeen}
-      />
       <p className="muted small">
-        These are the car's own reported flags. Apart from Sentry, their exact meanings are not
-        verified, and this page cannot change any of them. Sentry may use the car's 12 V battery
-        while it is on.
+        These are the car's own reported flags. Their exact meanings are not verified, and this page
+        cannot change any of them.
       </p>
       <p className="muted small">
         Updates about every {card.interval_minutes} minutes while this page is open.

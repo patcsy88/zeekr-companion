@@ -181,7 +181,7 @@ describe('live vehicle: the card', () => {
       'aria-checked',
       'false',
     );
-    expect(screen.getByRole('switch', { name: 'Sentry: on' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /Sentry/ })).toBeNull();
     const unknown = screen.getByRole('switch', { name: 'VTM TS: no reading' });
     expect(unknown).not.toHaveAttribute('aria-checked');
     expect(unknown).toHaveTextContent('no reading');
@@ -248,7 +248,7 @@ describe('live vehicle: the card', () => {
     expect(screen.queryByText(/0 °C/)).not.toBeInTheDocument();
     expect(screen.queryByText('Off')).not.toBeInTheDocument();
     expect(screen.getAllByRole('switch')).toHaveLength(5);
-    expect(screen.getByTestId('sentry-unknown')).toHaveTextContent('Sentry: no reading');
+    expect(screen.queryByTestId('sentry-unknown')).toBeNull();
     for (const sw of screen.getAllByRole('switch')) {
       expect(sw).not.toHaveAttribute('aria-checked');
       expect(sw).toHaveTextContent('no reading');

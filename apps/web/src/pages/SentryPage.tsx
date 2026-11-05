@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { request } from '../api/client';
 import type { AdvisoryProposal, AdvisoryProposalList } from '../api/types';
+import { SentryPanel } from '../components/SentryPanel';
 import { useConnectivity, useSession } from '../data/hooks';
 
 export const GEOFENCE_CONDITION = 'sentry_off_outside_geofence';
@@ -11,6 +12,12 @@ export function SentryPage() {
   const [items, setItems] = useState<AdvisoryProposal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const noteEl = note ? (
+    <p role="status" className="notice info" data-testid="sentry-result">
+      {note}
+    </p>
+  ) : null;
   const [reloads, setReloads] = useState(0);
   const reload = useCallback(() => {
     setReloads((n) => n + 1);
@@ -58,6 +65,7 @@ export function SentryPage() {
       <section aria-labelledby="sentry-title">
         <h1 id="sentry-title">Sentry</h1>
         <p className="muted">This page needs a sign-in and a connection to the server.</p>
+        {noteEl}
       </section>
     );
   }
@@ -67,7 +75,8 @@ export function SentryPage() {
       <h1 id="sentry-title">Sentry</h1>
       <p className="muted small">
         A notice appears here when the car is parked asleep outside your home area with Sentry off.
-        It is a notice only. Nothing is sent to the car. Turn Sentry on from the Vehicle tab.
+        The notice itself sends nothing to the car. The switch below sends a command only when you
+        confirm it.
       </p>
       {error ? (
         <p role="alert" className="error">
@@ -98,6 +107,13 @@ export function SentryPage() {
           ))}
         </ul>
       )}
+      <h2 className="small">Sentry command</h2>
+      <p className="muted small">
+        This is the one thing the app can send to the car: Sentry on or off. It asks first and sends
+        once.
+      </p>
+      <SentryPanel onNote={setNote} />
+      {noteEl}
     </section>
   );
 }

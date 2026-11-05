@@ -81,7 +81,7 @@ function serve(
 }
 
 function open() {
-  window.history.pushState(null, '', '/vehicle');
+  window.history.pushState(null, '', '/sentry');
   setToken('tok-test', 3600);
   return userEvent.setup();
 }
@@ -179,7 +179,7 @@ describe('sentry push', () => {
     const feed = serve(false);
     open();
     render(<App />);
-    await screen.findByText('Live from the car');
+    await screen.findByText('Sentry command');
     await new Promise((r) => setTimeout(r, 100));
     expect(feed.opens()).toBe(0);
   });
