@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import threading
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -41,6 +43,7 @@ from app.routers import (
 )
 from app.services.auth import AuthService
 from app.services.daily_read import daily_read_lifespan
+from app.services.geofence import geofence_lifespan
 from app.services.reasoning import build_reasoning_model
 from app.services.sentry_state import SentryStateHub
 
@@ -126,6 +129,12 @@ async def _on_unexpected(_: Request, exc: Exception) -> JSONResponse:
     return _error(500, "internal_error", "Internal server error.")
 
 
+@contextlib.asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async with daily_read_lifespan(app), geofence_lifespan(app):
+        yield
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     init_sentry(
@@ -141,7 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
-        lifespan=daily_read_lifespan,
+        lifespan=_lifespan,
     )
     app.state.settings = settings
     app.state.reasoning_model = build_reasoning_model(settings)

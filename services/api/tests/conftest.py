@@ -173,3 +173,13 @@ def _no_real_zeekr_library(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("a test tried to build the real Zeekr client")
 
     monkeypatch.setattr("app.adapters.zeekr_live._build_client", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_geocoding(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test may send a query to the real geocoding service."""
+
+    def refuse(*_: object, **__: object) -> object:
+        raise AssertionError("a test tried to reach the real geocoding service")
+
+    monkeypatch.setattr("app.services.geofence_home._urlopen", refuse)

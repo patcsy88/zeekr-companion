@@ -106,6 +106,30 @@ class AdvisoryRepository:
         )
         return self._session.execute(stmt).scalar_one_or_none()
 
+    def latest_condition(self, condition: str) -> AdvisoryProposal | None:
+        """The newest proposal of one condition, row-locked so a simultaneous decision waits."""
+        return self._session.scalars(
+            select(AdvisoryProposal)
+            .where(AdvisoryProposal.condition == condition)
+            .order_by(desc(AdvisoryProposal.created_at), desc(AdvisoryProposal.id))
+            .limit(1)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).first()
+
+    def close(self, row: AdvisoryProposal, now: dt.datetime) -> None:
+        """The check ends an open alert on its own. Part of the caller's transaction."""
+        stamp = dt.datetime.now(dt.UTC)
+        row.status = "closed"
+        row.decided_at = now
+        row.updated_at = stamp
+
+    def end_episode(self, row: AdvisoryProposal, suffix: str) -> None:
+        """Marks a decided alert's episode as over, so the next one may open. The owner's
+        decision (accepted or dismissed) is kept. Part of the caller's transaction."""
+        row.dedupe_key = row.dedupe_key + suffix
+        row.updated_at = dt.datetime.now(dt.UTC)
+
     def commit(self) -> None:
         self._session.commit()
 

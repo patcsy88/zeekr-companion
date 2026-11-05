@@ -543,8 +543,8 @@ There is no endpoint that creates, edits or deletes a reminder, expense, warrant
 ```json
 {
   "id": "uuid",
-  "condition": "date_vs_km_warranty | date_vs_km_service | charging_cost_drift",
-  "status": "proposed | accepted | dismissed",
+  "condition": "date_vs_km_warranty | date_vs_km_service | charging_cost_drift | sentry_off_outside_geofence",
+  "status": "proposed | accepted | dismissed | closed",
   "inputs": { "km_to_limit": 0, "days_to_expiry": 0, "projected_limit_date": "YYYY-MM-DD" },
   "source_refs": [ { "kind": "warranty_coverage | reminder | expense", "id": "uuid" } ],
   "explanation": "string|null",
@@ -900,3 +900,15 @@ So a second open page (for example a phone) shows the switch change made on anot
 1. Voltage is kept to one decimal.
 2. Tyre temperatures are shown on the card from the start. The doc keeps the `unverified` label.
 3. The data model and contract are approved, so code may start. Changing them now needs the owner to be told first. Nothing is built or deployed yet.
+
+### Amendment: geofence alert (Piece B; owner approved 2026-11-05; migration `0013`)
+
+An in-app notice when the car is parked outside the home area with Sentry off. Read-only: it never sends the Sentry command or anything else to the car. No new endpoint.
+
+- **New `condition`:** `sentry_off_outside_geofence`. **New `status`:** `closed`, set only by the background check when the alert stops holding, never by a client. The `status` filter on `GET /advisory/proposals` also accepts `closed`. The default web list stays `proposed`.
+- `PATCH` on a `closed` alert returns `409 conflict`. A dismissed or accepted alert stays decided for its episode; a new alert opens only after the condition has stopped holding once.
+- `inputs` is `{"reading_age_minutes": N}` only. No position, distance, radius or home point is stored, logged or returned. `suggestion` is `null`, `urgency` is `null`, `source_refs` is `[]`. The model is never called for this kind (`explanation_status` `disabled`). `dedupe_key` is `geofence:<UTC time opened>`.
+- **Rule (rule version 1):** an alert is open while, on a reading no older than `GEOFENCE_STALE_MINUTES`, the car is farther than `GEOFENCE_RADIUS_KM` from home, `gearAutoStatus` is `'0'`, `usageMode` is `'0'` and Sentry reads off. The `usageMode` labels are `unverified` (public community integration); the `gearAutoStatus` labels come only from the owner's readings. The position keys are `unverified`. A stale, incomplete or failed reading changes nothing.
+- **Check:** every `GEOFENCE_INTERVAL_MINUTES` (minimum 5), with the page closed, through the same provider, spacing, lock and login cap as the Vehicle card. Needs `ZEEKR_LIVE_ENABLED`. The position is held in memory and dropped.
+- **Home point:** `GEOFENCE_HOME_QUERY` is looked up once with public Nominatim (street-level query, one request) and kept in a small file on a named volume with a hash of the query; `GEOFENCE_HOME_LAT` and `GEOFENCE_HOME_LON` skip the lookup. A failed lookup leaves the geofence off ("home not set").
+- **Migration `0013`:** no new table or column. It widens the `condition_valid` and `status_valid` checks. Downgrade deletes geofence rows first.

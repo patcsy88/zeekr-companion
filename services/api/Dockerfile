@@ -16,7 +16,10 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY docker-entrypoint.sh ./
 
-RUN useradd --system --no-create-home --uid 10001 api && chmod +x docker-entrypoint.sh
+# /var/lib/zeekr-geofence is the one writable folder (a named volume in compose, Piece B).
+RUN useradd --system --no-create-home --uid 10001 api && chmod +x docker-entrypoint.sh \
+    && mkdir -p /var/lib/zeekr-geofence && chown 10001 /var/lib/zeekr-geofence \
+    && chmod 700 /var/lib/zeekr-geofence
 USER api
 
 EXPOSE 8000

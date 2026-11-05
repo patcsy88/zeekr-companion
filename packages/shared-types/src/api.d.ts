@@ -601,7 +601,7 @@ export interface components {
              * Condition
              * @enum {string}
              */
-            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift";
+            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift" | "sentry_off_outside_geofence";
             /**
              * Created At
              * Format: date-time
@@ -632,7 +632,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "proposed" | "accepted" | "dismissed";
+            status: "proposed" | "accepted" | "dismissed" | "closed";
             suggestion: components["schemas"]["AdvisorySuggestion"] | null;
             /**
              * Updated At
@@ -667,7 +667,7 @@ export interface components {
              * Condition
              * @enum {string}
              */
-            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift";
+            condition: "date_vs_km_warranty" | "date_vs_km_service" | "charging_cost_drift" | "sentry_off_outside_geofence";
             /**
              * Reason
              * @constant
@@ -1846,7 +1846,7 @@ export interface operations {
     list_proposals_api_v1_advisory_proposals_get: {
         parameters: {
             query?: {
-                status?: "proposed" | "accepted" | "dismissed" | "all";
+                status?: "proposed" | "accepted" | "dismissed" | "closed" | "all";
                 limit?: number;
             };
             header?: never;

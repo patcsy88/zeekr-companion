@@ -78,7 +78,7 @@ Today the app reads Zeekr only while the Vehicle page is open, plus once a day f
 
 ### Data model and contract (needs approval)
 
-- Advisory proposals are reused with a new kind, `sentry_off_outside_geofence`. The alert text states the distance band and the time, and never coordinates. Whether it should carry a rounded distance at all is a question below.
+- Advisory proposals are reused with a new kind, `sentry_off_outside_geofence`. The alert says only "outside": no distance, no band and no coordinates (owner decision 2026-11-03).
 - No new table for the check itself. A short log line per run, without position: result, age of the reading, reason skipped.
 - Contract: the Advisory list gains the new kind. A settings read-only endpoint is not proposed.
 
@@ -185,7 +185,7 @@ Still open: the engine and car state conditions (waiting on the dump), whether t
 
 ## Piece B: contract and data model (DRAFT, needs the owner's approval before any code)
 
-Drafted 2026-11-05 from the owner's decisions above. Nothing here is built. It changes the approved Advisory contract in two places (marked **CHANGE**), so the owner must be told and must approve first.
+Drafted 2026-11-05 from the owner's decisions above. **Approved by the owner on 2026-11-05. Implemented 2026-11-05 (API, web, migration `0013`, compose volume); not committed to a deploy, not run against the real car.** It changes the approved Advisory contract in two places (marked **CHANGE**), so the owner must be told and must approve first.
 
 ### Conflicts found while drafting
 

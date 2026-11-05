@@ -65,6 +65,18 @@ class Settings(BaseSettings):
     zeekr_vin_key: SecretStr | None = None
     zeekr_vin_iv: SecretStr | None = None
 
+    # Geofence alert (Piece B, owner-approved 2026-11-05). Off by default. The home query and the
+    # coordinates live in the host `infra/.env` only, and are never logged or returned by the API.
+    geofence_enabled: bool = False
+    geofence_home_query: SecretStr | None = None
+    geofence_home_lat: SecretStr | None = None
+    geofence_home_lon: SecretStr | None = None
+    geofence_radius_km: float = Field(default=5.0, gt=0, le=100)
+    geofence_interval_minutes: int = Field(default=5, ge=5, le=1440)
+    geofence_stale_minutes: int = Field(default=30, ge=1, le=1440)
+    # Where the one-time lookup result is kept. A writable volume on the host (see compose).
+    geofence_state_dir: str = Field(default="/var/lib/zeekr-geofence", max_length=200)
+
     @field_validator(
         "anthropic_api_key",
         "advisory_model_base_url",
@@ -79,6 +91,9 @@ class Settings(BaseSettings):
         "zeekr_prod_secret",
         "zeekr_vin_key",
         "zeekr_vin_iv",
+        "geofence_home_query",
+        "geofence_home_lat",
+        "geofence_home_lon",
         mode="before",
     )
     @classmethod
@@ -91,6 +106,32 @@ class Settings(BaseSettings):
             missing = [name.upper() for name in ZEEKR_LIVE_FIELDS if getattr(self, name) is None]
             if missing:
                 raise ValueError("ZEEKR_LIVE_ENABLED is true but not set: " + ", ".join(missing))
+        return self
+
+    @model_validator(mode="after")
+    def _geofence_needs_its_settings(self) -> Settings:
+        lat, lon = self.geofence_home_lat, self.geofence_home_lon
+        if (lat is None) != (lon is None):
+            raise ValueError("GEOFENCE_HOME_LAT and GEOFENCE_HOME_LON must be set together")
+        if lat is not None and lon is not None:
+            for name, secret, limit in (
+                ("GEOFENCE_HOME_LAT", lat, 90.0),
+                ("GEOFENCE_HOME_LON", lon, 180.0),
+            ):
+                try:
+                    number = float(secret.get_secret_value())
+                except ValueError:
+                    raise ValueError(f"{name} must be a number") from None
+                if not -limit <= number <= limit:
+                    raise ValueError(f"{name} is out of range")
+        if self.geofence_enabled:
+            if not self.zeekr_live_enabled:
+                raise ValueError("GEOFENCE_ENABLED needs ZEEKR_LIVE_ENABLED to be true")
+            if self.geofence_home_query is None and lat is None:
+                raise ValueError(
+                    "GEOFENCE_ENABLED is true but neither GEOFENCE_HOME_QUERY nor "
+                    "GEOFENCE_HOME_LAT and GEOFENCE_HOME_LON is set"
+                )
         return self
 
     @field_validator("advisory_model_base_url")

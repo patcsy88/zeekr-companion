@@ -13,6 +13,8 @@ const CONDITION_LABELS: Record<AdvisoryProposal['condition'], string> = {
   date_vs_km_warranty: 'Warranty km limit may be reached before its end date',
   date_vs_km_service: 'Service km may be reached before its due date',
   charging_cost_drift: 'Charging cost per kWh differs from your recent average',
+  sentry_off_outside_geofence:
+    'The car is parked outside your home area with Sentry off. This is a notice only; nothing was sent to the car.',
 };
 
 const EXPLANATION_NOTES: Record<AdvisoryProposal['explanation_status'], string> = {
@@ -30,6 +32,7 @@ const INPUT_LABELS: Record<string, string> = {
   latest_cost_per_kwh_sen: 'latest cost per kWh (sen)',
   average_cost_per_kwh_sen: 'recent average per kWh (sen)',
   latest_date: 'latest charge date',
+  reading_age_minutes: 'minutes since the car last reported',
 };
 
 export function AdvisoryPage() {
@@ -166,7 +169,9 @@ export function AdvisoryPage() {
                 ))}
               </dl>
               {p.explanation ? <p>{p.explanation}</p> : null}
-              <p className="muted small">{EXPLANATION_NOTES[p.explanation_status]}</p>
+              {p.condition === 'sentry_off_outside_geofence' ? null : (
+                <p className="muted small">{EXPLANATION_NOTES[p.explanation_status]}</p>
+              )}
               <p className="muted small">
                 Rule version {p.provenance.rule_version}
                 {p.provenance.model_id ? `, model ${p.provenance.model_id}` : ''}.

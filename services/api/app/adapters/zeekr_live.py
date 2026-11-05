@@ -18,9 +18,10 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import math
+import re
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import SecretStr
@@ -82,6 +83,19 @@ class Snapshot:
     sentry_active: bool | None
 
 
+@dataclass(frozen=True)
+class GeofenceInput:
+    """What the geofence check may keep, in memory only (Piece B). Never stored, never logged,
+    never sent to the API or a model. The position is hidden from `repr`."""
+
+    latitude: float | None = field(repr=False)
+    longitude: float | None = field(repr=False)
+    usage_mode: str | None
+    gear: str | None
+    sentry_active: bool | None
+    observed_at: dt.datetime | None
+
+
 def _dig(status: object, path: tuple[str, ...]) -> object:
     node = status
     for part in path:
@@ -136,6 +150,41 @@ def _sentry(value: object) -> bool | None:
     if value == "0":
         return False
     return None
+
+
+_CODE = re.compile(r"\d{1,2}")
+
+
+def _code(value: object) -> str | None:
+    """A state code such as "0" or "13": a short whole number given as text. Else None."""
+    if isinstance(value, str) and _CODE.fullmatch(value.strip()):
+        return value.strip()
+    return None
+
+
+def _coordinate(value: object, limit: float) -> float | None:
+    number = _number(value)
+    if number is None or not -limit <= number <= limit:
+        return None
+    return number
+
+
+def map_geofence(status: object) -> GeofenceInput:
+    """The five values the geofence needs from one status reply, and nothing else. A position
+    that is missing, out of range or exactly (0, 0) is "no position"."""
+    base = ("basicVehicleStatus",)
+    lat = _coordinate(_dig(status, (*base, "position", "latitude")), 90.0)
+    lon = _coordinate(_dig(status, (*base, "position", "longitude")), 180.0)
+    if lat is None or lon is None or (lat == 0.0 and lon == 0.0):
+        lat = lon = None
+    return GeofenceInput(
+        latitude=lat,
+        longitude=lon,
+        usage_mode=_code(_dig(status, (*base, "usageMode"))),
+        gear=_code(_dig(status, (_AVS, "drivingBehaviourStatus", "gearAutoStatus"))),
+        sentry_active=_sentry(_dig(status, (REMOTE_STATE_KEY, SENTRY_KEY))),
+        observed_at=_observed_at(_dig(status, (*_CLIMATE, "updateTime"))),
+    )
 
 
 def _volts(value: object) -> float | None:
@@ -365,6 +414,7 @@ class ZeekrLiveTelemetryProvider:
         self._max_failures = max_failures
         self._clock = clock
         self._snapshot: Snapshot | None = None
+        self._geofence: GeofenceInput | None = None
         self._next_try = 0.0
         self._failures = 0
         self._fetches = 0
@@ -393,14 +443,23 @@ class ZeekrLiveTelemetryProvider:
         """The last successful snapshot, or None after a failure or before the first read."""
         return self._snapshot
 
+    @property
+    def geofence_input(self) -> GeofenceInput | None:
+        """The geofence values from the last successful read, held in memory only. None before
+        the first read and after a failed one."""
+        return self._geofence
+
     def _current(self) -> Snapshot | None:
         if self.stopped or self._clock() < self._next_try:
             return self._snapshot
         self._fetches += 1
         try:
-            self._snapshot = map_status(self._source())
+            raw = self._source()
+            self._snapshot = map_status(raw)
+            self._geofence = map_geofence(raw)
         except Exception:
             self._failures += 1
+            self._geofence = None
             # Never sooner than the interval, whatever the cap.
             wait = max(
                 self._min_interval, min(self._min_interval * 2**self._failures, self._max_backoff)

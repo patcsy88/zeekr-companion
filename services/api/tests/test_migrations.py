@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import datetime as dt
+from typing import Any
+
 import pytest
 from sqlalchemy import create_engine, inspect, text
 
@@ -30,7 +33,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0012"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013"
             )
     finally:
         engine.dispose()
@@ -363,3 +366,62 @@ def test_0012_command_log_downgrades_and_reapplies(fresh_database_url: str) -> N
     cols = {c["name"] for c in inspect(engine).get_columns("car_command_log")}
     assert cols == {"id", "created_at", "desired", "source", "result", "state_after"}
     engine.dispose()
+
+
+def test_0013_geofence_allows_the_new_condition_and_status_and_downgrades(
+    fresh_database_url: str,
+) -> None:
+    import os
+    import uuid
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, condition: str, status: str, decided: bool) -> None:
+        conn.execute(
+            text(
+                "INSERT INTO advisory_proposal (id, condition, dedupe_key, status, inputs, "
+                "source_refs, explanation_status, rule_version, decided_at) VALUES "
+                "(:id, :c, :k, :s, '{}', '[]', 'disabled', 1, :d)"
+            ),
+            {
+                "id": uuid.uuid4(),
+                "c": condition,
+                "k": str(uuid.uuid4()),
+                "s": status,
+                "d": dt.datetime.now(dt.UTC) if decided else None,
+            },
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        insert(conn, "sentry_off_outside_geofence", "proposed", False)
+        insert(conn, "sentry_off_outside_geofence", "closed", True)
+        insert(conn, "date_vs_km_service", "dismissed", True)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        insert(conn, "sentry_off_outside_geofence", "closed", False)  # closed needs decided_at
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        insert(conn, "something_else", "proposed", False)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        insert(conn, "date_vs_km_service", "reopened", True)
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0012")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            left = conn.execute(
+                text("SELECT condition, status FROM advisory_proposal ORDER BY condition")
+            ).all()
+        engine.dispose()
+        assert [tuple(r) for r in left] == [("date_vs_km_service", "dismissed")]
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
