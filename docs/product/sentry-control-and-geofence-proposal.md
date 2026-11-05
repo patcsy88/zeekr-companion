@@ -263,13 +263,13 @@ Drafted 2026-11-05 from the owner's request and answers. **Data model and contra
 
 ### What the tab edits
 
-| Setting | Today (from `.env`) | Proposed limit in the tab |
-|---|---|---|
-| Radius (km) | 5 | above 0, up to 100 |
-| Check interval (minutes) | 5 | 5 to 1440 |
-| Stale limit (minutes) | 30 | 1 to 1440 (open question 1) |
-| Gear codes that count as "parked" | `0` | 1 to 5 codes, each 0 to 99 |
-| Usage-mode codes that count as "asleep" | `0` | 1 to 5 codes, each 0 to 99 |
+| Setting                                 | Today (from `.env`) | Proposed limit in the tab   |
+| --------------------------------------- | ------------------- | --------------------------- |
+| Radius (km)                             | 5                   | above 0, up to 100          |
+| Check interval (minutes)                | 5                   | 5 to 1440                   |
+| Stale limit (minutes)                   | 30                  | 1 to 1440 (open question 1) |
+| Gear codes that count as "parked"       | `0`                 | 1 to 5 codes, each 0 to 99  |
+| Usage-mode codes that count as "asleep" | `0`                 | 1 to 5 codes, each 0 to 99  |
 
 `GEOFENCE_ENABLED` and the home point stay in `.env` (they need a restart and a lookup). The tab shows whether the geofence is on, and whether a home point is set, as yes or no only.
 
@@ -281,10 +281,10 @@ Drafted 2026-11-05 from the owner's request and answers. **Data model and contra
 
 ### Contract
 
-| Method | Path | Meaning |
-|---|---|---|
-| `GET` | `/api/v1/geofence/settings` | Current settings, where each value comes from (`saved` or `env`), the limits, `enabled` (bool) and `home_set` (bool). `200`, `401` |
-| `PUT` | `/api/v1/geofence/settings` | Saves all five values. `200` with the same body, `400 validation_error` (never 422), `401` |
+| Method | Path                        | Meaning                                                                                                                            |
+| ------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/geofence/settings` | Current settings, where each value comes from (`saved` or `env`), the limits, `enabled` (bool) and `home_set` (bool). `200`, `401` |
+| `PUT`  | `/api/v1/geofence/settings` | Saves all five values. `200` with the same body, `400 validation_error` (never 422), `401`                                         |
 
 - Token required, `no-store`, the 64 KiB limit and the existing error shape. No new error code.
 - The home address, coordinates, distance and car position never appear in a request or response.
@@ -303,4 +303,3 @@ Drafted 2026-11-05 from the owner's request and answers. **Data model and contra
 1. **Stale limit maximum is 30 minutes** in the tab (minimum 1). A `.env` value above 30 still starts the API (the host has 1440 today) and applies until a row is saved. The tab will show it as above its limit and refuse to save it until it is changed to 30 or less.
 2. **Pick lists.** Gear codes: P `0`, R `1`, N `2`, D `3` (labels from the owner's readings only). Usage-mode codes: `0` Deep Sleep, `1` Parked, `2` Unlocked, `3` System Active, `4` Ready to Go, `13` Active (`unverified`, the public integration's labels). The API accepts only these codes, 1 to 5 distinct values each.
 3. **Reset: yes.** Contract addition: `DELETE /api/v1/geofence/settings` removes the saved row and returns `200` with the settings as they then stand (`env` values). Safe to repeat.
-
