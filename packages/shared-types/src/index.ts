@@ -53,6 +53,9 @@ export type LiveDelete = Schemas["LiveDeleteOut"];
 
 export type SentryCommandResult = Schemas["SentryCommandOut"];
 export type SentryState = Schemas["SentryStateOut"];
+export type GeofenceSettings = Schemas["GeofenceSettingsOut"];
+export type GeofenceSettingsInput = Schemas["GeofenceSettingsIn"];
+export type GeofenceOption = Schemas["GeofenceOptionOut"];
 export type CommandLog = Schemas["CommandLogOut"];
 
 /** Error body returned for every non-2xx response under /api. */

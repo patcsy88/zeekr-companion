@@ -169,6 +169,34 @@ export interface paths {
         patch: operations["patch_expense_api_v1_expenses__expense_id__patch"];
         trace?: never;
     };
+    "/api/v1/geofence/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settings
+         * @description The settings in force, where each value comes from, and the limits. Never the home point.
+         */
+        get: operations["get_settings_api_v1_geofence_settings_get"];
+        /**
+         * Put Settings
+         * @description Saves all five values. They apply at the next check. Nothing is sent to the car.
+         */
+        put: operations["put_settings_api_v1_geofence_settings_put"];
+        post?: never;
+        /**
+         * Reset Settings
+         * @description Removes the saved row so the host values apply again. Safe to repeat.
+         */
+        delete: operations["reset_settings_api_v1_geofence_settings_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live-vehicle": {
         parameters: {
             query?: never;
@@ -921,6 +949,98 @@ export interface components {
             currency: "MYR";
             /** Total Minor */
             total_minor: number;
+        };
+        /** GeofenceLimitsOut */
+        GeofenceLimitsOut: {
+            /** Gear Options */
+            gear_options: components["schemas"]["GeofenceOptionOut"][];
+            /** Interval Minutes Max */
+            interval_minutes_max: number;
+            /** Interval Minutes Min */
+            interval_minutes_min: number;
+            /** Max Codes */
+            max_codes: number;
+            /** Radius Km Max */
+            radius_km_max: number;
+            /** Stale Minutes Max */
+            stale_minutes_max: number;
+            /** Stale Minutes Min */
+            stale_minutes_min: number;
+            /** Usage Mode Options */
+            usage_mode_options: components["schemas"]["GeofenceOptionOut"][];
+        };
+        /** GeofenceOptionOut */
+        GeofenceOptionOut: {
+            /** Code */
+            code: number;
+            /** Label */
+            label: string;
+            /** Verified */
+            verified: boolean;
+        };
+        /** GeofenceSettingsIn */
+        GeofenceSettingsIn: {
+            /** Gear Codes */
+            gear_codes: number[];
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Radius Km */
+            radius_km: number;
+            /** Stale Minutes */
+            stale_minutes: number;
+            /** Usage Mode Codes */
+            usage_mode_codes: number[];
+        };
+        /** GeofenceSettingsOut */
+        GeofenceSettingsOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Home Set */
+            home_set: boolean;
+            limits: components["schemas"]["GeofenceLimitsOut"];
+            settings: components["schemas"]["GeofenceValuesOut"];
+            sources: components["schemas"]["GeofenceSourcesOut"];
+        };
+        /** GeofenceSourcesOut */
+        GeofenceSourcesOut: {
+            /**
+             * Gear Codes
+             * @enum {string}
+             */
+            gear_codes: "saved" | "env";
+            /**
+             * Interval Minutes
+             * @enum {string}
+             */
+            interval_minutes: "saved" | "env";
+            /**
+             * Radius Km
+             * @enum {string}
+             */
+            radius_km: "saved" | "env";
+            /**
+             * Stale Minutes
+             * @enum {string}
+             */
+            stale_minutes: "saved" | "env";
+            /**
+             * Usage Mode Codes
+             * @enum {string}
+             */
+            usage_mode_codes: "saved" | "env";
+        };
+        /** GeofenceValuesOut */
+        GeofenceValuesOut: {
+            /** Gear Codes */
+            gear_codes: number[];
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Radius Km */
+            radius_km: number;
+            /** Stale Minutes */
+            stale_minutes: number;
+            /** Usage Mode Codes */
+            usage_mode_codes: number[];
         };
         /** LiveCardOut */
         LiveCardOut: {
@@ -2459,6 +2579,133 @@ export interface operations {
             };
             /** @description not_found: resource does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_settings_api_v1_geofence_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceSettingsOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_settings_api_v1_geofence_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeofenceSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceSettingsOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reset_settings_api_v1_geofence_settings_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceSettingsOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -5,6 +5,7 @@ import { SyncBar } from './components/SyncBar';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession } from './data/hooks';
 import { AdvisoryPage } from './pages/AdvisoryPage';
+import { GeofencePage } from './pages/GeofencePage';
 import { LiveHistoryPage } from './pages/LiveHistoryPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
@@ -73,6 +74,7 @@ function Layout() {
           <Route path="/records/new" element={<NewRecordPage />} />
           <Route path="/records/:id" element={<RecordDetailPage />} />
           <Route path="/records/:id/edit" element={<EditRecordPage />} />
+          <Route path="/geofence" element={<GeofencePage />} />
           <Route path="/reminders" element={<RemindersPage />} />
           <Route path="/reminders/new" element={<NewReminderPage />} />
           <Route path="/reminders/template" element={<ReminderTemplatePage />} />
@@ -105,6 +107,7 @@ function Layout() {
         <NavLink to="/expenses">Expenses</NavLink>
         <NavLink to="/warranty">Warranty</NavLink>
         <NavLink to="/advisory">Advisory</NavLink>
+        <NavLink to="/geofence">Geofence</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>
     </>

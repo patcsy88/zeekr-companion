@@ -18,6 +18,7 @@ from sqlalchemy import (
     Integer,
     MetaData,
     Numeric,
+    SmallInteger,
     String,
     Text,
     Uuid,
@@ -25,7 +26,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -484,4 +485,30 @@ class CarCommandLog(Base):
             "state_after IS NULL OR state_after IN ('on', 'off')", name="state_after_valid"
         ),
         Index("ix_car_command_log_created_at", "created_at"),
+    )
+
+
+class GeofenceSettings(Base):
+    """The geofence's editable settings (Piece C). One row at most. No home address, coordinate
+    or position: those stay in the host environment."""
+
+    __tablename__ = "geofence_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    radius_km: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    stale_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    gear_codes: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger), nullable=False)
+    usage_mode_codes: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger), nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="single_row"),
+        CheckConstraint("radius_km > 0 AND radius_km <= 100", name="radius_valid"),
+        CheckConstraint("interval_minutes BETWEEN 5 AND 1440", name="interval_valid"),
+        CheckConstraint("stale_minutes BETWEEN 1 AND 30", name="stale_valid"),
+        CheckConstraint("cardinality(gear_codes) BETWEEN 1 AND 5", name="gear_codes_valid"),
+        CheckConstraint(
+            "cardinality(usage_mode_codes) BETWEEN 1 AND 5", name="usage_mode_codes_valid"
+        ),
     )
