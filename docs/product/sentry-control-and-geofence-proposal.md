@@ -156,3 +156,11 @@ Build order if approved: A (ADR-010, CLI, owner-run test, endpoint, button), the
 7. Approved: the owner-run `--dump --include-lock-door` read, pasting only key names and plain values for the engine and car states.
 
 Still open: the engine and car state conditions (waiting on the dump), whether the account may send commands, the real Sentry payload, and Zeekr's terms. The owner's home point and radius are not in the repo and are never to be.
+
+## Owner decisions, 2026-11-05
+
+1. Default radius: 5 km (configurable).
+2. Stale limit: 30 minutes (configurable). A position older than this is tagged stale and not used.
+3. Check interval: 5 minutes (the approved minimum).
+4. The geofence centre is the owner's home. It is **not** recorded in the repo, in any doc, in tests, in logs or in the model prompts. It goes in the host `infra/.env` only. How the owner's address becomes coordinates is open: the app does no address lookup, and a lookup would be a new external service that needs the owner's approval (see the proposal above).
+5. Car-state condition: the owner proposed `gearAutoStatus = '0'` and `usageMode = '0'`. **Not yet accepted.** `usageMode '0'` has never been read on the owner's car (only `'2'` and `'13'`), so the condition may never be true. Waiting on a reading with the car asleep in Park.
