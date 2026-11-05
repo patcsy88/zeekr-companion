@@ -106,7 +106,6 @@ function Layout() {
         <NavLink to="/reminders">Reminders</NavLink>
         <NavLink to="/expenses">Expenses</NavLink>
         <NavLink to="/warranty">Warranty</NavLink>
-        <NavLink to="/advisory">Advisory</NavLink>
         <NavLink to="/geofence">Geofence</NavLink>
         <NavLink to="/vehicle">Vehicle</NavLink>
       </nav>
