@@ -703,6 +703,7 @@ export const OFF_CARD = {
 
 const liveHandlers = [
   http.get('*/api/v1/live-vehicle', () => HttpResponse.json(OFF_CARD)),
+  http.get('*/api/v1/advisory/proposals', () => HttpResponse.json({ items: [] })),
   http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
   http.get('*/api/v1/vehicle/sentry/events', ({ request }) => {
     // Open and silent, like an idle stream; it ends when the page aborts.

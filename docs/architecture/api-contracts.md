@@ -929,3 +929,5 @@ New table `geofence_settings`, at most one row (`id` fixed at 1 by a check). Thi
 - The check reads the row at each run. A new interval applies after the current wait. The rule version stays 1 and the alert `inputs` are unchanged.
 - `GEOFENCE_ENABLED` and the home point stay in the host `.env`. Token required, `no-store`, no new error code. The geofence still only alerts; nothing is sent to the car.
 
+- **Sentry control location (2026-11-06, web only; no contract change).** The Sentry on/off switch is on the Sentry tab, not the Vehicle page. The endpoints, allowed paths and errors are unchanged. The Sentry tab reads `/live-vehicle` once on open, on visibility and on Refresh, and holds the pushed-state stream open while visible. It adds no timer, so it does not poll the car.
+
