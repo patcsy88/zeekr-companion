@@ -246,3 +246,7 @@ Drafted 2026-11-05 from the owner's decisions above. Nothing here is built. It c
 - An all-day background read may be noticed by Zeekr, may drain the 12 V battery, and is unverified under their terms.
 - Nominatim's policy discourages personal data. The query is street level only, sent once.
 - The alert shows in-app only. If nobody opens the app, nobody is told.
+
+## Owner decisions, 2026-11-05 (contract and data model)
+
+The owner approved the Piece B contract and data model above, as drafted ("Approve"): the `closed` status, the `sentry_off_outside_geofence` condition, migration `0013`, no model call for this kind, a dismissed alert staying dismissed for its episode, and the settings list. Changing it now needs the owner to be told first. Build starts with tests. A deploy is owner-run and needs a fresh encrypted export first because of the migration.
