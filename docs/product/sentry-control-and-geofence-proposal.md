@@ -250,3 +250,51 @@ Drafted 2026-11-05 from the owner's decisions above. **Approved by the owner on 
 ## Owner decisions, 2026-11-05 (contract and data model)
 
 The owner approved the Piece B contract and data model above, as drafted ("Approve"): the `closed` status, the `sentry_off_outside_geofence` condition, migration `0013`, no model call for this kind, a dismissed alert staying dismissed for its episode, and the settings list. Changing it now needs the owner to be told first. Build starts with tests. A deploy is owner-run and needs a fresh encrypted export first because of the migration.
+
+## Piece C: a Geofence settings tab (DRAFT, needs the owner's approval before any code)
+
+Drafted 2026-11-05 from the owner's request and answers. Nothing here is built.
+
+### Owner answers (2026-11-05)
+
+- **First step is settings only.** The geofence still only alerts and never sends anything to the car.
+- **Settings live in the database**, edited in the tab, applied without a restart. The home address and coordinates stay in the host `.env` only and never appear in the tab, the API or the database.
+- **Automatic Sentry on is not part of this step.** For a later step the owner chose these safeguards: off by default with a switch in the tab, fresh reading only, once per episode, log every automatic send, and "notify and ask first". The last one conflicts with an automatic send (one asks the owner, the other sends by itself). It is open and must be settled in that later step's own proposal. That step needs a new ADR (the first automatic vehicle command) and the owner's approval before any code.
+
+### What the tab edits
+
+| Setting | Today (from `.env`) | Proposed limit in the tab |
+|---|---|---|
+| Radius (km) | 5 | above 0, up to 100 |
+| Check interval (minutes) | 5 | 5 to 1440 |
+| Stale limit (minutes) | 30 | 1 to 1440 (open question 1) |
+| Gear codes that count as "parked" | `0` | 1 to 5 codes, each 0 to 99 |
+| Usage-mode codes that count as "asleep" | `0` | 1 to 5 codes, each 0 to 99 |
+
+`GEOFENCE_ENABLED` and the home point stay in `.env` (they need a restart and a lookup). The tab shows whether the geofence is on, and whether a home point is set, as yes or no only.
+
+### Data model (CHANGE: the Piece B "no new table" no longer holds)
+
+- One new table, `geofence_settings`, one row only (`id` fixed at 1, enforced by a check). Columns: `radius_km`, `interval_minutes`, `stale_minutes`, `gear_codes`, `usage_mode_codes` (small integer lists), `updated_at` (UTC).
+- Migration `0014`. Needs a fresh encrypted export before the deploy. No home data is stored.
+- No row means the `.env` values apply. Once a row is saved, it wins over `.env`.
+
+### Contract
+
+| Method | Path | Meaning |
+|---|---|---|
+| `GET` | `/api/v1/geofence/settings` | Current settings, where each value comes from (`saved` or `env`), the limits, `enabled` (bool) and `home_set` (bool). `200`, `401` |
+| `PUT` | `/api/v1/geofence/settings` | Saves all five values. `200` with the same body, `400 validation_error` (never 422), `401` |
+
+- Token required, `no-store`, the 64 KiB limit and the existing error shape. No new error code.
+- The home address, coordinates, distance and car position never appear in a request or response.
+- The check reads the saved row at each run, so a change applies at the next check. A new interval applies after the current wait.
+- Changing the codes changes what an alert means. The rule version stays 1 and the alert's `inputs` stay `{"reading_age_minutes": N}`.
+- Web: a new "Geofence" tab, online only, with a plain note that it never sends anything to the car.
+
+### Open questions for the owner
+
+1. **Stale limit maximum.** The host now has 1440. A long limit lets an alert open on a reading up to 24 hours old. Keep 1440 as the tab's maximum, or cap it lower (for example 180)?
+2. **Code entry.** Free numbers, or a pick-list of the known gear labels (P `0`, R `1`, N `2`, D `3`, from your readings only) and the `usageMode` labels (unverified, from the public integration)?
+3. **Reset.** Add a "Use the `.env` values" button that deletes the saved row?
+
