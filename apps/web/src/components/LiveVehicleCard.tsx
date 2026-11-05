@@ -17,6 +17,7 @@ import {
 import { ReadOnlyToggle } from './ReadOnlyToggle';
 import { SentryControl } from './SentryControl';
 import { usePullToRefresh } from '../lib/pullToRefresh';
+import { useSentryPush, type PushedSentry } from '../lib/sentryPush';
 
 /**
  * Read-only live readings from the car (ADR-009). Online only: nothing here is stored on the
@@ -32,8 +33,10 @@ export function LiveVehicleCard() {
   const [note, setNote] = useState<string | null>(null);
   const [sentryNote, setSentryNote] = useState<string | null>(null);
   const [sentrySeen, setSentrySeen] = useState<SentrySeen | null>(null);
+  const [pushed, setPushed] = useState<PushedSentry | null>(null);
   const inflight = useRef(false);
   const active = session.signedIn && online;
+  useSentryPush(active, setPushed);
 
   const load = useCallback(async (manual: boolean) => {
     if (inflight.current) return;
@@ -117,6 +120,7 @@ export function LiveVehicleCard() {
           note={note}
           onSentryResult={setSentryNote}
           sentrySeen={sentrySeen}
+          pushed={pushed}
           onSentrySeen={(on) => {
             setSentrySeen({ on, at: new Date().toISOString(), basis: card.received_at });
           }}
@@ -145,6 +149,7 @@ function CardBody({
   note,
   onSentryResult,
   sentrySeen,
+  pushed,
   onSentrySeen,
 }: {
   card: LiveCard;
@@ -152,6 +157,7 @@ function CardBody({
   note: string | null;
   onSentryResult: (text: string | null) => void;
   sentrySeen: SentrySeen | null;
+  pushed: PushedSentry | null;
   onSentrySeen: (on: boolean) => void;
 }) {
   if (card.status === 'off') {
@@ -170,7 +176,11 @@ function CardBody({
   const t = r.tyres_kpa;
   const tc = r.tyres_celsius;
   const ind = r.indicators;
-  const seen = sentrySeen !== null && sentrySeen.basis === card.received_at ? sentrySeen : null;
+  const local = sentrySeen !== null && sentrySeen.basis === card.received_at ? sentrySeen : null;
+  // A state pushed from another page counts only while it is newer than the card's own reading.
+  const remote =
+    pushed !== null && (card.received_at === null || pushed.at > card.received_at) ? pushed : null;
+  const seen = local && remote ? (remote.at > local.at ? remote : local) : (remote ?? local);
   return (
     <>
       {card.status === 'paused' ? (

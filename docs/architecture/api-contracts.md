@@ -879,6 +879,22 @@ The one command the app may send to the car. Nothing else is added: no other com
 - The web switch is separate from the read-only indicators. It shows the state the car last reported, always asks first when flipped, and after the send moves to the `state_after` the API returns (never to the state that was asked for). `confirmed: false` is shown as "did not take effect". It shows only fixed wording, taken from `confirmed` and the status code.
 - Acceptance criteria: (13) the body is exactly `on` or `off`, anything else is 400 and sends nothing; (14) one send is one library call with the constant payload; (15) the state shown after is what the car reports, and an unreadable state after is `null`; (16) a refusal is 502 with fixed text and no retry; (17) a second send within 60 seconds, or while one is in progress, is 409 and sends nothing; (18) the log holds no payload or reply; (19) only the Sentry command module names the write method.
 
+### Amendment: Sentry state pushed to open pages (ADR-010; owner approved 2026-11-05)
+
+So a second open page (for example a phone) shows the switch change made on another page. Option A with a re-sync, approved by the owner. No "who changed it" label.
+
+| Method | Path | Meaning |
+|---|---|---|
+| `GET` | `/api/v1/vehicle/sentry/state` | The last Sentry state this API saw after a send, from memory. `200` body `{"state": "on" \| "off" \| null, "at": <UTC time> \| null}`. `null` after an API restart or before any send. `200`, `401` |
+| `GET` | `/api/v1/vehicle/sentry/events` | Server-Sent Events stream (`text/event-stream`). `200`, `401`, `429` |
+
+- Token required on connect, `no-store`. The page reads the stream with `fetch` and the Bearer header, because `EventSource` cannot send headers.
+- On connect the stream sends the held state once, then one `sentry` event each time a send ends with a readable `state_after`: data `{"state": "on" \| "off", "at": <UTC time>}`. A comment line is sent every 20 seconds as keepalive.
+- At most 4 streams at once (there is one owner, so this is the cap per login too); a fifth is refused with `429 rate_limited` and a `Retry-After` header. The token is re-checked at every keepalive (20 seconds), and the stream closes once it has expired.
+- In memory only: no table, no migration, nothing stored. The stream never triggers a read of the car and carries no position or other data.
+- The page re-syncs with `GET .../sentry/state` on load, on becoming visible and on reconnect, because iOS Safari suspends streams in the background. It labels the state with its time, and applies the same newer-than-card rule as after a send.
+- Acceptance criteria: (20) a send that ends with a readable state reaches every open stream; (21) a new or reconnected page gets the held state at once; (22) a restart leaves the state `null`; (23) the fifth stream is refused; (24) an expired token ends the stream; (25) nothing is stored and no read of the car is triggered.
+
 ### Owner answers, 2026-11-03
 
 1. Voltage is kept to one decimal.

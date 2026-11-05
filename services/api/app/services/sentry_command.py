@@ -21,6 +21,7 @@ from app.errors import Conflict, NotFound, UpstreamFailed
 from app.repositories.car_command_log import CarCommandLogRepository
 from app.schemas import CommandLogItem, CommandLogOut, SentryCommandOut
 from app.services.live_vehicle import months_before
+from app.services.sentry_state import SentryStateHub
 
 RETENTION_MONTHS = 12
 MIN_SPACING_S = 60.0
@@ -48,6 +49,7 @@ class SentryCommandService:
         send_lock: threading.Lock,
         sleep: Callable[[float], None],
         wait_s: float,
+        hub: SentryStateHub | None = None,
         now: Callable[[], dt.datetime] = lambda: dt.datetime.now(dt.UTC),
     ) -> None:
         self._repo = repo
@@ -56,6 +58,7 @@ class SentryCommandService:
         self._send_lock = send_lock
         self._sleep = sleep
         self._wait_s = wait_s
+        self._hub = hub
         self._now = now
 
     def send(self, desired: str) -> SentryCommandOut:
@@ -79,6 +82,12 @@ class SentryCommandService:
             self._send_lock.release()
 
     def _send_locked(self, desired: str, vehicle_of: Callable[[], Any]) -> SentryCommandOut:
+        out = self._send_once(desired, vehicle_of)
+        if self._hub is not None and out.state_after is not None:
+            self._hub.publish(out.state_after, self._now())
+        return out
+
+    def _send_once(self, desired: str, vehicle_of: Callable[[], Any]) -> SentryCommandOut:
         try:
             vehicle = vehicle_of()
             before = _label(vehicle.get_remote_control_state())

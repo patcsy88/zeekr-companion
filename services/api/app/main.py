@@ -42,6 +42,7 @@ from app.routers import (
 from app.services.auth import AuthService
 from app.services.daily_read import daily_read_lifespan
 from app.services.reasoning import build_reasoning_model
+from app.services.sentry_state import SentryStateHub
 
 logger = logging.getLogger("zeekr.api")
 
@@ -149,6 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.live_telemetry = build_live_provider(settings)
     app.state.live_lock = threading.Lock()
     app.state.sentry_send_lock = threading.Lock()
+    app.state.sentry_hub = SentryStateHub()
     app.state.sentry_sleep = time.sleep  # a test replaces it so nothing waits
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import threading
 from typing import Any
@@ -354,3 +355,203 @@ def test_a_configured_wait_is_what_the_server_sleeps(
     install(FakeVehicle(["0", "1"]))
     assert client.post(URL, json={"desired": "on"}, headers=auth_headers).status_code == 200
     assert install.sleeps == [22.0]
+
+
+STATE = "/api/v1/vehicle/sentry/state"
+EVENTS = "/api/v1/vehicle/sentry/events"
+
+
+@pytest.mark.parametrize("url", [STATE, EVENTS])
+def test_state_and_events_need_a_token(client: TestClient, url: str) -> None:
+    response = client.get(url)
+    assert response.status_code == 401
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_state_is_null_until_a_send_ends_and_then_holds_what_the_car_reported(
+    client: TestClient, auth_headers: dict[str, str], install: Any
+) -> None:
+    assert client.get(STATE, headers=auth_headers).json() == {"state": None, "at": None}
+    install(FakeVehicle(["0", "1"]))
+    assert client.post(URL, json={"desired": "on"}, headers=auth_headers).status_code == 200
+    held = client.get(STATE, headers=auth_headers).json()
+    assert held["state"] == "on"
+    assert held["at"].endswith("Z")
+    assert set(held) == {"state", "at"}
+    assert CANARY not in str(held)
+
+
+def test_an_unreadable_state_after_is_not_pushed(
+    client: TestClient, auth_headers: dict[str, str], install: Any
+) -> None:
+    install(FakeVehicle(["0", RuntimeError("down")]))
+    assert (
+        client.post(URL, json={"desired": "on"}, headers=auth_headers).json()["confirmed"] is False
+    )
+    assert client.get(STATE, headers=auth_headers).json()["state"] is None
+
+
+def test_a_send_that_changes_nothing_still_reports_the_car_state(
+    client: TestClient, auth_headers: dict[str, str], install: Any
+) -> None:
+    install(FakeVehicle(["1"]))
+    body = client.post(URL, json={"desired": "on"}, headers=auth_headers).json()
+    assert body["sent"] is False
+    assert client.get(STATE, headers=auth_headers).json()["state"] == "on"
+
+
+class Stream:
+    """One open events stream, driven at the ASGI level (TestClient buffers whole responses)."""
+
+    def __init__(self, app: Any, token: str) -> None:
+        self.app = app
+        self.token = token
+        self.messages: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.gone = asyncio.Event()
+        self.task: asyncio.Task[None] | None = None
+
+    async def open(self) -> None:
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": EVENTS,
+            "raw_path": EVENTS.encode(),
+            "query_string": b"",
+            "headers": [(b"authorization", f"Bearer {self.token}".encode())],
+            "client": ("127.0.0.1", 1),
+            "server": ("test", 80),
+            "app": self.app,
+        }
+
+        async def receive() -> dict[str, Any]:
+            await self.gone.wait()
+            return {"type": "http.disconnect"}
+
+        self.task = asyncio.create_task(self.app(scope, receive, self.messages.put))
+
+    async def next(self) -> dict[str, Any]:
+        return await asyncio.wait_for(self.messages.get(), timeout=5)
+
+    async def text(self) -> str:
+        msg = await self.next()
+        assert msg["type"] == "http.response.body"
+        return bytes(msg["body"]).decode()
+
+    async def close(self) -> None:
+        self.gone.set()
+        if self.task is not None:
+            await asyncio.wait_for(self.task, timeout=5)
+
+
+def token_of(auth_headers: dict[str, str]) -> str:
+    return auth_headers["Authorization"].split(" ", 1)[1]
+
+
+def test_a_stream_gets_the_held_state_at_once_and_each_later_send(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    app: Any = client.app
+    hub = app.state.sentry_hub
+
+    async def scenario() -> None:
+        hub.publish("off", dt.datetime(2026, 11, 5, 1, 0, tzinfo=dt.UTC))
+        stream = Stream(app, token_of(auth_headers))
+        await stream.open()
+        start = await stream.next()
+        assert start["status"] == 200
+        headers = {k.decode(): v.decode() for k, v in start["headers"]}
+        assert headers["content-type"].startswith("text/event-stream")
+        assert headers["cache-control"] == "no-store"
+        assert await stream.text() == (
+            'event: sentry\ndata: {"state": "off", "at": "2026-11-05T01:00:00Z"}\n\n'
+        )
+        assert hub.stream_count() == 1
+        hub.publish("on", dt.datetime(2026, 11, 5, 1, 5, tzinfo=dt.UTC))
+        assert await stream.text() == (
+            'event: sentry\ndata: {"state": "on", "at": "2026-11-05T01:05:00Z"}\n\n'
+        )
+        await stream.close()
+        assert hub.stream_count() == 0
+
+    asyncio.run(scenario())
+
+
+def test_a_publish_from_a_worker_thread_reaches_two_open_streams(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    app: Any = client.app
+    hub = app.state.sentry_hub
+
+    async def scenario() -> None:
+        streams = [Stream(app, token_of(auth_headers)) for _ in range(2)]
+        for s in streams:
+            await s.open()
+            assert (await s.next())["status"] == 200
+        assert hub.stream_count() == 2
+        at = dt.datetime(2026, 11, 5, 2, 0, tzinfo=dt.UTC)
+        await asyncio.to_thread(hub.publish, "on", at)
+        for s in streams:
+            assert '"state": "on"' in await s.text()
+            await s.close()
+        assert hub.stream_count() == 0
+
+    asyncio.run(scenario())
+
+
+def test_a_stream_sends_keepalive_comments_while_idle(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    app: Any = client.app
+    app.state.sentry_keepalive_s = 0.05
+
+    async def scenario() -> None:
+        stream = Stream(app, token_of(auth_headers))
+        await stream.open()
+        await stream.next()
+        assert await stream.text() == ": keepalive\n\n"
+        await stream.close()
+
+    asyncio.run(scenario())
+
+
+def test_the_fifth_stream_is_refused_with_429(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    import asyncio
+
+    hub = client.app.state.sentry_hub  # type: ignore[attr-defined]
+    loop = asyncio.new_event_loop()
+    try:
+        taken = [hub.subscribe(loop) for _ in range(4)]
+        assert all(taken)
+        response = client.get(EVENTS, headers=auth_headers)
+        assert response.status_code == 429
+        assert response.json()["error"]["code"] == "rate_limited"
+        assert response.headers["retry-after"]
+        for sub in taken:
+            hub.unsubscribe(sub)
+        assert hub.stream_count() == 0
+    finally:
+        loop.close()
+
+
+def test_an_expired_token_ends_the_stream_at_the_next_keepalive(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    app: Any = client.app
+    app.state.sentry_keepalive_s = 0.05
+
+    async def scenario() -> None:
+        stream = Stream(app, token_of(auth_headers))
+        await stream.open()
+        await stream.next()
+        assert await stream.text() == ": keepalive\n\n"
+        app.state.auth_service.is_valid_token = lambda _t: False
+        assert stream.task is not None
+        await asyncio.wait_for(stream.task, timeout=5)
+        assert app.state.sentry_hub.stream_count() == 0
+
+    asyncio.run(scenario())

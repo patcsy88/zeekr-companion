@@ -103,6 +103,7 @@ def get_sentry_command_service(request: Request, session: SessionDep) -> SentryC
         state.sentry_send_lock,
         state.sentry_sleep,
         float(state.settings.sentry_confirm_wait_seconds),
+        state.sentry_hub,
     )
 
 

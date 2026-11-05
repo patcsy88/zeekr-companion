@@ -363,6 +363,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicle/sentry/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sentry Events
+         * @description Server-Sent Events: the held state on connect, then one event per finished send.
+         */
+        get: operations["sentry_events_api_v1_vehicle_sentry_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicle/sentry/log": {
         parameters: {
             query?: never;
@@ -372,6 +392,26 @@ export interface paths {
         };
         /** Sentry Log */
         get: operations["sentry_log_api_v1_vehicle_sentry_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicle/sentry/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sentry State
+         * @description The last Sentry state this API saw after a send. In memory only; no read of the car.
+         */
+        get: operations["sentry_state_api_v1_vehicle_sentry_state_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1137,6 +1177,13 @@ export interface components {
             sent: boolean;
             /** State After */
             state_after: ("on" | "off") | null;
+        };
+        /** SentryStateOut */
+        SentryStateOut: {
+            /** At */
+            at: string | null;
+            /** State */
+            state: ("on" | "off") | null;
         };
         /**
          * ServiceCompleteIn
@@ -3455,6 +3502,42 @@ export interface operations {
             };
         };
     };
+    sentry_events_api_v1_vehicle_sentry_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     sentry_log_api_v1_vehicle_sentry_log_get: {
         parameters: {
             query?: {
@@ -3482,6 +3565,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sentry_state_api_v1_vehicle_sentry_state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SentryStateOut"];
                 };
             };
             /** @description unauthenticated: missing or invalid token */
