@@ -99,7 +99,27 @@ Source: owner-run `--dump` on the Mac, with the owner stating the gear selector 
 
 - Each mapping comes from the owner's label on one or more pastes (P was read in several parked dumps and once on its own, D twice, R and N once each). Status: `unverified`.
 - A value is only as fresh as the last cloud upload. Whether it updates while the car is moving is not known, because `speed` read 0 in every sample.
-- This table records the gear key only. The engine and car-state conditions for the rule are **not decided**. The owner is working that out, and nothing is written into the contract until the owner says.
+
+#### Car status: `basicVehicleStatus.usageMode` (owner decision, 2026-11-05)
+
+The owner chose `basicVehicleStatus.usageMode` as the car status. The labels come from a public third-party Home Assistant integration (`Fryyyyy/zeekr_homeassistant`, MIT licence, `custom_components/zeekr_ev/sensor.py`, class `ZeekrVehicleStatusSensor`, read 2026-11-05; nothing of the owner's was sent). The labels are that project's, not Zeekr's. Status: `unverified`.
+
+| `usageMode` | Label in that project | Seen on the owner's car                                                  |
+| ----------- | --------------------- | ------------------------------------------------------------------------ |
+| `'0'`       | Deep Sleep            | no                                                                       |
+| `'1'`       | Parked                | no                                                                       |
+| `'2'`       | Unlocked              | yes: engine-off dump (central locking read `'0'`, which fits "unlocked") |
+| `'3'`       | System Active         | no                                                                       |
+| `'4'`       | Ready to Go           | no                                                                       |
+| `'13'`      | Active                | yes: engine-running dump, and the Drive (D) dump                         |
+
+- On the owner's car only `'2'` and `'13'` have been read. The labels for `'0'`, `'1'`, `'3'` and `'4'` are not checked against the car.
+- `'13'` ("Active") read the same while the car was running in Park and while it was in Drive, so on its own it does not separate "parked with the car on" from "in gear". The gear key does. Whether the rule needs both is for the owner to decide.
+- The same project maps `engineStatus` to "Parked" or "Driving", but on the owner's car `engineStatus` read `engine-off` while the car was in D. So `usageMode` is the better signal here, and `engineStatus` is not used.
+- The `usageMode` value for the P, R and N gear readings was not captured, because only the gear key was pasted.
+- A value is only as fresh as the last cloud upload.
+
+- The gear table above records the gear key only. The engine and car-state conditions for the rule are **not decided**. The owner is working that out, and nothing is written into the contract until the owner says.
 
 ## Risks (both pieces)
 
