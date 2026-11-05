@@ -98,6 +98,7 @@ Source: owner-run `--dump` on the Mac, with the owner stating the gear selector 
 | Drive (D)     | `'3'`            |
 
 - Each mapping comes from the owner's label on one or more pastes (P was read in several parked dumps and once on its own, D twice, R and N once each). Status: `unverified`.
+- **No outside source for these labels.** On 2026-11-05 the public Home Assistant integration (`Fryyyyy/zeekr_homeassistant`, 19 source files, `services.yaml`, `translations/en.json` and six test files), the `zeekr_ev_api` 0.1.15 library, and the issues and pull requests of both repos were searched for `gearAutoStatus` and for "gear". There were no matches. That project reads no `drivingBehaviourStatus` key. So the P, R, N and D labels above come only from the owner's readings, and no third party confirms them.
 - A value is only as fresh as the last cloud upload. Whether it updates while the car is moving is not known, because `speed` read 0 in every sample.
 
 #### Car status: `basicVehicleStatus.usageMode` (owner decision, 2026-11-05)
