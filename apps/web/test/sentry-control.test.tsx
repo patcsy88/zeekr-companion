@@ -210,7 +210,7 @@ describe('sentry control', () => {
     await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
     const seen = await screen.findByTestId('sentry-seen');
     expect(seen).toHaveTextContent('Sentry: on, read from the car at');
-    expect(seen).toHaveTextContent('newer than the readings above');
+    expect(seen).not.toHaveTextContent('readings above');
     expect(screen.getByRole('switch', { name: 'Sentry: on' })).toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: 'Sentry: off' })).not.toBeInTheDocument();
   });

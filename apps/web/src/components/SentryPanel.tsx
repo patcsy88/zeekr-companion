@@ -100,8 +100,7 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
       ) : null}
       {seen ? (
         <p role="status" className="notice info" data-testid="sentry-seen">
-          Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}. This is newer
-          than the readings above.
+          Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}.
         </p>
       ) : card.observed_at !== null ? (
         <p className="muted small" data-testid="live-asof">
