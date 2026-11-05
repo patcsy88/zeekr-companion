@@ -247,10 +247,13 @@ class AdvisoryProposal(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "condition IN ('date_vs_km_warranty','date_vs_km_service','charging_cost_drift')",
+            "condition IN ('date_vs_km_warranty','date_vs_km_service','charging_cost_drift',"
+            "'sentry_off_outside_geofence')",
             name="condition_valid",
         ),
-        CheckConstraint("status IN ('proposed','accepted','dismissed')", name="status_valid"),
+        CheckConstraint(
+            "status IN ('proposed','accepted','dismissed','closed')", name="status_valid"
+        ),
         CheckConstraint(
             "explanation_status IN ('model','unavailable','disabled','limit_reached',"
             "'invalid_output')",

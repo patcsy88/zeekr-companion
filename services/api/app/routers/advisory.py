@@ -27,7 +27,7 @@ from app.schemas import (
 
 router = APIRouter(tags=["advisory"], dependencies=[Depends(require_auth)])
 
-StatusFilter = Annotated[Literal["proposed", "accepted", "dismissed", "all"], Query()]
+StatusFilter = Annotated[Literal["proposed", "accepted", "dismissed", "closed", "all"], Query()]
 
 
 @router.post(

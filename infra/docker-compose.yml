@@ -59,6 +59,14 @@ services:
       ZEEKR_PROD_SECRET: ${ZEEKR_PROD_SECRET:-}
       ZEEKR_VIN_KEY: ${ZEEKR_VIN_KEY:-}
       ZEEKR_VIN_IV: ${ZEEKR_VIN_IV:-}
+      # Geofence alert (Piece B). Off by default; the home query or coordinates live in infra/.env only.
+      GEOFENCE_ENABLED: ${GEOFENCE_ENABLED:-false}
+      GEOFENCE_HOME_QUERY: ${GEOFENCE_HOME_QUERY:-}
+      GEOFENCE_HOME_LAT: ${GEOFENCE_HOME_LAT:-}
+      GEOFENCE_HOME_LON: ${GEOFENCE_HOME_LON:-}
+      GEOFENCE_RADIUS_KM: ${GEOFENCE_RADIUS_KM:-5}
+      GEOFENCE_INTERVAL_MINUTES: ${GEOFENCE_INTERVAL_MINUTES:-5}
+      GEOFENCE_STALE_MINUTES: ${GEOFENCE_STALE_MINUTES:-30}
       # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
       # Never '*': the entrypoint refuses it.
       FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}
@@ -66,6 +74,9 @@ services:
     networks:
       - backend
       - egress
+    # The only writable path: the one-time home lookup result (Piece B).
+    volumes:
+      - geofence_state:/var/lib/zeekr-geofence
     read_only: true
     cap_drop:
       - ALL
@@ -143,4 +154,5 @@ networks:
   egress:
 
 volumes:
+  geofence_state:
   pgdata:

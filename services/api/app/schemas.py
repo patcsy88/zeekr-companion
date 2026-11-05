@@ -642,8 +642,13 @@ class WarrantyTemplateList(BaseModel):
 
 # --- Advisory agents (ADR-008) --------------------------------------------------------------
 
-AdvisoryCondition = Literal["date_vs_km_warranty", "date_vs_km_service", "charging_cost_drift"]
-ProposalStatus = Literal["proposed", "accepted", "dismissed"]
+AdvisoryCondition = Literal[
+    "date_vs_km_warranty",
+    "date_vs_km_service",
+    "charging_cost_drift",
+    "sentry_off_outside_geofence",
+]
+ProposalStatus = Literal["proposed", "accepted", "dismissed", "closed"]
 ExplanationStatus = Literal["model", "unavailable", "disabled", "limit_reached", "invalid_output"]
 ModelRunStatus = Literal["used", "disabled", "unavailable", "limit_reached"]
 
