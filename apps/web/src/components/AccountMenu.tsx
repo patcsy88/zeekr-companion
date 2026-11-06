@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { signOut } from '../auth/session';
 import { useQueueCounts } from '../data/hooks';
-import { notifyData } from '../lib/events';
+import { withCacheLock } from '../data/repository';
+import { bumpEpoch, notifyData } from '../lib/events';
 import { clearAllLocalData } from '../storage/db';
 
 /** The only sign out, labelled "Sign out": clears the cache, the queue and the sync markers. Asks first and says how many unsent changes would be lost. */
@@ -21,8 +22,12 @@ export function AccountMenu() {
     setBusy(true);
     setError(null);
     try {
-      await clearAllLocalData();
-      signOut();
+      // Same lock as every cache write: a sync already running cannot write back after the clear.
+      await withCacheLock(async () => {
+        await clearAllLocalData();
+        signOut();
+        bumpEpoch();
+      });
       notifyData();
       setConfirming(false);
     } catch {
