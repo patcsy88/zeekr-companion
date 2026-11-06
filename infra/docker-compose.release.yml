@@ -1,0 +1,156 @@
+# Zeekr Companion, release install: PostgreSQL + API + web from published images (ADR-012).
+# This is the one file to download. No clone and no build. Put a .env next to it (see
+# .env.example in the repository), then:  docker compose up -d --wait
+# Set ZEEKR_VERSION in .env to a released tag, for example v0.1.0. There is no "latest".
+# The images are linux/amd64 only. Keep this file in step with docker-compose.yml: run
+# infra/check-release-compose.sh after changing either one.
+# Only "web" publishes a port, on 127.0.0.1 by default (NFR-6). Do not expose it to the public
+# internet. "api" and "db" are reachable only on the private compose network.
+
+name: zeekr-companion
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zeekr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}
+      POSTGRES_DB: zeekr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No "ports": the database is only reachable from the API over the private compose network.
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zeekr -d zeekr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ghcr.io/patcsy88/zeekr-companion-api:${ZEEKR_VERSION:?set ZEEKR_VERSION in .env, for example v0.1.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://zeekr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}@db:5432/zeekr
+      TOKEN_SECRET: ${TOKEN_SECRET:?set TOKEN_SECRET in infra/.env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Optional error reporting (ADR-007). Empty means off.
+      SENTRY_DSN: ${SENTRY_DSN_API:-}
+      # Optional advisory model (ADR-008). Off and empty by default; keys live in infra/.env only.
+      ADVISORY_MODEL_ENABLED: ${ADVISORY_MODEL_ENABLED:-false}
+      ADVISORY_MODEL_ID: ${ADVISORY_MODEL_ID:-}
+      ADVISORY_MONTHLY_CALL_LIMIT: ${ADVISORY_MONTHLY_CALL_LIMIT:-60}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ADVISORY_MODEL_BASE_URL: ${ADVISORY_MODEL_BASE_URL:-}
+      ADVISORY_TRACING_ENABLED: ${ADVISORY_TRACING_ENABLED:-false}
+      ADVISORY_TRACING_API_KEY: ${ADVISORY_TRACING_API_KEY:-}
+      ADVISORY_TRACING_API_URL: ${ADVISORY_TRACING_API_URL:-}
+      # Optional live Zeekr readings (ADR-009). Off and empty by default; values live in infra/.env only.
+      ZEEKR_LIVE_ENABLED: ${ZEEKR_LIVE_ENABLED:-false}
+      ZEEKR_LIVE_INTERVAL_MINUTES: ${ZEEKR_LIVE_INTERVAL_MINUTES:-5}
+      SENTRY_CONFIRM_WAIT_SECONDS: ${SENTRY_CONFIRM_WAIT_SECONDS:-15}
+      ZEEKR_USERNAME: ${ZEEKR_USERNAME:-}
+      ZEEKR_PASSWORD: ${ZEEKR_PASSWORD:-}
+      ZEEKR_COUNTRY_CODE: ${ZEEKR_COUNTRY_CODE:-}
+      ZEEKR_HMAC_ACCESS_KEY: ${ZEEKR_HMAC_ACCESS_KEY:-}
+      ZEEKR_HMAC_SECRET_KEY: ${ZEEKR_HMAC_SECRET_KEY:-}
+      ZEEKR_PASSWORD_PUBLIC_KEY: ${ZEEKR_PASSWORD_PUBLIC_KEY:-}
+      ZEEKR_PROD_SECRET: ${ZEEKR_PROD_SECRET:-}
+      ZEEKR_VIN_KEY: ${ZEEKR_VIN_KEY:-}
+      ZEEKR_VIN_IV: ${ZEEKR_VIN_IV:-}
+      # Geofence alert (Piece B). Off by default; the home query or coordinates live in infra/.env only.
+      GEOFENCE_ENABLED: ${GEOFENCE_ENABLED:-false}
+      GEOFENCE_HOME_QUERY: ${GEOFENCE_HOME_QUERY:-}
+      GEOFENCE_HOME_LAT: ${GEOFENCE_HOME_LAT:-}
+      GEOFENCE_HOME_LON: ${GEOFENCE_HOME_LON:-}
+      GEOFENCE_RADIUS_KM: ${GEOFENCE_RADIUS_KM:-5}
+      GEOFENCE_INTERVAL_MINUTES: ${GEOFENCE_INTERVAL_MINUTES:-5}
+      GEOFENCE_STALE_MINUTES: ${GEOFENCE_STALE_MINUTES:-30}
+      GEOFENCE_AUTO_SENTRY_ALLOWED: ${GEOFENCE_AUTO_SENTRY_ALLOWED:-false}
+      # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
+      # Never '*': the entrypoint refuses it.
+      FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}
+    # No "ports": the API is reachable only through the web proxy.
+    networks:
+      - backend
+      - egress
+    # The only writable path: the one-time home lookup result (Piece B).
+    volumes:
+      - geofence_state:/var/lib/zeekr-geofence
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    image: ghcr.io/patcsy88/zeekr-companion-web:${ZEEKR_VERSION:?set ZEEKR_VERSION in .env, for example v0.1.0}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # "off" or "on". "on" adds Strict-Transport-Security; set it only once HTTPS exists.
+      # Any other value makes Caddy fail to start (the snippet file does not exist).
+      HSTS_SNIPPET: /etc/caddy/snippets/hsts-${WEB_HSTS:-off}.caddy
+    ports:
+      # Loopback by default. Change WEB_BIND_ADDRESS deliberately, and only to a private interface.
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    networks:
+      # backend: reaches api, with a fixed address the API trusts for X-Forwarded-For.
+      backend:
+        ipv4_address: ${WEB_PROXY_IP:-172.28.77.10}
+      # edge: the only network with a route out; carries the published port.
+      edge:
+    read_only: true
+    tmpfs:
+      - /data
+      - /config
+    cap_drop:
+      - ALL
+    cap_add:
+      # The caddy binary carries a file capability (cap_net_bind_service); the kernel refuses to
+      # exec it unless the capability is in the container's bounding set. It listens on 8080 only.
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  # api and db live here only. "internal" removes the default route, so neither can reach (or be
+  # reached from) outside the host, and there is nowhere to publish a port from.
+  backend:
+    internal: true
+    ipam:
+      config:
+        # Static subnet so the proxy has a fixed address the API can trust. Change both
+        # WEB_SUBNET and WEB_PROXY_IP together if it clashes with another network.
+        - subnet: ${WEB_SUBNET:-172.28.77.0/24}
+  # web only. Published ports are served through this network.
+  edge:
+  # api only (ADR-008 step 4, owner decision 2026-10-30): a route out for the hosted model and
+  # optional tracing. Nothing is published from it and db is not on it.
+  egress:
+
+volumes:
+  geofence_state:
+  pgdata:

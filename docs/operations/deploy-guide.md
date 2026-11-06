@@ -14,6 +14,11 @@ Related: `infra/README.md` (stack details and the Tailscale runbook), `infra/bac
 
 Everything is in `infra/docker-compose.yml`. Nothing is mounted from the host except the named volumes. There is nothing to build or copy by hand any more: `docker compose up --build` builds the client too.
 
+## Two ways to install
+
+- **From a clone (what the owner's host runs today):** sections 2 to 10 below. It builds the images on the host.
+- **From published images, one file (ADR-012):** the section "Install from published images" at the end. It needs no clone and no build, but it works only after the first release has been published.
+
 ## 1. Prerequisites
 
 - Ubuntu Server 24.04 LTS with Docker Engine and the Compose plugin (ADR-004). Check with `docker compose version`.
@@ -132,6 +137,37 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 - A leftover `WEB_DIST_DIR` line in `.env` is ignored. You may delete it.
 - The `dist` folder you used to copy to the host is no longer read. You may delete it.
 - `WEB_BIND_ADDRESS`, `WEB_PORT` and `WEB_HSTS` keep their meaning.
+
+## Install from published images (one file, ADR-012)
+
+**Not run yet.** No image has been published, and the workflow has never run. Do not rely on this until the checks at the end of this section have been done once.
+
+Needs a host with Docker Engine and the Compose plugin, on **x86_64** (the images are `linux/amd64` only). Check with `uname -m`.
+
+1. Make a folder and download two files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`) and `infra/.env.example` (save it as `.env`).
+2. Edit `.env`: fill in `POSTGRES_PASSWORD` and `TOKEN_SECRET` (section 3), and set `ZEEKR_VERSION` to a released tag, for example `v0.1.0`. Never paste `.env` anywhere.
+3. `docker compose up -d --wait`. It pulls the images, so there is no build and no `npm ci`.
+4. Create the owner login: `docker compose exec api python -m app.cli.set_owner`.
+5. Check it as in section 5.
+6. To update: change `ZEEKR_VERSION` to the new tag, then `docker compose pull` and `docker compose up -d --wait`. To go back, set the old tag. A migration runs when `api` starts, so take a fresh encrypted export first when the release notes mention one (section 7).
+
+Browser error reporting (`VITE_SENTRY_DSN`) is **off** in the published web image. To have it, install from a clone.
+
+### Publishing a release (owner)
+
+The images are built by the GitHub Actions workflow `.github/workflows/release-images.yml`. It runs only when a version tag is pushed. It never runs on a push to `main`. It uses GitHub's built-in token, so there is no secret to store.
+
+1. Run all the quality gates on the commit to release.
+2. Tag and push: `git tag v0.1.0` then `git push origin v0.1.0`. The tag must look like `vN.N.N`.
+3. Watch the run on the repository's Actions page. It builds both images, checks that the web image has no dotfiles or source maps and the API image has no env or key files, and only then pushes them.
+4. **First release only:** a new package starts private. On GitHub, open each of the two packages (`zeekr-companion-api` and `zeekr-companion-web`), then Package settings, and set the visibility to public. Link them to the repository if GitHub offers it. A public package can be pulled with no login.
+5. On a host, test the install above.
+
+### What is not verified for this install
+
+- The workflow has not run, the packages do not exist, and a pull has not been tried.
+- The images have not been started on the owner's host.
+- GitHub says the Container registry is "currently free" and promises a month's notice before that changes.
 
 ## What is verified and what is not
 

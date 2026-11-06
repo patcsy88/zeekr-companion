@@ -1,0 +1,78 @@
+# Builds and publishes the api and web images to ghcr.io (ADR-012).
+# Runs only when a version tag is pushed, for example:  git tag v0.1.0 && git push origin v0.1.0
+# It never runs on a push to main. Uses the built-in GITHUB_TOKEN only: no stored secret.
+name: release-images
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OWNER: ${{ github.repository_owner }}
+      VERSION: ${{ github.ref_name }}
+    steps:
+      # Actions are pinned to commit hashes (the tag is in the comment), so a moved tag cannot
+      # change what runs.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Name the images (lower case, as ghcr.io requires)
+        run: |
+          owner="${OWNER,,}"
+          echo "API_IMAGE=ghcr.io/${owner}/zeekr-companion-api:${VERSION}" >> "$GITHUB_ENV"
+          echo "WEB_IMAGE=ghcr.io/${owner}/zeekr-companion-web:${VERSION}" >> "$GITHUB_ENV"
+
+      # Built into the local Docker store first, so they can be checked before anything is pushed.
+      - name: Build api (linux/amd64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: services/api
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.API_IMAGE }}
+
+      # VITE_SENTRY_DSN is not passed, so browser error reporting is off in the published image.
+      - name: Build web (linux/amd64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/web.Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.WEB_IMAGE }}
+
+      - name: Check the images hold no dotfiles, source maps or env files
+        run: |
+          bad="$(docker run --rm --entrypoint sh "$WEB_IMAGE" -c \
+            "find /srv/web \( -name '.*' -o -name '*.map' \) -not -path /srv/web")"
+          if [ -n "$bad" ]; then echo "web image has files that must not ship:"; echo "$bad"; exit 1; fi
+          bad="$(docker run --rm --entrypoint sh "$API_IMAGE" -c \
+            "find /srv/api \( -name '.env*' -o -name '*.pem' -o -name '*.key' \) -print")"
+          if [ -n "$bad" ]; then echo "api image has files that must not ship:"; echo "$bad"; exit 1; fi
+          echo "images ok"
+
+      - name: Push
+        run: |
+          docker push "$API_IMAGE"
+          docker push "$WEB_IMAGE"
+          echo "Pushed $API_IMAGE and $WEB_IMAGE"
