@@ -354,8 +354,13 @@ button.link {
 .tabs a {
   flex: 1 1 0;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
   text-align: center;
-  padding: 0.9rem 0.1rem;
+  padding: 0.5rem 0.1rem 0.45rem;
   font-size: 0.5rem;
   color: var(--muted);
   text-decoration: none;
@@ -364,6 +369,9 @@ button.link {
 .tabs a.active {
   color: var(--brand);
   box-shadow: inset 0 3px 0 var(--brand);
+}
+.tab-icon {
+  flex: none;
 }
 .narrow {
   max-width: 28rem;

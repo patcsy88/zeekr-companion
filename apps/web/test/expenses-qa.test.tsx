@@ -459,7 +459,8 @@ describe('QA list, filters and totals in the UI', () => {
     render(<App />);
     for (const s of samples) expect(await screen.findByText(s)).toBeInTheDocument();
     expect(document.querySelector('script')).toBeNull();
-    expect(document.querySelector('svg')).toBeNull();
+    // The tab bar draws its own decorative icons, so look only where a note could appear.
+    expect(document.querySelector('main svg')).toBeNull();
     expect((window as unknown as { __x?: number }).__x).toBeUndefined();
   });
 

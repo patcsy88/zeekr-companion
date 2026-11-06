@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { SignIn } from './components/SignIn';
 import { SyncBar } from './components/SyncBar';
+import { TabIcon } from './components/TabIcon';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession } from './data/hooks';
 import { AdvisoryPage } from './pages/AdvisoryPage';
@@ -103,14 +104,33 @@ function Layout() {
       </main>
       <nav className="tabs" aria-label="Main">
         <NavLink to="/" end>
-          Service
+          <TabIcon name="service" />
+          <span>Service</span>
         </NavLink>
-        <NavLink to="/reminders">Reminders</NavLink>
-        <NavLink to="/expenses">Expenses</NavLink>
-        <NavLink to="/warranty">Warranty</NavLink>
-        <NavLink to="/sentry">Sentry</NavLink>
-        <NavLink to="/geofence">Geofence</NavLink>
-        <NavLink to="/vehicle">Vehicle</NavLink>
+        <NavLink to="/reminders">
+          <TabIcon name="reminders" />
+          <span>Reminders</span>
+        </NavLink>
+        <NavLink to="/expenses">
+          <TabIcon name="expenses" />
+          <span>Expenses</span>
+        </NavLink>
+        <NavLink to="/warranty">
+          <TabIcon name="warranty" />
+          <span>Warranty</span>
+        </NavLink>
+        <NavLink to="/sentry">
+          <TabIcon name="sentry" />
+          <span>Sentry</span>
+        </NavLink>
+        <NavLink to="/geofence">
+          <TabIcon name="geofence" />
+          <span>Geofence</span>
+        </NavLink>
+        <NavLink to="/vehicle">
+          <TabIcon name="vehicle" />
+          <span>Vehicle</span>
+        </NavLink>
       </nav>
     </>
   );
