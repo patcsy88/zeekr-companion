@@ -520,6 +520,30 @@ describe('live vehicle: the history screen', () => {
   });
 });
 
+describe('live vehicle: dashboard layout', () => {
+  it('shows a battery bar and puts the driver side on the right (right hand drive)', async () => {
+    serveCard(card());
+    open();
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    const bar = screen.getByRole('progressbar', { name: 'Battery level' });
+    expect(bar).toHaveAttribute('aria-valuenow', '64');
+    const labels = Array.from(list.querySelectorAll('.tyre .dash-label')).map((e) => e.textContent);
+    expect(labels).toEqual(['Passenger front', 'Driver front', 'Passenger rear', 'Driver rear']);
+    expect(list).toHaveTextContent('Plugged in: Yes');
+    expect(list).toHaveTextContent('Charging: No');
+  });
+
+  it('draws no bar when the battery has no reading', async () => {
+    serveCard(card({ readings: { ...card().readings, battery_percent: null } }));
+    open();
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    expect(list).toHaveTextContent('no reading');
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+});
+
 describe('live vehicle: overdue service', () => {
   it('shows a negative number with overdue wording', async () => {
     const c = card();

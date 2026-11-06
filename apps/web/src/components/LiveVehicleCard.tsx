@@ -171,40 +171,50 @@ function CardBody({
           {card.received_at ? `, received ${formatKl(card.received_at)}` : ''}.
         </p>
       )}
-      <dl className="details" data-testid="live-readings">
-        <dt>Battery</dt>
-        <dd>{percent(r.battery_percent)}</dd>
-        <dt>Range</dt>
-        <dd>{km(r.range_km)}</dd>
-        <dt>Plugged in</dt>
-        <dd>{yesNo(r.plugged_in)}</dd>
-        <dt>Charging</dt>
-        <dd>{yesNo(r.charging)}</dd>
-        <dt>Tyre, driver front</dt>
-        <dd>
-          {kpa(t.driver_front)}, {celsius(tc.driver_front)}
-        </dd>
-        <dt>Tyre, passenger front</dt>
-        <dd>
-          {kpa(t.passenger_front)}, {celsius(tc.passenger_front)}
-        </dd>
-        <dt>Tyre, driver rear</dt>
-        <dd>
-          {kpa(t.driver_rear)}, {celsius(tc.driver_rear)}
-        </dd>
-        <dt>Tyre, passenger rear</dt>
-        <dd>
-          {kpa(t.passenger_rear)}, {celsius(tc.passenger_rear)}
-        </dd>
-        <dt>12 V battery</dt>
-        <dd>{volts(r.battery_12v_volts)}</dd>
-        <dt>Odometer</dt>
-        <dd>{km(r.odometer_km)}</dd>
-        <dt>Next service in</dt>
-        <dd>
-          {serviceKm(r.service_distance_km)}, {days(r.service_days)}
-        </dd>
-      </dl>
+      <div className="dash" data-testid="live-readings">
+        <div className="dash-hero">
+          <p className="dash-label">Battery</p>
+          <p className="dash-big">{percent(r.battery_percent)}</p>
+          {r.battery_percent !== null ? (
+            <div
+              className="bar"
+              role="progressbar"
+              aria-label="Battery level"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(r.battery_percent)}
+            >
+              <div
+                className={`bar-fill${r.battery_percent <= 20 ? ' bar-low' : ''}`}
+                style={{ width: `${Math.min(100, Math.max(0, r.battery_percent))}%` }}
+              />
+            </div>
+          ) : null}
+          <p className="dash-range">
+            <span className="dash-label">Range</span> <strong>{km(r.range_km)}</strong>
+          </p>
+          <p className="badges">
+            <span className={badgeClass(r.plugged_in)}>Plugged in: {yesNo(r.plugged_in)}</span>
+            <span className={badgeClass(r.charging)}>Charging: {yesNo(r.charging)}</span>
+          </p>
+        </div>
+        <div className="tyres">
+          <Tyre label="Passenger front" kpaValue={t.passenger_front} c={tc.passenger_front} />
+          <Tyre label="Driver front" kpaValue={t.driver_front} c={tc.driver_front} />
+          <Tyre label="Passenger rear" kpaValue={t.passenger_rear} c={tc.passenger_rear} />
+          <Tyre label="Driver rear" kpaValue={t.driver_rear} c={tc.driver_rear} />
+        </div>
+        <dl className="details">
+          <dt>12 V battery</dt>
+          <dd>{volts(r.battery_12v_volts)}</dd>
+          <dt>Odometer</dt>
+          <dd>{km(r.odometer_km)}</dd>
+          <dt>Next service in</dt>
+          <dd>
+            {serviceKm(r.service_distance_km)}, {days(r.service_days)}
+          </dd>
+        </dl>
+      </div>
       <h3 className="small">Reported on / off</h3>
       <dl className="details" data-testid="live-indicators">
         <dt>Pre-climate</dt>
@@ -239,5 +249,29 @@ function CardBody({
         History
       </Link>
     </>
+  );
+}
+
+function badgeClass(value: boolean | null): string {
+  return value === null ? 'badge badge-unknown' : value ? 'badge badge-on' : 'badge';
+}
+
+/** One tyre. The grid puts the driver side on the right, because the car is right hand drive. */
+function Tyre({
+  label,
+  kpaValue,
+  c,
+}: {
+  label: string;
+  kpaValue: number | null;
+  c: number | null;
+}) {
+  return (
+    <div className="tyre">
+      <p className="dash-label">{label}</p>
+      <p className="tyre-value">
+        {kpa(kpaValue)}, {celsius(c)}
+      </p>
+    </div>
   );
 }
