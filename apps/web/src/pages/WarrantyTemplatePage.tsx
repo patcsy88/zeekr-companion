@@ -6,6 +6,7 @@ import { useVehicle, useWarrantyTemplates } from '../data/hooks';
 import { saveCoverageBatch } from '../data/mutations';
 import { addMonths, isIsoDate } from '../lib/dates';
 import { uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 interface RowEdit {
   selected?: boolean;
@@ -19,7 +20,7 @@ interface RowEdit {
 export function WarrantyTemplatePage() {
   const templates = useWarrantyTemplates();
   const vehicle = useVehicle();
-  if (templates === undefined || vehicle === undefined) return <p role="status">Loading…</p>;
+  if (templates === undefined || vehicle === undefined) return <Skeleton />;
   const template = templates.items[0];
   if (!template) {
     return (

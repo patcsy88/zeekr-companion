@@ -3,6 +3,7 @@ import { request } from '../api/client';
 import type { AdvisoryProposal, AdvisoryProposalList } from '../api/types';
 import { SentryPanel } from '../components/SentryPanel';
 import { useConnectivity, useSession } from '../data/hooks';
+import { Skeleton } from '../components/Skeleton';
 
 export const GEOFENCE_CONDITION = 'sentry_off_outside_geofence';
 
@@ -84,7 +85,7 @@ export function SentryPage() {
         </p>
       ) : null}
       {items === null ? (
-        <p role="status">Loading…</p>
+        <Skeleton />
       ) : items.length === 0 ? (
         <p className="muted" data-testid="sentry-none">
           No open geofence alert.

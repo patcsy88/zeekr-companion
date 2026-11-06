@@ -6,6 +6,7 @@ import { useReminder } from '../data/hooks';
 import { saveNewReminder, saveReminderEdit } from '../data/mutations';
 import { issuesByField } from '../lib/forms';
 import { isUuid, uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 interface AdvisoryState {
   prefill: { title: string; due_date: string | null; due_odometer: number | null };
@@ -72,7 +73,7 @@ export function EditReminderPage() {
 function EditReminder({ id }: { id: string }) {
   const nav = useNavigate();
   const data = useReminder(id);
-  if (data === undefined) return <p role="status">Loading…</p>;
+  if (data === undefined) return <Skeleton />;
   if (data.view === null) return <p>Reminder not found.</p>;
   const { reminder, error } = data.view;
   async function submit(v: ReminderFormValues) {

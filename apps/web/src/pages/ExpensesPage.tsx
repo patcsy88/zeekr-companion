@@ -15,6 +15,7 @@ import {
   NOT_INCLUDED,
 } from '../lib/expenseText';
 import { formatMyr } from '../lib/money';
+import { Skeleton } from '../components/Skeleton';
 
 export function ExpensesPage() {
   const snap = useExpenses();
@@ -36,7 +37,7 @@ export function ExpensesPage() {
   );
   const totals = useMemo(() => expenseTotals(shown), [shown]);
 
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
 
   const badRange = isIsoDate(from) && isIsoDate(to) && from > to;
   const active: string[] = [];

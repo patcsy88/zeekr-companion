@@ -10,6 +10,7 @@ import { isUuid } from '../lib/uuid';
 import { formatMyr } from '../lib/money';
 import { discardFailed, listQueue, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
+import { Skeleton } from '../components/Skeleton';
 
 /** The route id must be a UUID before anything is read or fetched: nothing else reaches the API. */
 export function RecordDetailPage() {
@@ -52,7 +53,7 @@ function RecordDetail({ id }: { id: string }) {
     if (confirming) cancelRef.current?.focus();
   }, [confirming]);
 
-  if (data === undefined) return <p role="status">Loading…</p>;
+  if (data === undefined) return <Skeleton />;
   if (data.view === null) {
     return (
       <section>

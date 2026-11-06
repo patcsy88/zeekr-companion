@@ -6,6 +6,7 @@ import { useConnectivity, useRecords, useSession } from '../data/hooks';
 import { loadMoreRecords } from '../data/repository';
 import { formatDate } from '../lib/dates';
 import { formatMyr } from '../lib/money';
+import { Skeleton } from '../components/Skeleton';
 
 export function RecordsPage() {
   const snap = useRecords();
@@ -36,7 +37,7 @@ export function RecordsPage() {
       </div>
 
       {snap === undefined ? (
-        <p role="status">Loading…</p>
+        <Skeleton />
       ) : !snap.loaded && snap.views.length === 0 ? (
         <p className="muted">
           {session.signedIn

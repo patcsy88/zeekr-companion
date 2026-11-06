@@ -3,6 +3,7 @@ import { BasisNote, CoverageItem } from '../components/WarrantyParts';
 import { useConnectivity, useSession, useWarranty } from '../data/hooks';
 import type { WarrantyStatusValue } from '../api/types';
 import { COMPUTED_OFFLINE, TERMS_LINE } from '../lib/warrantyText';
+import { Skeleton } from '../components/Skeleton';
 
 const GROUPS: { status: WarrantyStatusValue; title: string }[] = [
   { status: 'expiring_soon', title: 'Expiring soon' },
@@ -17,7 +18,7 @@ export function WarrantyPage() {
   const session = useSession();
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
 
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const empty = snap.coverages.length === 0;
 
   return (

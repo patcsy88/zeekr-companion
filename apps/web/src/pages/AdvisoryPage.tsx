@@ -8,6 +8,7 @@ import type {
   AdvisoryStatus,
 } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
+import { Skeleton } from '../components/Skeleton';
 
 const CONDITION_LABELS: Record<AdvisoryProposal['condition'], string> = {
   date_vs_km_warranty: 'Warranty km limit may be reached before its end date',
@@ -152,7 +153,7 @@ export function AdvisoryPage() {
         </div>
       ) : null}
       {items === null ? (
-        <p role="status">Loading…</p>
+        <Skeleton />
       ) : items.length === 0 ? (
         <p className="muted">No open suggestions.</p>
       ) : (

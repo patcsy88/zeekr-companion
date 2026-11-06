@@ -9,6 +9,7 @@ import { isIsoDate, klToday } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen } from '../lib/money';
 import { isUuid, uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 type Errors = Partial<
   Record<'date' | 'odometer' | 'description' | 'cost' | 'provider' | 'notes' | 'form', string>
@@ -35,7 +36,7 @@ function CompleteService({ id }: { id: string }) {
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
-  if (data === undefined) return <p role="status">Loading…</p>;
+  if (data === undefined) return <Skeleton />;
   if (data.view === null) return <p>Reminder not found.</p>;
   const r = data.view.reminder;
   if (r.kind !== 'service' || r.completed_on !== null) {

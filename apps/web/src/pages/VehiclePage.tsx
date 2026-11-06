@@ -13,10 +13,11 @@ import { formatMyr, parseMyrToSen, senToInput } from '../lib/money';
 import { uuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
+import { Skeleton } from '../components/Skeleton';
 
 export function VehiclePage() {
   const snap = useVehicle();
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const view = snap.view;
   return (
     <section aria-labelledby="vehicle-title">
@@ -98,7 +99,7 @@ type Errs = Partial<
 export function VehicleEditPage() {
   const snap = useVehicle();
   const nav = useNavigate();
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   return <VehicleForm initial={snap.view?.vehicle ?? null} onDone={() => void nav('/vehicle')} />;
 }
 

@@ -4,6 +4,7 @@ import type { LiveCard } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
 import { formatKl } from '../lib/liveVehicle';
 import { useSentryPush, type PushedSentry } from '../lib/sentryPush';
+import { Skeleton } from './Skeleton';
 import { SentryControl } from './SentryControl';
 
 /** What the car reported right after a send. It holds only while the page still shows the
@@ -65,7 +66,7 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
 
   if (!active) return <p className="muted">The Sentry switch needs a connection.</p>;
   if (card === null)
-    return <p role="status">{failed ? 'Could not load the car state.' : 'Loading…'}</p>;
+    return failed ? <p role="status">Could not load the car state.</p> : <Skeleton />;
   if (card.status === 'off') {
     return (
       <p className="muted" data-testid="live-off">
