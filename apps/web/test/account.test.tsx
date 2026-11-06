@@ -79,6 +79,82 @@ describe('W2: sign out versus clear local data', () => {
     expect(screen.queryByText('Unsent')).not.toBeInTheDocument();
   });
 
+  it('a sync already running when you sign out writes nothing back afterwards', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = false;
+    server.use(
+      http.get('*/api/v1/service-records', async () => {
+        held = true;
+        await gate;
+        return HttpResponse.json({ items: [{ ...rec, id: rec.id }], next_cursor: null });
+      }),
+    );
+    setToken('tok-test', 3600);
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => {
+      expect(held).toBe(true);
+    });
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Clear local data and sign out',
+      }),
+    );
+    await waitFor(() => {
+      expect(getSession().signedIn).toBe(false);
+    });
+    release();
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await counts()).toEqual({ cache: 0, queue: 0, meta: 0 });
+  });
+
+  it('an identity check already running when you sign out writes nothing back afterwards', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = false;
+    apiDown();
+    server.use(
+      http.get('*/api/v1/vehicle', async () => {
+        held = true;
+        await gate;
+        return HttpResponse.json({
+          id: '21212121-2121-4121-8121-212121212121',
+          model: 'Test',
+          variant: null,
+          vin: null,
+          registration: null,
+          first_registration_date: null,
+          notes: null,
+        });
+      }),
+    );
+    await enqueueCreate(rec);
+    setToken('tok-test', 3600);
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => {
+      expect(held).toBe(true);
+    });
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Clear local data and sign out',
+      }),
+    );
+    await waitFor(() => {
+      expect(getSession().signedIn).toBe(false);
+    });
+    release();
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await counts()).toEqual({ cache: 0, queue: 0, meta: 0 });
+  });
+
   it('with nothing unsent there is no data-loss warning', async () => {
     setToken('tok-test', 3600);
     const user = userEvent.setup();

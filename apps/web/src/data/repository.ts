@@ -1,5 +1,6 @@
 import { getServiceRecord, getVehicle, listServiceRecords } from '../api/endpoints';
 import { ApiError } from '../api/client';
+import { getSession } from '../auth/session';
 import type { ServiceRecord, ServiceRecordPage, Vehicle } from '../api/types';
 import { bumpEpoch, dataEpoch, notifyData } from '../lib/events';
 import { deleteCache, getCache, getMeta, setCache, setMeta } from '../storage/cache';
@@ -50,6 +51,7 @@ export async function refreshGuarded<T>(
     const started = dataEpoch();
     const value = await fetcher();
     const applied = await withCacheLock(async () => {
+      if (!getSession().signedIn) return true; // signed out meanwhile: write nothing
       if (dataEpoch() !== started) return false;
       await apply(value);
       bumpEpoch();
@@ -60,6 +62,7 @@ export async function refreshGuarded<T>(
 }
 
 export async function markSynced(): Promise<void> {
+  if (!getSession().signedIn) return;
   await setMeta('last_synced_at', new Date().toISOString());
 }
 

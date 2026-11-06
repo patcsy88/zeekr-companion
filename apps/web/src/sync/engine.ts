@@ -116,6 +116,7 @@ async function checkIdentity(): Promise<Identity> {
     else if (e instanceof ApiError && e.status === 401) return 'auth';
     else return 'retry';
   }
+  if (!getSession().signedIn) return 'auth'; // signed out while waiting: write nothing
   const marker = await getMeta<string>(IDENTITY_KEY);
   if (marker !== undefined && marker !== serverId) {
     setStatus({ identityMismatch: true });
@@ -164,6 +165,7 @@ async function applySuccess(entry: QueueEntry, data: unknown): Promise<void> {
       await removeClaimFromCache(entry.record_id);
       break;
     case 'put-vehicle':
+      if (!getSession().signedIn) break; // signed out while the request was in flight
       await setVehicleInCache(data as Vehicle);
       if ((await getMeta<string>(IDENTITY_KEY)) === undefined)
         await setMeta(IDENTITY_KEY, (data as Vehicle).id);
