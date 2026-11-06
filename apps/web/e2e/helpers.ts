@@ -25,7 +25,7 @@ export async function signIn(page: Page): Promise<void> {
   await page.getByLabel('Username').fill(USERNAME);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('button', { name: 'Sign out, keep local data' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out and clear local data' })).toBeVisible();
 }
 
 export async function addRecord(

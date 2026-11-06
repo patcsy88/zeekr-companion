@@ -32,17 +32,14 @@ async function counts() {
 }
 
 describe('W2: sign out versus clear local data', () => {
-  it('plain sign out says it keeps local data, and keeps the cache and queue', async () => {
+  it('offers one sign out only', async () => {
     apiDown();
     setToken('tok-test', 3600);
-    await setCache('k', 1);
-    await enqueueCreate(rec);
-    const user = userEvent.setup();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Sign out, keep local data' }));
-    expect(getSession().signedIn).toBe(false);
-    expect(await counts()).toMatchObject({ cache: expect.any(Number) as number, queue: 1 });
-    expect((await counts()).cache).toBeGreaterThan(0);
+    expect(
+      await screen.findByRole('button', { name: 'Sign out and clear local data' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /keep local data/i })).not.toBeInTheDocument();
   });
 
   it('clear-and-sign-out warns about unsent changes and clears nothing until confirmed', async () => {
