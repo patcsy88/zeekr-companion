@@ -41,6 +41,8 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"   # POSTGRES_PASSW
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # TOKEN_SECRET
 ```
 
+**Shortcut:** from `infra/`, run `./install.sh`. It creates `.env` from `.env.example` with fresh random values for `POSTGRES_PASSWORD` and `TOKEN_SECRET`, never prints them, sets the file to mode 600, and refuses to run if `.env` already exists (a new database password would lock the API out of an existing database). Add `--start` to run `docker compose up -d --wait` straight after. The two commands above do the same by hand.
+
 Paste the two values into `infra/.env`. `.env` is gitignored. Never paste it, or any value from it, into chat, a ticket or the repo. Compose refuses to start while either is empty.
 
 ### Settings
@@ -144,8 +146,8 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 
 Needs a host with Docker Engine and the Compose plugin, on **x86_64** (the images are `linux/amd64` only). Check with `uname -m`.
 
-1. Make a folder and download two files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`) and `infra/.env.example` (save it as `.env`).
-2. Edit `.env`: fill in `POSTGRES_PASSWORD` and `TOKEN_SECRET` (section 3), and set `ZEEKR_VERSION` to a released tag, for example `v0.1.0`. Never paste `.env` anywhere.
+1. Make a folder and download three files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`), `infra/.env.example` and `infra/install.sh` (then `chmod +x install.sh`).
+2. Run `./install.sh --version v0.1.0` (use the released tag you want). It writes `.env` with random secrets and the version. Never paste `.env` anywhere, and keep a private copy.
 3. `docker compose up -d --wait`. It pulls the images, so there is no build and no `npm ci`.
 4. Create the owner login: `docker compose exec api python -m app.cli.set_owner`.
 5. Check it as in section 5.
