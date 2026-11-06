@@ -171,7 +171,9 @@ def _coordinate(value: object, limit: float) -> float | None:
 
 def map_geofence(status: object) -> GeofenceInput:
     """The five values the geofence needs from one status reply, and nothing else. A position
-    that is missing, out of range or exactly (0, 0) is "no position"."""
+    that is missing, out of range or exactly (0, 0) is "no position". The reading's age comes from
+    the reply's top-level `updateTime` (owner decision, 2026-11-06), with no fallback: a reply
+    without it reads as incomplete."""
     base = ("basicVehicleStatus",)
     lat = _coordinate(_dig(status, (*base, "position", "latitude")), 90.0)
     lon = _coordinate(_dig(status, (*base, "position", "longitude")), 180.0)
@@ -183,7 +185,7 @@ def map_geofence(status: object) -> GeofenceInput:
         usage_mode=_code(_dig(status, (*base, "usageMode"))),
         gear=_code(_dig(status, (_AVS, "drivingBehaviourStatus", "gearAutoStatus"))),
         sentry_active=_sentry(_dig(status, (REMOTE_STATE_KEY, SENTRY_KEY))),
-        observed_at=_observed_at(_dig(status, (*_CLIMATE, "updateTime"))),
+        observed_at=_observed_at(_dig(status, ("updateTime",))),
     )
 
 

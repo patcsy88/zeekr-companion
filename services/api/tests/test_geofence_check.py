@@ -54,6 +54,10 @@ def reading(
     age_minutes: int = 1,
 ) -> dict[str, Any]:
     body = with_time(at - dt.timedelta(minutes=age_minutes))
+    # The geofence reads the top-level time; the card's climate time is set apart on purpose, so a
+    # test fails if the geofence falls back to it.
+    body["updateTime"] = body["additionalVehicleStatus"]["climateStatus"]["updateTime"]
+    body["additionalVehicleStatus"]["climateStatus"]["updateTime"] -= 3_600_000
     body["basicVehicleStatus"] = {
         "position": {"latitude": where[0], "longitude": where[1]},
         "usageMode": usage,
@@ -224,6 +228,37 @@ def test_only_a_short_whole_number_is_a_state_code(bad: object) -> None:
 def test_a_reply_with_no_positions_at_all() -> None:
     inp = map_geofence({})
     assert inp.latitude is None and inp.usage_mode is None and inp.observed_at is None
+
+
+def test_the_age_is_the_top_level_update_time_not_the_climate_time() -> None:
+    body = reading(NOW)
+    assert body["additionalVehicleStatus"]["climateStatus"]["updateTime"] != body["updateTime"]
+    assert map_geofence(body).observed_at == NOW - dt.timedelta(minutes=1)
+
+
+def test_there_is_no_fallback_to_the_climate_time() -> None:
+    body = reading(NOW)
+    climate_only = body["additionalVehicleStatus"]["climateStatus"]["updateTime"]
+    del body["updateTime"]
+    assert climate_only > 0
+    inp = map_geofence(body)
+    assert inp.observed_at is None
+    assert verdict(inp).result == "incomplete"
+
+
+@pytest.mark.parametrize("bad", [None, "", "abc", 0, -5, True, [], {}, "1e999"])
+def test_a_bad_top_level_time_reads_as_incomplete(bad: object) -> None:
+    body = reading(NOW)
+    body["updateTime"] = bad
+    inp = map_geofence(body)
+    assert inp.observed_at is None
+    assert verdict(inp).result == "incomplete"
+
+
+def test_a_stale_top_level_time_is_stale_even_with_a_fresh_climate_time() -> None:
+    body = reading(NOW, age_minutes=45)
+    body["additionalVehicleStatus"]["climateStatus"]["updateTime"] = body["updateTime"] + 3_000_000
+    assert verdict(map_geofence(body)).result == "stale"
 
 
 def test_the_provider_keeps_the_input_in_memory_and_drops_it_on_a_failed_read() -> None:
