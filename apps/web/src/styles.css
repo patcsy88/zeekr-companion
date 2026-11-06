@@ -90,6 +90,9 @@ main,
   padding-top: calc(0.5rem + env(safe-area-inset-top));
 }
 .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-weight: 700;
   color: var(--brand);
