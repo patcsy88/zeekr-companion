@@ -53,7 +53,10 @@ export function WarrantyPage() {
             : 'Sign in to load your warranty entries.'}
         </p>
       ) : empty ? (
-        <p className="muted">No warranty coverages yet.</p>
+        <div className="empty">
+          <p className="muted">No warranty coverages yet.</p>
+          <p className="muted small">Use Add coverage at the top to record the first one.</p>
+        </div>
       ) : (
         GROUPS.map((g) => {
           const items = snap.coverages.filter((v) => v.coverage.status === g.status);

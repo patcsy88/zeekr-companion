@@ -205,7 +205,10 @@ export function ExpensesPage() {
           </section>
 
           {empty ? (
-            <p className="muted">No expenses yet.</p>
+            <div className="empty">
+              <p className="muted">No expenses yet.</p>
+              <p className="muted small">Use Add expense at the top to record the first one.</p>
+            </div>
           ) : shown.length === 0 ? (
             <p className="muted">No expenses match these filters.</p>
           ) : (
