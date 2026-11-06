@@ -8,7 +8,7 @@ ADR-008 and ADR-009 say the app sends no commands to the car, and tests ban the 
 
 ## Decision
 
-- The app may send **one** kind of command: Sentry on or off. Nothing else. No lock, door, window, climate, charge or any other command, and no unattended or automatic command. The geofence alert (proposal, Piece B) is advisory only and never sends this command.
+- The app may send **one** kind of command: Sentry on or off. Nothing else. No lock, door, window, climate, charge or any other command, and no unattended or automatic command (narrowed by ADR-011 to one exception, automatic Sentry on behind a toggle and a host switch; ADR-011 is accepted, its build is not approved yet). The geofence alert (proposal, Piece B) is advisory only and never sends this command.
 - The call lives in one module, `app/adapters/zeekr_sentry_command.py`. The service id, key and value are constants there; no caller can pass another command, service, key or value. The read-only adapter and the dump tool keep their ban on write methods, and a test fails if any other file under `app/` names the write method.
 - The payload comes from a third-party Home Assistant integration for the same car model (MIT licence, not tested by the owner): service `RSM`, one setting with key `rsm` and value `6`; command `start` to switch on and `stop` to switch off. This is **unverified** until the owner's first run.
 - **First send is owner-run.** A CLI (`python -m app.cli.zeekr_sentry_send`) makes one login, reads `vstdModeState`, sends one command, waits, reads it again and prints only the two values and whether Zeekr accepted the call. The agent never runs it. Only after the owner reports a watched, correct read-back does the app get an endpoint and a button.
