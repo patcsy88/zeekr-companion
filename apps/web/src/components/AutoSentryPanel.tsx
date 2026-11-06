@@ -124,7 +124,7 @@ export function AutoSentryPanel() {
       <h2 className="small">Automatic Sentry on</h2>
       <p className="muted small">
         When a new alert opens, the app sends Sentry on once, without asking. It never sends Sentry
-        off, and it does not retry. It may send at night, because the app does not notify you.
+        off, and it does not retry.
       </p>
       <button
         type="button"

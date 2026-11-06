@@ -119,7 +119,6 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
           setSeenLocal({ on, at: new Date().toISOString(), basis: card.received_at });
         }}
       />
-      <p className="muted small">Sentry may use the car&apos;s 12 V battery while it is on.</p>
       <button
         type="button"
         disabled={busy}

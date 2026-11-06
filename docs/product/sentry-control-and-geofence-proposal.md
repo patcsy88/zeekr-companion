@@ -36,7 +36,7 @@ This is the first time the app would send a command to the car. ADR-008 and ADR-
 
 - The payload may be wrong or may do something else on this car. Mitigation: owner-run first send, with a watched read-back, before any endpoint exists.
 - Zeekr may treat remote commands as outside its terms or flag the account. The terms are still unverified.
-- Sentry uses the 12 V battery. Switching it on may drain it faster, and the app does not know how long it was left on.
+- The app does not know how long Sentry was left on.
 - A command to a moving or locked car is not something the app can check. It only sends the one Sentry command.
 
 ## Piece B: geofence alert
