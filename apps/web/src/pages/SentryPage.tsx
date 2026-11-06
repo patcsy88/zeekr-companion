@@ -77,8 +77,8 @@ export function SentryPage() {
       <h1 id="sentry-title">Sentry</h1>
       <p className="muted small">
         A notice appears here when the car is parked asleep outside your home area with Sentry off.
-        The notice itself sends nothing to the car. The switch below sends a command only when you
-        confirm it.
+        The notice itself sends nothing. The switch below asks before it sends. If Automatic Sentry
+        on is switched on, the app sends Sentry on once when a new notice opens, without asking.
       </p>
       {error ? (
         <p role="alert" className="error">
