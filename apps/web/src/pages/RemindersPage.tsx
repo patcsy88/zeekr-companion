@@ -43,7 +43,10 @@ export function RemindersPage() {
             : 'Sign in to load your reminders.'}
         </p>
       ) : empty ? (
-        <p className="muted">No reminders yet.</p>
+        <div className="empty">
+          <p className="muted">No reminders yet.</p>
+          <p className="muted small">Use Add reminder at the top to set the first one.</p>
+        </div>
       ) : (
         <>
           <h2>Overdue</h2>

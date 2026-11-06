@@ -46,7 +46,10 @@ export function RecordsPage() {
             : 'Sign in to load your service records.'}
         </p>
       ) : snap.views.length === 0 ? (
-        <p className="muted">No service records yet.</p>
+        <div className="empty">
+          <p className="muted">No service records yet.</p>
+          <p className="muted small">Use Add service at the top to record the first one.</p>
+        </div>
       ) : (
         <ul className="list" aria-label="Service records, newest first">
           {snap.views.map(({ record, sync }) => (
