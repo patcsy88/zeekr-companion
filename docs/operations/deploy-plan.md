@@ -246,3 +246,5 @@ Push to GitHub, install anything on or connect to the host, create a Tailscale a
 
 - 2026-11-06, iPhone check of the beautify deploy, follow-up (owner-reported, one line: "iPhone ok"; nothing pasted). The owner says the iPhone check is ok. The reply does not list which items were looked at, so the record does not say which. The icon, splash, tab icons, Vehicle dashboard, Sentry tint and skeletons are therefore reported ok as a group, not individually seen.
 
+- 2026-11-06, the deleted `assets/index-BsBmDIZP.js` is explained (owner-reported, one line). The owner says that build was a manual deploy by the owner. This closes the "unconfirmed" note in the beautify deploy entry above. Which commit that build came from was not stated, so it is not recorded.
+
