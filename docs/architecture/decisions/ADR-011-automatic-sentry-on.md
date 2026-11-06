@@ -1,6 +1,6 @@
 # ADR-011: Automatic Sentry on, behind a toggle (proposal)
 
-Status: **proposed on 2026-11-06. The owner answered the five open questions on 2026-11-06 (see "Owner answers"). The ADR itself, the data model and the API contract are not yet accepted. No code, no migration and no deploy until the owner approves them in writing.**
+Status: **ADR accepted by the owner on 2026-11-06 ("Approve the whole ADR"), with the quiet-period range 5 to 1440 whole minutes confirmed. The data model and the API contract are NOT yet approved. No code, no migration and no deploy until the owner approves them in writing.**
 
 ## Context
 
@@ -24,7 +24,7 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 - **Quiet period (configurable):** no automatic send if any command was logged within the quiet period, by hand or automatic. The default is 60 minutes and the owner can change it on the Sentry tab. It is stored in the same one-row setting as the toggle (column `quiet_minutes`). The allowed range is **proposed, not yet approved**: 5 to 1440 minutes, whole numbers. This is separate from the 60-second spacing in `sentry_command.py`, which still applies.
 - **Skipped sends are shown:** when the send is skipped (quiet period, toggle off after the alert opened, host switch off), the Sentry tab shows fixed wording such as "Automatic send skipped: a command was sent 20 minutes ago." Skips are logged without a car call.
 - **Same code path:** the automatic send uses the existing `SentryCommandService.send("on")` and its locks, spacing and read-back. No second way to call the car is added. `zeekr_sentry_command.py` remains the only file that names the write method, and a test keeps that true.
-- **Log:** each automatic attempt is a row in `car_command_log` with the source `auto` (a new column, default `manual`), the result and the state after. No position, distance, payload or VIN is stored.
+- **Log:** each automatic attempt is a row in `car_command_log` with the source `auto`, the result and the state after. (Correction, 2026-11-06: the `source` column already exists from migration `0012` with a check that allows only `manual`; migration `0015` widens that check. It does not add the column.) No position, distance, payload or VIN is stored.
 - **Show:** the Sentry tab shows the last automatic send in fixed wording, for example "Sentry was turned on automatically at 18:42 (KL). The car reports on." or "An automatic send was tried at 18:42 (KL) and the car did not report Sentry on."
 - **Toggle:** a new one-row setting `auto_sentry_on`, default **off**. It is **separate** from the geofence settings row, so "Use the host values" on the Geofence tab does not touch it. The API refuses to turn it on unless the geofence and live readings are both on. A host switch `GEOFENCE_AUTO_SENTRY_ALLOWED` (default `false`, in `infra/.env`) must also be `true`; with it false the toggle is shown disabled with a fixed explanation. This keeps the final say on the host.
 - **Failure behaviour:** if the live provider is stopped, the send is busy or rate-limited, or the car does not accept the command, the app logs it and shows it. It does not retry and does not turn the toggle off.
@@ -63,6 +63,6 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 
 ## Still needed before code
 
-- The owner's written approval of this ADR as a whole.
+- ~~The owner's written approval of this ADR as a whole.~~ Given on 2026-11-06.
 - The owner's approval of the data model (one-row `auto_sentry` setting with `enabled` and `quiet_minutes`, plus `source` on `car_command_log`) and the API contract amendment, which the agent will draft next.
-- The quiet-period range.
+- ~~The quiet-period range.~~ Confirmed on 2026-11-06: 5 to 1440 whole minutes.
