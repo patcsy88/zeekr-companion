@@ -29,6 +29,8 @@ export default defineConfig({
       workbox: {
         // App shell only. No runtimeCaching, so nothing under /api is ever put in Cache Storage.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // The iPhone launch images are read by iOS when the app is added, not by the app.
+        globIgnores: ['splash/**'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/health/],
         cleanupOutdatedCaches: true,
