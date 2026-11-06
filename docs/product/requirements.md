@@ -49,7 +49,7 @@ The slice covers FR-1, FR-2, FR-3 and FR-11.
 | AC-4 | A vehicle can be created, then retrieved, with the same values |
 | AC-5 | A service record with a negative cost or a missing date is rejected with a validation error |
 | AC-6 | After a service record is created in the web app, it is still listed after a full page reload and after closing and reopening the app (installed to the Home Screen on the owner's iPhone once an HTTPS origin exists). It is also returned by `GET /api/v1/service-records` from a different browser profile, which shows it is stored on the server. |
-| AC-7 | After the web app has been opened once while online, and with the API unreachable, reopening it from a cold start still shows the previously loaded vehicle and service records from the local cache, with a visible offline indicator. |
+| AC-7 | After the web app has been opened once while online, and with the API unreachable, reopening it from a cold start still shows the previously loaded vehicle and service records from the local cache, with a visible offline indicator. **Amended 2026-11-07:** signed out, only the sign-in form is shown (see the owner decision below); the cached records are kept and shown after sign-in. |
 | AC-8 | Lint, type checks and tests pass for both the web client and the backend |
 | AC-9 | A service record created while offline is shown as pending, and is sent exactly once, with no duplicate, when the API becomes reachable again (covers NFR-2). Added by the owner 2026-10-11. |
 
@@ -210,7 +210,8 @@ Resolved:
   - Order: expenses, warranty and reminders come before accounts.
   - Tailscale (ADR-003) is unchanged while there is a single user.
 - Client is a mobile-responsive web app instead of a native iOS app, to avoid the Apple Developer fee (confirmed 2026-10-11). The web stack is a React + Vite + TypeScript PWA (ADR-002, approved 2026-10-11), served same-origin through a reverse proxy container.
-- Cached data is readable without an app lock; the owner relies on the phone lock (confirmed 2026-10-11).
+- (Superseded 2026-11-07) Cached data is readable without an app lock; the owner relies on the phone lock (confirmed 2026-10-11).
+- **Owner decision 2026-11-07:** unless signed in, no information is shown on any tab. Signed out, the app shows only the sign-in form (and the light/dark icon); the tab bar, every page and all saved data are hidden. The data stays saved on the device, so unsent changes are kept and sync after sign-in. Consequence: the app cannot be read with no connection, because signing in needs the server, and the token is memory-only so every cold start begins signed out. This amends the offline-read criteria AC-7, AC-24, AC-39 and AC-61: after a cold start with the API unreachable the app shows the sign-in form with the offline indicator and no saved data; the cached data is shown again after sign-in, from the local cache.
 - `gitleaks` and Playwright browser downloads are approved as free tools (confirmed 2026-10-11).
 - Owner decision 2026-10-22: Tailscale setup is no longer a requirement for completing a slice. ADR-003 stays as the intended design for later. The phone-side checks for AC-6, AC-7 and AC-27 are **deferred (optional)**: they do not gate acceptance of a slice, but they are still not passed. Report them as "deferred, not run", never as passed. The automated `localhost` checks remain the gates.
 - Remote access: Tailscale, free Personal plan (owner decision 2026-10-13, ADR-003). Funnel stays off and nothing is exposed to the public internet (NFR-6). The repository is public, so the real tailnet name, hostnames, account email and device names must never appear in it; use placeholders.

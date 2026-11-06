@@ -53,7 +53,7 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-4 | Backend integration test |
 | AC-5 | Backend unit and integration tests |
 | AC-6 | Playwright on `localhost` (reload, reopen, second browser profile reads from API). Manual iPhone check: **blocked on HTTPS** |
-| AC-7 | Vitest cache test and Playwright cold start with the API stopped. Manual iPhone check: **blocked on HTTPS** |
+| AC-7 | Vitest cache test and Playwright cold start with the API stopped (amended 2026-11-07: shows only the sign-in form, then the cached data after sign-in; `test/signed-out.test.tsx`). Manual iPhone check: **blocked on HTTPS** |
 | AC-8 | All gates |
 | AC-9 | Vitest queue tests and Playwright offline create then reconnect, asserting exactly one record on the server |
 | AC-10, AC-11, AC-12, AC-13, AC-14 | `services/api/tests/test_reminders.py` (create, replay 200, conflict 409, both-due-fields rule, validation cases, patch, delete). Web: `apps/web/test/reminders.test.tsx` |

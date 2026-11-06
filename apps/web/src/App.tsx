@@ -71,76 +71,84 @@ function Layout() {
       <SyncBar />
       <main id="main">
         {!session.signedIn ? (
+          // Signed out: only the sign-in form. No page, tab or saved data is shown (owner decision 2026-11-07).
           <SignIn
             reason={
               session.needsLogin
-                ? 'Your session ended. Sign in to continue syncing. Changes waiting to sync are safe on this device.'
-                : 'Sign in to sync. Data saved on this device is shown below.'
+                ? 'Your session ended. Sign in to continue. Changes waiting to sync are safe on this device.'
+                : 'Sign in to see your vehicle data.'
             }
           />
-        ) : null}
-        <Routes>
-          <Route path="/" element={<RecordsPage />} />
-          <Route path="/records/new" element={<NewRecordPage />} />
-          <Route path="/records/:id" element={<RecordDetailPage />} />
-          <Route path="/records/:id/edit" element={<EditRecordPage />} />
-          <Route path="/sentry" element={<SentryPage />} />
-          <Route path="/geofence" element={<GeofencePage />} />
-          <Route path="/reminders" element={<RemindersPage />} />
-          <Route path="/reminders/new" element={<NewReminderPage />} />
-          <Route path="/reminders/template" element={<ReminderTemplatePage />} />
-          <Route path="/reminders/:id" element={<ReminderDetailPage />} />
-          <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
-          <Route path="/reminders/:id/complete" element={<CompleteServicePage />} />
-          <Route path="/expenses" element={<ExpensesPage />} />
-          <Route path="/expenses/new" element={<NewExpensePage />} />
-          <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
-          <Route path="/expenses/:id/edit" element={<EditExpensePage />} />
-          <Route path="/warranty" element={<WarrantyPage />} />
-          <Route path="/warranty/new" element={<NewCoveragePage />} />
-          <Route path="/warranty/template" element={<WarrantyTemplatePage />} />
-          <Route path="/warranty/claims/:claimId/edit" element={<EditClaimPage />} />
-          <Route path="/warranty/:id" element={<CoverageDetailPage />} />
-          <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
-          <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
-          <Route path="/advisory" element={<AdvisoryPage />} />
-          <Route path="/vehicle" element={<VehiclePage />} />
-          <Route path="/vehicle/live" element={<LiveHistoryPage />} />
-          <Route path="/vehicle/edit" element={<VehicleEditPage />} />
-          <Route path="*" element={<p>Page not found.</p>} />
-        </Routes>
+        ) : (
+          <Routes>
+            <Route path="/" element={<RecordsPage />} />
+            <Route path="/records/new" element={<NewRecordPage />} />
+            <Route path="/records/:id" element={<RecordDetailPage />} />
+            <Route path="/records/:id/edit" element={<EditRecordPage />} />
+            <Route path="/sentry" element={<SentryPage />} />
+            <Route path="/geofence" element={<GeofencePage />} />
+            <Route path="/reminders" element={<RemindersPage />} />
+            <Route path="/reminders/new" element={<NewReminderPage />} />
+            <Route path="/reminders/template" element={<ReminderTemplatePage />} />
+            <Route path="/reminders/:id" element={<ReminderDetailPage />} />
+            <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
+            <Route path="/reminders/:id/complete" element={<CompleteServicePage />} />
+            <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/expenses/new" element={<NewExpensePage />} />
+            <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
+            <Route path="/expenses/:id/edit" element={<EditExpensePage />} />
+            <Route path="/warranty" element={<WarrantyPage />} />
+            <Route path="/warranty/new" element={<NewCoveragePage />} />
+            <Route path="/warranty/template" element={<WarrantyTemplatePage />} />
+            <Route path="/warranty/claims/:claimId/edit" element={<EditClaimPage />} />
+            <Route path="/warranty/:id" element={<CoverageDetailPage />} />
+            <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
+            <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
+            <Route path="/advisory" element={<AdvisoryPage />} />
+            <Route path="/vehicle" element={<VehiclePage />} />
+            <Route path="/vehicle/live" element={<LiveHistoryPage />} />
+            <Route path="/vehicle/edit" element={<VehicleEditPage />} />
+            <Route path="*" element={<p>Page not found.</p>} />
+          </Routes>
+        )}
       </main>
-      <nav className="tabs" aria-label="Main">
-        <NavLink to="/" end>
-          <TabIcon name="service" />
-          <span>Service</span>
-        </NavLink>
-        <NavLink to="/reminders">
-          <TabIcon name="reminders" />
-          <span>Reminders</span>
-        </NavLink>
-        <NavLink to="/expenses">
-          <TabIcon name="expenses" />
-          <span>Expenses</span>
-        </NavLink>
-        <NavLink to="/warranty">
-          <TabIcon name="warranty" />
-          <span>Warranty</span>
-        </NavLink>
-        <NavLink to="/sentry">
-          <TabIcon name="sentry" />
-          <span>Sentry</span>
-        </NavLink>
-        <NavLink to="/geofence">
-          <TabIcon name="geofence" />
-          <span>Geofence</span>
-        </NavLink>
-        <NavLink to="/vehicle">
-          <TabIcon name="vehicle" />
-          <span>Vehicle</span>
-        </NavLink>
-      </nav>
+      {session.signedIn ? <TabBar /> : null}
     </>
+  );
+}
+
+function TabBar() {
+  return (
+    <nav className="tabs" aria-label="Main">
+      <NavLink to="/" end>
+        <TabIcon name="service" />
+        <span>Service</span>
+      </NavLink>
+      <NavLink to="/reminders">
+        <TabIcon name="reminders" />
+        <span>Reminders</span>
+      </NavLink>
+      <NavLink to="/expenses">
+        <TabIcon name="expenses" />
+        <span>Expenses</span>
+      </NavLink>
+      <NavLink to="/warranty">
+        <TabIcon name="warranty" />
+        <span>Warranty</span>
+      </NavLink>
+      <NavLink to="/sentry">
+        <TabIcon name="sentry" />
+        <span>Sentry</span>
+      </NavLink>
+      <NavLink to="/geofence">
+        <TabIcon name="geofence" />
+        <span>Geofence</span>
+      </NavLink>
+      <NavLink to="/vehicle">
+        <TabIcon name="vehicle" />
+        <span>Vehicle</span>
+      </NavLink>
+    </nav>
   );
 }
 

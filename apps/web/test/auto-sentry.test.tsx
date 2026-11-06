@@ -286,8 +286,9 @@ describe('automatic Sentry panel', () => {
   it('stays out of the way when signed out', async () => {
     window.history.pushState(null, '', '/sentry');
     render(<App />);
-    await screen.findByRole('heading', { name: 'Sentry' });
+    await screen.findByRole('heading', { name: 'Sign in' });
     await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('heading', { name: 'Sentry' })).toBeNull();
     expect(screen.queryByTestId('auto-sentry')).toBeNull();
   });
 });

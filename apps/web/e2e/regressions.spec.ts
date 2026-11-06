@@ -124,7 +124,12 @@ test('W3: a crafted record URL shows not found and makes no record API call', as
     '/records/not-a-uuid',
     '/records/%2e%2e%2fvehicle',
   ]) {
-    await page.goto(path);
+    // In-app navigation: a full load would drop the memory-only token, and signed out the app
+    // shows only the sign-in form (owner decision 2026-11-07).
+    await page.evaluate((p) => {
+      window.history.pushState(null, '', p);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, path);
     await expect(page.getByText(/not found/i)).toBeVisible();
   }
   expect(calls).toEqual([]);
