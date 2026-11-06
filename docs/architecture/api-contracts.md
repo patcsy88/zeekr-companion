@@ -931,9 +931,9 @@ New table `geofence_settings`, at most one row (`id` fixed at 1 by a check). Thi
 
 - **Sentry control location (2026-11-06, web only; no contract change).** The Sentry on/off switch is on the Sentry tab, not the Vehicle page. The endpoints, allowed paths and errors are unchanged. The Sentry tab reads `/live-vehicle` once on open, on visibility and on Refresh, and holds the pushed-state stream open while visible. It adds no timer, so it does not poll the car.
 
-### Amendment: automatic Sentry on (ADR-011; DRAFT, awaiting the owner's approval; migration `0015`)
+### Amendment: automatic Sentry on (ADR-011; owner approved 2026-11-06; migration `0015`)
 
-ADR-011 is accepted (2026-11-06). This data model and contract are **proposed, not approved**: no code until the owner approves them in writing. This narrows "no automatic send" in the Sentry command amendment above to: none except this one.
+ADR-011 is accepted (2026-11-06). The owner approved this data model and contract in writing on 2026-11-06 ("Yes approve"), so the API build may start. Changing them now needs the owner to be told first. Nothing is built or deployed yet; the first real automatic send stays gated on the geofence alert being proven on a real stay (ADR-011 answer 5). This narrows "no automatic send" in the Sentry command amendment above to: none except this one.
 
 **Data model (migration `0015`)**
 
@@ -963,7 +963,7 @@ ADR-011 is accepted (2026-11-06). This data model and contract are **proposed, n
 - The alert, its `inputs` and the rule version 1 are unchanged. No position, distance, home point, payload or VIN is stored, logged or returned.
 - Only `zeekr_sentry_command.py` names the write method, and a test keeps that true.
 
-**Acceptance criteria (draft)**
+**Acceptance criteria**
 
 (26) The toggle is off by default and with no row. (27) `PUT enabled=true` is `409` unless the host switch, live readings and geofence are all on. (28) A new alert with the toggle on and a fresh reading showing Sentry off sends `on` once and logs one `auto` row. (29) Sentry reading on, a stale or incomplete reading, or no new alert sends nothing. (30) A command logged within the quiet period gives a `skipped` row and no car call. (31) A `skipped` row does not start the quiet period or the 60-second spacing. (32) A failure or refusal is not retried in the same episode. (33) The same alert never sends twice, including after an API restart while the alert is still open. (34) The log holds no payload, position or distance. (35) Nothing but `on` can be sent automatically. (36) `quiet_minutes` outside 5 to 1440, or not a whole number, is `400`. (37) "Use the host values" on the Geofence tab leaves the toggle and the quiet period alone.
 

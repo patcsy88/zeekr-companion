@@ -1,6 +1,6 @@
 # ADR-011: Automatic Sentry on, behind a toggle (proposal)
 
-Status: **ADR accepted by the owner on 2026-11-06 ("Approve the whole ADR"), with the quiet-period range 5 to 1440 whole minutes confirmed. The data model and the API contract are NOT yet approved. No code, no migration and no deploy until the owner approves them in writing.**
+Status: **ADR accepted by the owner on 2026-11-06 ("Approve the whole ADR"), with the quiet-period range 5 to 1440 whole minutes confirmed. The data model and the API contract (`api-contracts.md`, "automatic Sentry on") were approved by the owner on 2026-11-06 ("Yes approve"). The API build may start; each build step is approved before the next. Nothing is built or deployed yet.**
 
 ## Context
 
@@ -64,5 +64,5 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 ## Still needed before code
 
 - ~~The owner's written approval of this ADR as a whole.~~ Given on 2026-11-06.
-- The owner's approval of the data model (one-row `auto_sentry` setting with `enabled` and `quiet_minutes`, plus `source` on `car_command_log`) and the API contract amendment, which the agent will draft next.
+- ~~The owner's approval of the data model and the API contract amendment.~~ Given on 2026-11-06. The final table is `auto_sentry_settings` (`enabled`, `quiet_minutes`), with the `source` check widened and `skipped` and `skip_reason` added to `car_command_log`, as written in `api-contracts.md`.
 - ~~The quiet-period range.~~ Confirmed on 2026-11-06: 5 to 1440 whole minutes.
