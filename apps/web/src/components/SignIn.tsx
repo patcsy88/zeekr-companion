@@ -7,6 +7,7 @@ import { setToken } from '../auth/session';
 export function SignIn({ reason }: { reason?: string }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,13 +17,14 @@ export function SignIn({ reason }: { reason?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const t = await login(username, password);
+      const t = await login(username, password, code);
       setToken(t.access_token, t.expires_in);
-      setPassword(''); // the password is never kept
+      setPassword(''); // the password and code are never kept
+      setCode('');
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 401
-          ? 'Wrong username or password.'
+          ? 'Wrong username, password or code.'
           : describeError(err),
       );
     } finally {
@@ -69,6 +71,28 @@ export function SignIn({ reason }: { reason?: string }) {
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'signin-error' : undefined}
           />
+        </div>
+        <div className="field">
+          <label htmlFor="code">Code</label>
+          <input
+            id="code"
+            name="code"
+            type="text"
+            inputMode="text"
+            autoComplete="one-time-code"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={64}
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value);
+            }}
+            aria-describedby="code-hint"
+          />
+          <p id="code-hint" className="muted">
+            From your authenticator app, or a recovery code. Leave empty if you have not set it up.
+          </p>
         </div>
         {error ? (
           <p id="signin-error" role="alert" className="error">

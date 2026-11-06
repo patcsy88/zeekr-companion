@@ -69,6 +69,30 @@ class OwnerAccount(Base):
     )
 
 
+class OwnerMfa(Base):
+    """Second factor for the owner login (ADR-013). One row at most; no row means MFA is off.
+
+    `secret` is the base32 TOTP secret, stored as-is (owner decision): the server must read it back.
+    `last_step` is the newest time step already accepted, so a code cannot be used twice.
+    `recovery_hashes` holds scrypt hashes of the unused recovery codes; using one removes it.
+    """
+
+    __tablename__ = "owner_mfa"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    secret: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_step: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    recovery_hashes: Mapped[list[str]] = mapped_column(ARRAY(String(300)), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="single_row"),
+        CheckConstraint("char_length(secret) BETWEEN 16 AND 64", name="secret_valid"),
+        CheckConstraint("last_step >= 0", name="step_valid"),
+    )
+
+
 class Vehicle(Base):
     """The single vehicle profile. `singleton` + a unique constraint allows at most one row."""
 

@@ -1,6 +1,6 @@
 # ADR-013: Second factor for the owner login (authenticator-app code, with QR setup)
 
-- Status: **Proposed, not approved. No code written.** The owner chose the method on 2026-11-06 ("MFA with Google Authenticator with QR"). Every other point below is the architect's proposal and needs the owner's decision where listed under "Open questions".
+- Status: **Accepted (owner, 2026-11-06).** The owner chose the method ("MFA with Google Authenticator with QR") and answered the four open questions below. Implemented; deployed only when the owner runs it.
 - Date: 2026-11-06
 - Amends (once approved): the "Authentication" section of `docs/architecture/api-contracts.md`. Builds on ADR-006.
 - Related: ADR-003 (a passkey was discussed and set aside for now, see "Options considered").
@@ -17,22 +17,22 @@ Facts checked in the repo on 2026-11-06:
 - **confirmed** Passwords use scrypt from the standard library (`app/security.py`). `app/cli/set_owner.py` is the model for a setup command.
 - **confirmed** The next migration follows head `0015`.
 
-## Decision (proposed)
+## Decision
 
 1. **Method: time-based one-time password (TOTP, RFC 6238)**, read by Google Authenticator and any compatible app. Parameters Google Authenticator supports: SHA-1, 6 digits, 30-second step. **Owner chose this method.**
 2. **Code on every login, once MFA is set up.** No "trust this device". The second step comes after a correct password.
-3. **Setup and reset are server commands, as `set_owner` is.** There is no endpoint that turns MFA on, off or resets it, so a stolen token cannot change it. Proposed command name: `python -m app.cli.set_mfa` (**proposed, not found in the repo**).
+3. **Setup and reset are server commands, as `set_owner` is.** There is no endpoint that turns MFA on, off or resets it, so a stolen token cannot change it. The command is `python -m app.cli.set_mfa`, and `python -m app.cli.set_mfa --off` removes MFA (`services/api/app/cli/set_mfa.py`).
 4. **QR code is shown in the terminal by the setup command only.** It is never served over HTTP, never written to a file, and never logged. The command also prints the secret as text, as a fallback for an app that cannot scan.
 5. **Setup confirms before it saves.** The command asks for a current code from the app, and stores the secret only if the code is right. A bad scan therefore cannot lock the owner out.
 6. **Recovery codes.** Setup prints 8 one-time recovery codes once and stores only their hashes. Each works once, in place of the app code. They are the way back in if the phone is lost; the other way is the server reset command.
 7. **Replay protection.** The database keeps the last accepted time step; a code for that step or an earlier one is refused. The server accepts the current step and one either side, for clock drift.
 8. **Lockout.** A wrong or missing code counts as a failed login in the existing per-client and global limiters, so the 5-in-900-seconds hard lockout covers it. Nothing new is added to lockout.
 9. **No new information to an attacker.** A correct password with a wrong, missing or reused code returns the same `401 unauthenticated`, "Invalid credentials.", as a wrong password. Failed attempts log the client address and the failure count only, never the password, the username or the code.
-10. **Storage.** A new table holds the secret, the last accepted step and the recovery-code hashes. The secret is stored as-is in the database (see "Open questions" 1). The database export is already encrypted at rest. The secret is never logged, never returned by the API, and never put in the repo.
-11. **QR library: `segno`.** It draws the QR as terminal text. Facts from PyPI on 2026-11-06: version 1.6.6, BSD licence, no runtime dependencies on Python 3.10 and newer, last release 2025-03-12. **This is a new dependency and needs the owner's approval.** `pip-audit` runs on it with the other gates. The TOTP calculation itself uses the standard library (`hmac`, `hashlib`, `struct`) and is checked against the RFC 6238 test vectors.
+10. **Storage.** A new table holds the secret, the last accepted step and the recovery-code hashes. The secret is stored as-is in the database (owner answer 1). The database export is already encrypted at rest. The secret is never logged, never returned by the API, and never put in the repo.
+11. **QR library: `segno`.** It draws the QR as terminal text. Facts from PyPI on 2026-11-06: version 1.6.6, BSD licence, no runtime dependencies on Python 3.10 and newer, last release 2025-03-12. **New dependency, approved by the owner on 2026-11-06 and pinned exactly as `segno==1.6.6` in `services/api/pyproject.toml`.** `pip-audit` runs on it with the other gates. The TOTP calculation itself uses the standard library (`hmac`, `hashlib`, `struct`) and is checked against the RFC 6238 test vectors.
 12. **Web form.** The sign-in form always shows a "Code" field. It is labelled so it is clear it is needed only when MFA is set up. Showing it always means the form never has to ask the server whether MFA is on, which would tell an attacker.
 
-## Proposed contract amendment (not yet applied to `api-contracts.md`)
+## Contract amendment (applied to `api-contracts.md`)
 
 `POST /api/v1/auth/token`
 
@@ -49,7 +49,7 @@ Facts checked in the repo on 2026-11-06:
 - **A. Authenticator-app code (TOTP) with QR (chosen by the owner).** Works over plain HTTP today, no outside service.
 - **B. Passkey (WebAuthn).** Stronger against phishing, but browsers allow it only over HTTPS, on a real domain name, never an IP address. The app is plain HTTP on an address today, and Tailscale Serve is deferred (ADR-003). It also needs a new dependency and an iPhone check. Set aside until HTTPS exists; it could be added later next to TOTP.
 - **C. Code by SMS or email.** Needs an outside service (approval gate) and is weaker. Rejected.
-- **Secret storage.** _Plain in the database (proposed)_: simple, reset is a command with no restart. _Host `.env`_: never in the database, but a change needs an edit and a restart. _Encrypted in the database_: best, but needs the `cryptography` package, another new dependency.
+- **Secret storage.** _Plain in the database (chosen)_: simple, reset is a command with no restart. _Host `.env`_: never in the database, but a change needs an edit and a restart. _Encrypted in the database_: best, but needs the `cryptography` package, another new dependency.
 - **QR without a library.** Writing a QR encoder by hand is error-prone. Rejected.
 
 ## Consequences
@@ -78,9 +78,16 @@ Facts checked in the repo on 2026-11-06:
 - The host clock accuracy.
 - The `segno` dependency: licence and maintenance were read from PyPI metadata only.
 
-## Open questions for the owner
+## Owner answers (2026-11-06)
 
-1. **Secret storage:** plain in the database (proposed), host `.env`, or encrypted with a new `cryptography` dependency?
-2. **Approve `segno`** as a new dependency?
-3. **Mandatory once set up, every login, no trusted devices** (proposed)?
-4. **Approve the contract amendment** above, and approve implementation.
+1. **Secret storage:** plain in the database.
+2. **`segno`:** approved as a new dependency.
+3. **Mandatory once set up, every login, no trusted devices:** yes.
+4. **Contract amendment and implementation:** approved.
+
+## Implementation notes
+
+- Table `owner_mfa` (migration `0016`), one row with `id = 1`; no row means MFA is off.
+- Recovery codes are `xxxxx-xxxxx`, scrypt-hashed at `RECOVERY_SCRYPT_N = 2**14`.
+- The second factor is checked on every login that reaches the check, whether or not the password was right, so the work done does not show which part failed. A code is spent (atomic update) only when the whole login is otherwise right.
+- Review: `docs/security/review-2026-11-06-owner-mfa.md`.

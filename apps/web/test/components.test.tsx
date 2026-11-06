@@ -59,7 +59,56 @@ describe('SignIn', () => {
     await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'nope');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username, password or code.');
+  });
+
+  it('always shows a Code field and leaves it out of the request when empty', async () => {
+    let body: Record<string, unknown> = {};
+    server.use(
+      http.post('*/api/v1/auth/token', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ access_token: 'tok-test', expires_in: 3600 });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<SignIn />);
+    expect(screen.getByLabelText('Code')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => {
+      expect(body).toEqual({ username: 'owner', password: 'correct-horse' });
+    });
+  });
+
+  it('sends the trimmed code, and signs in only with the right one', async () => {
+    fake.mfaCode = '123456';
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.type(screen.getByLabelText('Code'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username, password or code.');
+    expect(fake.tokenIssued).toBeNull();
+    await user.clear(screen.getByLabelText('Code'));
+    await user.type(screen.getByLabelText('Code'), ' 123456 ');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => {
+      expect(fake.tokenIssued).toBe('tok-test');
+    });
+  });
+
+  it('does not keep the code after a successful sign-in', async () => {
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.type(screen.getByLabelText('Code'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Code')).toHaveValue('');
+    });
   });
 });
 
@@ -264,6 +313,6 @@ describe('SignIn username', () => {
     await user.type(screen.getByLabelText('Username'), 'someone-else');
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username, password or code.');
   });
 });
