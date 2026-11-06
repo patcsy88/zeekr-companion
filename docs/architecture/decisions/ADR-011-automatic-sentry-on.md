@@ -40,8 +40,8 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 ## Consequences
 
 - The "no automatic command" rule in ADR-010 is narrowed to: none except this one, behind the toggle and the host switch. ADR-010 gets a pointer to this ADR when it is accepted.
-- The owner finds out about an automatic send only by opening the app. A silent send at night is possible, and the app cannot warn first.
-- Sentry may draw on the 12 V battery. This is unmeasured, and the effect of an automatic send you did not watch is unknown.
+- The owner finds out about an automatic send only by opening the app, because the app has no push. The send ignores time of day, by the owner's decision (2026-11-06).
+- Zeekr's terms on unattended commands are unconfirmed. The owner has acknowledged them and accepted the associated risks (2026-11-06).
 - A wrong geofence verdict (for example a bad reading or a wrong home point) now causes a command, not only a notice. The geofence's own proof on a real asleep-and-away case is still **unrun**, so the first automatic send would be on an untested real case.
 - **Update 2026-11-06:** the owner reported the first real automatic send (car away more than 5 km, in-app switch on, host switch `true`; one send, then the alert closed). See `docs/operations/deploy-plan.md`. The owner then accepted the feature as done (see below).
 - Zeekr's terms on repeated or unattended commands are unconfirmed. Account-lock risk is unknown.
@@ -75,4 +75,6 @@ The owner stated in chat that the feature is "good and tested" and asked for it 
 - **Seen by the agent:** the code, the tests and gates on the Mac, the pasted deploy output, and the pasted host log lines of the first automatic send (`alert opened; automatic send: sent`, then `alert closed`, then `clear`).
 - **Owner-reported only:** that the car was away more than 5 km, asleep or not (not stated), that the in-app switch was on, and that the result was as intended.
 - **Not resolved:** the owner said they also sent Sentry on manually at 16:11 KL, yet the automatic send was not skipped by the quiet period. The command log rows were not shown, so whether the quiet-period guard failed or the order of events differed is **unknown**. Restating this does not reopen the decision; it is recorded so the gap is not lost.
-- **Still open risks:** the effect of Sentry on the 12 V battery, Zeekr's terms on unattended commands and account-lock risk, a silent send at night (the app has no push), and the position having no timestamp of its own.
+- **Still open risks:** Zeekr's terms on unattended commands and account-lock risk (accepted by the owner), and the position having no timestamp of its own (the reply-level `updateTime` is the rule).
+- **Owner decisions (2026-11-06):** the owner states that Sentry uses the main battery (owner statement, not verified by the agent). The app and docs make no claim about Sentry and battery use. The owner acknowledges Zeekr's terms on unattended commands and accepts the risks. The send ignores night versus day. If the reading has no readable top-level `updateTime`, nothing is sent: the geofence reads `incomplete`, no alert opens and no automatic send happens (already how it works; no code change).
+- **Closed as not an issue (owner, 2026-11-06):** the earlier note about a 16:11 manual send and a 16:12 automatic `sent` against the 60-minute quiet period. It supersedes the "Not resolved" bullet above.
