@@ -576,10 +576,6 @@ select {
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
-.dash-range {
-  margin: var(--space-2) 0 0;
-  font-variant-numeric: tabular-nums;
-}
 .bar {
   height: 0.6rem;
   margin: 0.4rem 0;
@@ -617,9 +613,26 @@ select {
 }
 .tyres {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr minmax(3rem, 4.5rem) 1fr;
+  grid-template-rows: auto auto;
   gap: var(--space-2);
+  align-items: center;
   margin: var(--space-2) 0;
+}
+.car-outline {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+  max-height: 8.5rem;
+  color: var(--muted);
+  opacity: 0.55;
+}
+.tyres > .tyre:nth-of-type(odd) {
+  grid-column: 1;
+}
+.tyres > .tyre:nth-of-type(even) {
+  grid-column: 3;
+  text-align: right;
 }
 .tyre {
   padding: var(--space-2) 0.6rem;
@@ -757,4 +770,81 @@ button.theme-picker {
   border-color: transparent;
   background: none;
   color: var(--brand);
+}
+/* Vehicle tab: summary header, stat tiles and iOS-style grouped lists. */
+.vehicle-hero {
+  background: var(--card);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+  margin: var(--space-3) 0;
+}
+.vehicle-hero p {
+  margin: 0;
+}
+.vehicle-model {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.group-title {
+  margin: var(--space-4) 0 var(--space-2);
+  padding: 0 var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group {
+  margin: 0 0 var(--space-3);
+  background: var(--card);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.group > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+}
+.group > div + div {
+  border-top: 0.5px solid var(--line);
+}
+.group dt {
+  color: var(--fg);
+}
+.group dd {
+  margin: 0;
+  color: var(--muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.live-card .group {
+  background: var(--bg);
+}
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.stat {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+}
+.stat dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.tyre {
+  background: var(--bg);
 }

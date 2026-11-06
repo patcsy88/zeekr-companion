@@ -60,25 +60,30 @@ export function VehiclePage() {
               </div>
             </>
           ) : null}
-          <dl className="details">
-            <dt>Model</dt>
-            <dd>{view.vehicle.model}</dd>
-            <dt>Variant</dt>
-            <dd>{view.vehicle.variant || '—'}</dd>
-            <dt>Drive</dt>
-            <dd>{view.vehicle.drive}</dd>
-            <dt>Steering</dt>
-            <dd>{view.vehicle.steering}</dd>
-            <dt>Registration</dt>
-            <dd>{view.vehicle.registration ?? '—'}</dd>
-            <dt>VIN</dt>
-            <dd>{view.vehicle.vin ?? '—'}</dd>
-            <dt>Purchase date</dt>
-            <dd>{view.vehicle.purchase_date ? formatDate(view.vehicle.purchase_date) : '—'}</dd>
-            <dt>Purchase price</dt>
-            <dd>{formatMyr(view.vehicle.purchase_price_minor)}</dd>
-            <dt>Tyre specification</dt>
-            <dd>{view.vehicle.tyre_spec ?? '—'}</dd>
+          <div className="vehicle-hero" data-testid="vehicle-hero">
+            <p className="vehicle-model">{view.vehicle.model}</p>
+            {view.vehicle.variant ? <p className="muted">{view.vehicle.variant}</p> : null}
+            <p className="badges">
+              <span className="badge info">{view.vehicle.drive}</span>
+              <span className="badge info">{view.vehicle.steering}</span>
+            </p>
+          </div>
+          <h2 className="group-title">Identity</h2>
+          <dl className="group">
+            <Row label="Registration" value={view.vehicle.registration} />
+            <Row label="VIN" value={view.vehicle.vin} />
+          </dl>
+          <h2 className="group-title">Ownership</h2>
+          <dl className="group">
+            <Row
+              label="Purchase date"
+              value={view.vehicle.purchase_date ? formatDate(view.vehicle.purchase_date) : null}
+            />
+            <Row label="Purchase price" value={formatMyr(view.vehicle.purchase_price_minor)} />
+          </dl>
+          <h2 className="group-title">Tyres</h2>
+          <dl className="group">
+            <Row label="Tyre specification" value={view.vehicle.tyre_spec} />
           </dl>
           <Link to="/vehicle/edit" className="button">
             Edit
@@ -86,6 +91,16 @@ export function VehiclePage() {
         </>
       )}
     </section>
+  );
+}
+
+/** One label / value line in a grouped list. */
+function Row({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value ?? '—'}</dd>
+    </div>
   );
 }
 
