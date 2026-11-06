@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     geofence_radius_km: float = Field(default=5.0, gt=0, le=100)
     geofence_interval_minutes: int = Field(default=5, ge=5, le=1440)
     geofence_stale_minutes: int = Field(default=30, ge=1, le=1440)
+    # Second lock for automatic Sentry on (ADR-011). The toggle in the app does nothing unless this
+    # is true. Off by default; the first real use waits for the owner's watched trial.
+    geofence_auto_sentry_allowed: bool = False
     # Where the one-time lookup result is kept. A writable volume on the host (see compose).
     geofence_state_dir: str = Field(default="/var/lib/zeekr-geofence", max_length=200)
 

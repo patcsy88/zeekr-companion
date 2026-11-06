@@ -296,7 +296,9 @@ def test_the_log_lists_newest_first_with_no_payload(
         "source",
         "result",
         "state_after",
+        "skip_reason",  # ADR-011: null on every row that is not a skipped automatic send
     }
+    assert body["items"][0]["skip_reason"] is None and body["items"][0]["source"] == "manual"
     assert client.get(LOG + "?limit=1", headers=auth_headers).json()["items"][0]["desired"] == "off"
     for bad in ("0", "101", "x", "1.0", "-1"):
         assert client.get(f"{LOG}?limit={bad}", headers=auth_headers).status_code == 400

@@ -476,14 +476,24 @@ class CarCommandLog(Base):
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     result: Mapped[str] = mapped_column(String(10), nullable=False)
     state_after: Mapped[str | None] = mapped_column(String(3))
+    # Set only on a 'skipped' row (ADR-011): an automatic send that was not made. Nothing was sent.
+    skip_reason: Mapped[str | None] = mapped_column(String(12))
 
     __table_args__ = (
         CheckConstraint("desired IN ('on', 'off')", name="desired_valid"),
-        CheckConstraint("source IN ('manual')", name="source_valid"),
-        CheckConstraint("result IN ('sent', 'refused', 'failed')", name="result_valid"),
+        CheckConstraint("source IN ('manual', 'auto')", name="source_valid"),
+        CheckConstraint("result IN ('sent', 'refused', 'failed', 'skipped')", name="result_valid"),
         CheckConstraint(
             "state_after IS NULL OR state_after IN ('on', 'off')", name="state_after_valid"
         ),
+        CheckConstraint(
+            "skip_reason IS NULL OR skip_reason IN ('quiet_period', 'host_off', 'busy')",
+            name="skip_reason_valid",
+        ),
+        CheckConstraint(
+            "(result = 'skipped') = (skip_reason IS NOT NULL)", name="skip_reason_matches_result"
+        ),
+        CheckConstraint("result <> 'skipped' OR source = 'auto'", name="skipped_is_auto"),
         Index("ix_car_command_log_created_at", "created_at"),
     )
 
@@ -511,4 +521,21 @@ class GeofenceSettings(Base):
         CheckConstraint(
             "cardinality(usage_mode_codes) BETWEEN 1 AND 5", name="usage_mode_codes_valid"
         ),
+    )
+
+
+class AutoSentrySettings(Base):
+    """The automatic Sentry on toggle and its quiet period (ADR-011). One row at most. No row
+    means off and 60 minutes. Kept apart from geofence_settings on purpose."""
+
+    __tablename__ = "auto_sentry_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    quiet_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("id = 1", name="single_row"),
+        CheckConstraint("quiet_minutes BETWEEN 5 AND 1440", name="quiet_valid"),
     )
