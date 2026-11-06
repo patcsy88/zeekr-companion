@@ -494,3 +494,73 @@ select {
 .ro-toggle-unknown .ro-knob {
   display: none;
 }
+.dash-hero {
+  padding: 0.25rem 0 0.5rem;
+}
+.dash-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.dash-big {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.dash-range {
+  margin: 0.5rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  height: 0.6rem;
+  margin: 0.4rem 0;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: var(--switch-on);
+}
+.bar-fill.bar-low {
+  background: var(--bad);
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+}
+.badge {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.badge-on {
+  background: var(--ok-bg);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.badge-unknown {
+  border-style: dashed;
+}
+.tyres {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.tyre {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+.tyre-value {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
