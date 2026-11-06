@@ -14,13 +14,50 @@
   --ok: #17603a;
   --warn-bg: #fff3d6;
   --warn: #7a4b00;
+  --on-bad: #fff;
+  --control-bg: #fff;
+  --control-border: #7a8784;
+  --focus: #1a73e8;
+  --switch-off: #80888f;
+  --switch-on: #2f7d4f;
+  --knob: #fff;
+  --dashed: #8a8f98;
+  --border: #ccc;
   font-family:
     system-ui,
     -apple-system,
     'Segoe UI',
     Roboto,
     sans-serif;
-  color-scheme: light;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1514;
+    --fg: #e6eceb;
+    --muted: #a3b0ad;
+    --card: #182120;
+    --line: #2f3b39;
+    --brand: #4fc3b6;
+    --brand-fg: #06201d;
+    --bad: #ff8a80;
+    --bad-bg: #3a1a18;
+    --info-bg: #14253f;
+    --info: #8ab8ff;
+    --ok-bg: #12301f;
+    --ok: #7ad9a0;
+    --warn-bg: #35280a;
+    --warn: #f2c14e;
+    --on-bad: #2b0a08;
+    --control-bg: #1c2625;
+    --control-border: #7f918d;
+    --focus: #7ab4ff;
+    --switch-off: #6f7a82;
+    --switch-on: #3fa56b;
+    --knob: #fff;
+    --dashed: #8a9a97;
+    --border: #3a4745;
+  }
 }
 * {
   box-sizing: border-box;
@@ -68,7 +105,7 @@ h2 {
 .skip:focus {
   left: 0.5rem;
   top: 0.5rem;
-  background: #fff;
+  background: var(--card);
   padding: 0.5rem;
   z-index: 10;
 }
@@ -192,9 +229,9 @@ textarea {
   font: inherit;
   font-size: 1rem;
   padding: 0.65rem;
-  border: 1px solid #7a8784;
+  border: 1px solid var(--control-border);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--control-bg);
   color: inherit;
 }
 input[aria-invalid='true'],
@@ -220,8 +257,8 @@ button,
   min-height: 2.75rem;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #7a8784;
-  background: #fff;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
   color: var(--fg);
   cursor: pointer;
   text-decoration: none;
@@ -242,7 +279,7 @@ button.primary,
 button.danger {
   background: var(--bad);
   border-color: var(--bad);
-  color: #fff;
+  color: var(--on-bad);
 }
 button.link {
   border: 0;
@@ -252,7 +289,7 @@ button.link {
   min-height: 2.75rem;
 }
 :focus-visible {
-  outline: 3px solid #1a73e8;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 .actions {
@@ -310,7 +347,7 @@ button.link {
   left: 0;
   right: 0;
   display: flex;
-  background: #fff;
+  background: var(--card);
   border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -372,10 +409,10 @@ select {
   padding: 0.5rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--control-bg);
 }
 .live-card {
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   margin: 0.75rem 0;
@@ -402,7 +439,7 @@ select {
   width: 2.25rem;
   height: 1.25rem;
   border-radius: 999px;
-  background: #b8bcc4;
+  background: var(--switch-off);
   position: relative;
   display: inline-block;
 }
@@ -413,10 +450,10 @@ select {
   width: 1rem;
   height: 1rem;
   border-radius: 50%;
-  background: #fff;
+  background: var(--knob);
 }
 .ro-toggle-on .ro-track {
-  background: #2f7d4f;
+  background: var(--switch-on);
 }
 .ro-toggle-on .ro-knob {
   left: 1.125rem;
@@ -437,14 +474,14 @@ select {
   opacity: 0.7;
 }
 .sentry-switch-on .ro-track {
-  background: #2f7d4f;
+  background: var(--switch-on);
 }
 .sentry-switch-on .ro-knob {
   left: 1.125rem;
 }
 .ro-toggle-unknown .ro-track {
   background: transparent;
-  border: 1px dashed #8a8f98;
+  border: 1px dashed var(--dashed);
 }
 .ro-toggle-unknown .ro-knob {
   display: none;
