@@ -32,6 +32,7 @@ import { WarrantyPage } from './pages/WarrantyPage';
 import { WarrantyTemplatePage } from './pages/WarrantyTemplatePage';
 import { VehicleEditPage, VehiclePage } from './pages/VehiclePage';
 import { AccountMenu } from './components/AccountMenu';
+import { ThemePicker } from './components/ThemePicker';
 import { probeApi } from './api/health';
 import { getSession } from './auth/session';
 import { watchBrowserConnectivity } from './lib/connectivity';
@@ -62,7 +63,10 @@ function Layout() {
           <Logo size={26} />
           <span>Zeekr Companion</span>
         </p>
-        {session.signedIn ? <AccountMenu /> : null}
+        <div className="top-actions">
+          <ThemePicker />
+          {session.signedIn ? <AccountMenu /> : null}
+        </div>
       </header>
       <SyncBar />
       <main id="main">
