@@ -177,15 +177,16 @@ test('AC-39/40: offline create is pending, survives reload, and is sent exactly 
   await expect(page.getByTestId('sync-pending')).toBeVisible();
   await expect(page.getByTestId('totals-offline-note')).toBeVisible();
 
-  // The pending expense survives a reload while still offline.
+  // The pending expense survives a reload while still offline. Signed out, it is kept but hidden.
   await page.reload();
-  await page.getByRole('link', { name: 'Expenses' }).click();
-  await expect(page.getByRole('link', { name: new RegExp(notes) })).toBeVisible();
-  await expect(page.getByTestId('sync-pending')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByRole('link', { name: new RegExp(notes) })).toHaveCount(0);
   const base = baseURL ?? 'http://localhost:4173';
 
   await context.setOffline(false);
-  await signIn(page).catch(() => undefined);
+  await signIn(page);
+  await page.getByRole('link', { name: 'Expenses' }).click();
+  await expect(page.getByRole('link', { name: new RegExp(notes) })).toBeVisible();
   await page.getByRole('button', { name: 'Sync now' }).click();
   await expect(page.getByTestId('pending-count')).toHaveCount(0, { timeout: 15_000 });
   const items = (await serverExpenses(browser, base)).filter((x) => x.notes === notes);

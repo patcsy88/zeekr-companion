@@ -219,7 +219,7 @@ Approved as drafted, with the tyre bound set to 0 to 500 kPa. Changing it now ne
 - Honest limit: memory-only storage reduces token theft but does not stop in-page abuse by XSS. The control is XSS prevention: strict CSP, no third-party scripts, no raw HTML injection.
 - A cookie-based session would be safer against XSS but needs an API contract change and CSRF handling. It is not proposed.
 - All endpoints except `/health` require a valid token.
-- Cached data in IndexedDB is readable without signing in. Accepted or mitigated by an app lock: owner decision.
+- Cached data in IndexedDB is readable without signing in. Accepted or mitigated by an app lock: owner decision. **Updated 2026-11-07:** the app shows nothing but the sign-in form when signed out; the data stays in IndexedDB unencrypted, so this hides it in the app only.
 
 ## Deployment (proposed)
 
@@ -256,7 +256,7 @@ Adapters implement interfaces such as `VehicleDataSource`. The MVP ships none. A
 1. Approve ADR-002 and choose option (b) Vite PWA or option (a) Expo web.
 2. Approve a reverse proxy container (Caddy proposed, nginx acceptable). It is a new component.
 3. ~~Choose the HTTPS route and the remote access tool.~~ **Decided 2026-10-13: Tailscale (free Personal plan), Funnel off, nothing public** (ADR-003, accepted by the owner). Still open inside ADR-003: host `tailscale serve` versus sidecar, machine and tailnet names, HSTS on/off, key expiry, account MFA.
-4. Accept that cached data is readable without signing in, or request an app lock.
+4. ~~Accept that cached data is readable without signing in, or request an app lock.~~ **Decided 2026-11-07:** signed out, the app shows only the sign-in form (data kept on the device, hidden).
 5. Decide whether offline-queue behaviour becomes an acceptance criterion (proposed AC-9).
 6. Approve `gitleaks` and Playwright browser downloads as tools.
 

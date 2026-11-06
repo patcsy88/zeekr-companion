@@ -77,7 +77,7 @@ test('AC-6: record survives reload and is on the server (second profile)', async
   expect(found[0]?.cost_minor).toBe(12050); // MYR 120.50 sent as integer sen
 });
 
-test('AC-7: cold start offline shows cached vehicle and records with an offline indicator', async ({
+test('AC-7 (amended 2026-11-07): cold start offline shows only the sign-in form, and the saved data again after sign in', async ({
   page,
   context,
 }) => {
@@ -92,10 +92,15 @@ test('AC-7: cold start offline shows cached vehicle and records with an offline 
   await context.setOffline(true);
   await page.reload(); // cold start of the shell from the service worker, no network, not signed in
   await expect(page.getByTestId('offline-indicator')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  // Signed out: no tab and no saved record is on screen (owner decision 2026-11-07).
+  await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: new RegExp(description) })).toHaveCount(0);
+  await context.setOffline(false);
+  await signIn(page);
   await expect(page.getByRole('link', { name: new RegExp(description) })).toBeVisible();
   await page.getByRole('link', { name: 'Vehicle' }).click();
   await expect(page.getByText('Edited variant')).toBeVisible();
-  await context.setOffline(false);
 });
 
 test('service worker never caches /api responses', async ({ page }) => {
