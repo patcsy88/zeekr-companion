@@ -80,8 +80,11 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
     pushed !== null && (card.received_at === null || pushed.at > card.received_at) ? pushed : null;
   const seen = local && remote ? (remote.at > local.at ? remote : local) : (remote ?? local);
 
+  const shown = seen ? seen.on : card.readings.indicators.sentry_active;
+  const tone = shown === null ? 'unknown' : shown ? 'on' : 'off';
+
   return (
-    <div data-testid="sentry-panel">
+    <div data-testid="sentry-panel" className={`sentry-panel sentry-panel-${tone}`}>
       {card.status === 'paused' ? (
         <p role="alert" className="notice bad" data-testid="live-paused">
           Live readings are paused after repeated failures. They stay paused until the API is
@@ -109,7 +112,7 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
         </p>
       ) : null}
       <SentryControl
-        current={seen ? seen.on : card.readings.indicators.sentry_active}
+        current={shown}
         onResult={onNote}
         onSeen={(on) => {
           setSeenLocal({ on, at: new Date().toISOString(), basis: card.received_at });

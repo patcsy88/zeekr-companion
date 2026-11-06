@@ -264,6 +264,21 @@ describe('sentry control', () => {
     expect(screen.queryByTestId('sentry-switch')).toBeNull();
   });
 
+  it('the panel is tinted by the reported state: on, off, or no reading', async () => {
+    for (const [value, tone] of [
+      [true, 'on'],
+      [false, 'off'],
+      [null, 'unknown'],
+    ] as const) {
+      serve(value);
+      open();
+      const { unmount } = render(<App />);
+      const panel = await screen.findByTestId('sentry-panel');
+      expect(panel).toHaveClass(`sentry-panel-${tone}`);
+      unmount();
+    }
+  });
+
   it('the Sentry tab holds the control', async () => {
     serve(true);
     open();
