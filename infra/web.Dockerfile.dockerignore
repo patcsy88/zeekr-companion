@@ -1,0 +1,18 @@
+# Allow-list: the web image needs only these paths from the repository root.
+*
+!apps/web
+!packages/shared-types
+!infra/check-dist.sh
+!infra/Caddyfile
+!infra/snippets
+
+# Never copy local installs, builds, test output or env files into the image.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/.DS_Store
+apps/web/e2e
+apps/web/test
+apps/web/test-results
+apps/web/playwright-report
