@@ -3,7 +3,7 @@
 Docker Compose stack: `db` (PostgreSQL), `api` (FastAPI) and `web` (Caddy: static client + reverse proxy). Step-by-step deploy and configuration: `docs/operations/deploy-guide.md`. A one-file install from published images (`docker-compose.release.yml`, ADR-012) is described there too; it is not run yet.
 
 ```
-cp .env.example .env     # fill in POSTGRES_PASSWORD and TOKEN_SECRET
+./install.sh              # creates .env with random POSTGRES_PASSWORD and TOKEN_SECRET (or: cp .env.example .env and fill them in)
 docker compose up -d --build --wait
 docker compose exec api python -m app.cli.set_owner    # create the owner login (prompts)
 ```
