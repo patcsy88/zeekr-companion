@@ -42,8 +42,6 @@ WEB_PORT=$port
 WEB_SUBNET=$subnet
 WEB_PROXY_IP=$proxy_ip
 EOF
-# Optional: SMOKE_WEB_DIST_DIR=../apps/web/dist (relative to infra/) serves the real build.
-if [ -n "${SMOKE_WEB_DIST_DIR:-}" ]; then echo "WEB_DIST_DIR=$SMOKE_WEB_DIST_DIR" >> "$envfile"; fi
 
 echo "project=$project subnet=$subnet proxy_ip=$proxy_ip port=$port"
 compose up -d --build --wait --wait-timeout 180 >/dev/null
@@ -70,14 +68,12 @@ check "SPA fallback serves index" 200 "$(code "$base/some/client/route")"
 
 echo "--- served client"
 index="$(curl -s "$base/")"
-if [ -n "${SMOKE_WEB_DIST_DIR:-}" ]; then
-  if printf '%s' "$index" | grep -q "placeholder page"; then bad "WEB_DIST_DIR is set but / is the placeholder"; else ok "WEB_DIST_DIR is set and / is the real build"; fi
-  if "$here/check-dist.sh" "$SMOKE_WEB_DIST_DIR" >/dev/null; then ok "dist has no dotfiles or .map files"; else bad "dist check failed"; fi
-  check "dotfile request is 404" 404 "$(code "$base/.env")"
-  check ".map request is 404" 404 "$(code "$base/assets/index.js.map")"
-else
-  echo "      (SMOKE_WEB_DIST_DIR not set: serving the placeholder; set it to ../apps/web/dist to test the real build)"
-fi
+# The web image builds the client itself (infra/web.Dockerfile), so the real build is always served.
+if printf '%s' "$index" | grep -q "placeholder page"; then bad "/ is the placeholder, not the built client"; else ok "/ is the built client"; fi
+if printf '%s' "$index" | grep -q '<script'; then ok "built client index.html loads a script"; else bad "built client index.html has no script tag"; fi
+check "dotfile request is 404" 404 "$(code "$base/.env")"
+check ".map request is 404" 404 "$(code "$base/assets/index.js.map")"
+check "no dotfiles or .map files in the image" "" "$(docker exec "$(compose ps -q web)" sh -c "find /srv/web \\( -name '.*' -o -name '*.map' \\) -not -path /srv/web" | tr -d '\n')"
 
 echo "--- headers on index.html"
 h="$(hdr "$base/")"
@@ -200,7 +196,7 @@ docker run -d --name "$eapi" --network "$enet" --network-alias api --entrypoint 
 docker run -d --name "$eweb" --network "$enet" -p "127.0.0.1:0:8080" \
   -e HSTS_SNIPPET=/etc/caddy/snippets/hsts-off.caddy \
   -v "$here/Caddyfile:/etc/caddy/Caddyfile:ro" -v "$here/snippets:/etc/caddy/snippets:ro" \
-  -v "$here/web-placeholder:/srv/web:ro" "$(docker inspect -f '{{.Config.Image}}' "$web_cid")" >/dev/null
+  "$(docker inspect -f '{{.Config.Image}}' "$web_cid")" >/dev/null
 eport="$(docker port "$eweb" 8080/tcp | grep -v '::' | sed 's/.*://')"
 for _ in $(seq 1 30); do [ "$(code "http://127.0.0.1:$eport/health" || true)" = 200 ] && break; sleep 0.5; done
 ts=(-H 'Tailscale-User-Login: placeholder@example.invalid' -H 'tailscale-user-name: Placeholder' -H 'TAILSCALE-USER-PROFILE-PIC: https://example.invalid/p.png' -H 'Tailscale-Headers-Info: https://example.invalid/info' -H 'Tailscale-Some-Future-Header: 1' -H 'X-Not-Tailscale-Prefix: keep-me')

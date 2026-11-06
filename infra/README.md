@@ -1,23 +1,23 @@
 # infra
 
-Docker Compose stack: `db` (PostgreSQL), `api` (FastAPI) and `web` (Caddy: static client + reverse proxy).
+Docker Compose stack: `db` (PostgreSQL), `api` (FastAPI) and `web` (Caddy: static client + reverse proxy). Step-by-step deploy and configuration: `docs/operations/deploy-guide.md`.
 
 ```
 cp .env.example .env     # fill in POSTGRES_PASSWORD and TOKEN_SECRET
-docker compose up --build
+docker compose up -d --build --wait
 docker compose exec api python -m app.cli.set_owner    # create the owner login (prompts)
 ```
 
 - Only `web` publishes a port: `${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}`. Never default it to `0.0.0.0`. `api` and `db` have no `ports`.
 - **Owner-approved exception (2026-11-03):** on the owner's host `WEB_BIND_ADDRESS=0.0.0.0` is set in `infra/.env`, so the iPhone can reach the app over plain HTTP on the private network. The host has no firewall. The checks below that expect `127.0.0.1:8080` (the `docker port` and `ss` checks) fail by design on that host. The default in this file and in `docker-compose.yml` is unchanged.
 - `web` forwards `/api/*` and `/health` to `api:8000`; everything else is static files from `/srv/web` with fallback to `index.html`.
-- **Wiring `apps/web`:** run `npm run build` in `apps/web`, then set `WEB_DIST_DIR=../apps/web/dist` in `infra/.env` (path relative to `infra/`). Until then a placeholder page in `infra/web-placeholder` is served.
+- **The web image:** `infra/web.Dockerfile` (build context is the repository root) runs `npm ci` and `npm run build` in `apps/web`, runs `check-dist.sh` on the result, and copies it with the `Caddyfile` and `snippets` into a Caddy image. Nothing is mounted from the host, so there is nothing to build or copy by hand. `VITE_SENTRY_DSN` is read at image build time. `WEB_DIST_DIR` is no longer used. `infra/web-placeholder` is no longer used by the stack or by `smoke.sh` (left in place, not deleted).
 - **Headers** (`Caddyfile`): CSP, `nosniff`, `Referrer-Policy: no-referrer` on every response; `no-cache` on `index.html`, `sw.js` and fallback routes; `no-store` on `/api/*`; request body cap 64 KiB (answered as `400 validation_error`, matching the API).
 - **HSTS** is off. `WEB_HSTS=on` adds `Strict-Transport-Security` (30 days). Owner decision (ADR-003): keep it off. TLS is not handled here: Tailscale Serve on the host terminates HTTPS and proxies to the loopback port.
 - **Client address / login rate limit:** the proxy has a fixed address (`WEB_PROXY_IP` in `WEB_SUBNET`). `api` starts uvicorn with `--proxy-headers --forwarded-allow-ips $FORWARDED_ALLOW_IPS`, set to that address only. The entrypoint refuses `*`. Caddy overwrites any client-sent `X-Forwarded-For`. Behind host `tailscale serve` the API sees the Docker bridge gateway of the `edge` network (observed `172.18.0.1` on Docker Desktop) for every request: one shared login bucket, by owner decision. `FORWARDED_ALLOW_IPS` does not change.
 - **Tailscale headers:** Caddy deletes every `Tailscale-*` request header (identity headers carry the account email) before any handler. `infra/smoke.sh` proves it against an echo upstream; the API ignores and never logs them (`services/api/tests/test_tailscale_headers.py`).
 - **Networks:** `backend` is `internal: true` (no route out) and holds `db`, `api` and `web`; `edge` holds only `web` and carries the published port; `egress` holds only `api` and gives it a route out for the optional hosted advisory model and tracing (ADR-008 step 4, owner decision 2026-10-30; nothing is published from it and `db` is not on it). `web` is on `backend` and `edge`, `api` on `backend` and `egress`.
-- **Post-build check:** after `npm run build` in `apps/web`, run `infra/check-dist.sh ../apps/web/dist`. It fails if `dist` has no `index.html`, or contains dotfiles or `.map` files. The proxy also answers 404 for any path with a dotfile segment or ending `.map`. `infra/smoke.sh` fails if `WEB_DIST_DIR` is set but `/` is still the placeholder: `SMOKE_WEB_DIST_DIR=../apps/web/dist infra/smoke.sh` tests the real build.
+- **Post-build check:** the web image build runs `infra/check-dist.sh ../apps/web/dist` and fails if `dist` has no `index.html`, or contains dotfiles or `.map` files. The proxy also answers 404 for any path with a dotfile segment or ending `.map`. `infra/smoke.sh` always tests the real built client and fails if `/` is the placeholder.
 - **CSP** also has `form-action 'self'` and `connect-src 'self' https://*.sentry.io` (the only outbound allowance, for optional error reporting, ADR-007; nothing is sent unless a DSN is set). `Permissions-Policy` denies camera, microphone, geolocation, payment and USB, and `Cross-Origin-Opener-Policy: same-origin` is set; the real build was loaded in Chromium under these headers and signed in with no violations.
 - **`Cache-Control` on `/api/*`:** the API sets `no-store`; Caddy adds it only if the response lacks one, so it is never duplicated.
 - **Trusted proxies:** `FORWARDED_ALLOW_IPS` must be single addresses or networks no wider than IPv4 /24 or IPv6 /120; `0.0.0.0`, `0.0.0.0/0`, `::/0` and `*` stop the container at start (exit 64).
@@ -43,13 +43,9 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # TOKEN_SECRET
 
 Paste each value into `infra/.env`. The owner login is not a secret in `.env`: once the stack is up (step 3), create it with `docker compose exec api python -m app.cli.set_owner`. It prompts for a username (3 to 64 characters, not case-sensitive) and a password (at least 12 characters, typed twice, never echoed or stored in plain text). Run the same command to reset a forgotten password; it takes effect on the next sign-in with no restart. Tokens already issued stay valid for up to an hour; to end them at once, change `TOKEN_SECRET` and run `docker compose up -d`. Until `set_owner` has run, every sign-in returns 401 and the API log says so. Leave `WEB_BIND_ADDRESS=127.0.0.1`, `WEB_PORT=8080`, `WEB_HSTS=off`.
 
-### 2. Build the client and point the stack at it
+### 2. The client
 
-```
-cd apps/web && npm ci && npm run build && cd ../..
-infra/check-dist.sh ../apps/web/dist
-echo 'WEB_DIST_DIR=../apps/web/dist' >> infra/.env     # path is relative to infra/
-```
+Nothing to do. The web image builds the client itself in step 3 (see "The web image" above).
 
 ### 3. Start the stack and check it locally
 
@@ -57,7 +53,7 @@ echo 'WEB_DIST_DIR=../apps/web/dist' >> infra/.env     # path is relative to inf
 cd infra && docker compose up -d --build --wait
 curl -s http://127.0.0.1:8080/health          # {"status":"ok"}
 docker port zeekr-companion-web-1             # must show 127.0.0.1:8080 only, never 0.0.0.0 (owner-approved exception on the owner's host: 0.0.0.0, see above)
-SMOKE_WEB_DIST_DIR=../apps/web/dist ./smoke.sh   # optional; uses its own throwaway project
+./smoke.sh                                    # optional; uses its own throwaway project
 ```
 
 ### 4. Publish to the tailnet only

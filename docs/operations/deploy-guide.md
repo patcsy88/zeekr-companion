@@ -1,0 +1,139 @@
+# Deploy and configure Zeekr Companion
+
+How to run the whole app from three Docker containers on one Ubuntu host. Placeholders only: the real host name, addresses, tailnet name, keys and passwords never go in this repo.
+
+Related: `infra/README.md` (stack details and the Tailscale runbook), `infra/backup/RESTORE.md` (backup and restore), `docs/operations/deploy-plan.md` (the deploy record).
+
+## What runs
+
+| Container | Image                                | What it does                                                                                               | Published port                                         |
+| --------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `db`      | `postgres:17-alpine`                 | PostgreSQL. Data lives in the `pgdata` volume.                                                             | none                                                   |
+| `api`     | built from `services/api/Dockerfile` | FastAPI. Runs the database migrations each time it starts.                                                 | none                                                   |
+| `web`     | built from `infra/web.Dockerfile`    | Caddy. The web client is built inside the image and baked in. It forwards `/api/*` and `/health` to `api`. | `WEB_BIND_ADDRESS:WEB_PORT` (default `127.0.0.1:8080`) |
+
+Everything is in `infra/docker-compose.yml`. Nothing is mounted from the host except the named volumes. There is nothing to build or copy by hand any more: `docker compose up --build` builds the client too.
+
+## 1. Prerequisites
+
+- Ubuntu Server 24.04 LTS with Docker Engine and the Compose plugin (ADR-004). Check with `docker compose version`.
+- Internet access from the host while building. The build pulls base images (`node`, `python`, `caddy`, `postgres`) and runs `npm ci` and `pip install`, so it reaches the npm and PyPI registries. Running the stack afterwards needs no internet, except for the optional features below.
+- Disk and memory for a Node build. How much the host needs has **not been measured**; if the build is killed, check `dmesg` for an out-of-memory kill.
+- The port in `WEB_PORT` (default 8080) free on the host.
+
+## 2. Get the code
+
+```
+git clone <repository-url> zeekr-companion
+cd zeekr-companion/infra
+```
+
+## 3. Configure
+
+```
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_urlsafe(24))"   # POSTGRES_PASSWORD
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # TOKEN_SECRET
+```
+
+Paste the two values into `infra/.env`. `.env` is gitignored. Never paste it, or any value from it, into chat, a ticket or the repo. Compose refuses to start while either is empty.
+
+### Settings
+
+Required:
+
+| Setting             | Meaning                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD` | Database password. Avoid `@`, `/`, `:` and `%`, because it goes into a URL.                             |
+| `TOKEN_SECRET`      | Signs access tokens. At least 32 characters, not a placeholder. Changing it signs everyone out at once. |
+
+Access:
+
+| Setting                      | Default                          | Meaning                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WEB_BIND_ADDRESS`           | `127.0.0.1`                      | The address the web port is published on. Keep loopback unless you deliberately want other devices on your private network to reach the app over plain HTTP. There is no firewall in this stack and the password and token cross the network unencrypted, so never use `0.0.0.0` on a network you do not control, and never expose the port to the internet. |
+| `WEB_PORT`                   | `8080`                           | The published port.                                                                                                                                                                                                                                                                                                                                          |
+| `WEB_HSTS`                   | `off`                            | `on` adds `Strict-Transport-Security`. Turn it on only once the site is served over HTTPS.                                                                                                                                                                                                                                                                   |
+| `CORS_ALLOWED_ORIGINS`       | empty                            | Not needed: the client is served from the same origin.                                                                                                                                                                                                                                                                                                       |
+| `WEB_SUBNET`, `WEB_PROXY_IP` | `172.28.77.0/24`, `172.28.77.10` | A fixed network the API trusts for the client address. Change both together only if the subnet clashes with another Docker network.                                                                                                                                                                                                                          |
+
+Optional, all off by default:
+
+| Setting                                                                                                                      | Meaning                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SENTRY_DSN_API`                                                                                                             | API error reporting (ADR-007). Empty sends nothing.                                                                                                                                                                                                        |
+| `VITE_SENTRY_DSN`                                                                                                            | Browser error reporting. Read **when the web image is built**, so changing it needs `docker compose build web` and then `docker compose up -d`.                                                                                                            |
+| `ADVISORY_MODEL_ENABLED`, `ADVISORY_MODEL_ID`, `ADVISORY_MONTHLY_CALL_LIMIT`, `ANTHROPIC_API_KEY`, `ADVISORY_MODEL_BASE_URL` | Advisory explanations from a hosted model (ADR-008). Set the monthly spend cap in the provider console first. Only derived numbers and dates are sent.                                                                                                     |
+| `ADVISORY_TRACING_ENABLED`, `ADVISORY_TRACING_API_KEY`, `ADVISORY_TRACING_API_URL`                                           | Optional tracing. Only timing and status leave the host.                                                                                                                                                                                                   |
+| `ZEEKR_LIVE_ENABLED` and the nine `ZEEKR_*` values                                                                           | Live, read-only readings from a **second** Zeekr account the car is shared to (ADR-009). When enabled, every value must be set or the API refuses to start. `ZEEKR_LIVE_INTERVAL_MINUTES` (minimum 5) and `SENTRY_CONFIRM_WAIT_SECONDS` (5 to 30) tune it. |
+| `GEOFENCE_ENABLED` and the `GEOFENCE_*` values                                                                               | The away-from-home alert. Needs the live readings. Set `GEOFENCE_HOME_QUERY` or both `GEOFENCE_HOME_LAT` and `GEOFENCE_HOME_LON`. Radius, interval and stale limit can also be changed on the Geofence tab, and a saved value there wins over `.env`.      |
+| `GEOFENCE_AUTO_SENTRY_ALLOWED`                                                                                               | Second lock for automatic Sentry on (ADR-011). Keep `false` until the geofence alert has been proven on a real stay.                                                                                                                                       |
+
+Leave the optional features off for a first start. Turn each on later, one at a time, and restart the API (`docker compose up -d`).
+
+## 4. First start
+
+```
+cd infra
+docker compose up -d --build --wait
+```
+
+The first build takes several minutes. `--wait` returns when all three containers are healthy. If your user is not in the `docker` group, put `sudo` in front of each `docker` command.
+
+Create the owner login (it prompts for a username and a password of at least 12 characters, typed twice):
+
+```
+docker compose exec api python -m app.cli.set_owner
+```
+
+The same command resets a forgotten password. It takes effect at the next sign-in. Until it has run, every sign-in returns 401.
+
+## 5. Check it
+
+```
+curl -s http://127.0.0.1:8080/health          # {"status":"ok"}
+docker compose ps                              # db, api and web: healthy
+docker compose exec api alembic current        # prints the newest revision, marked (head)
+docker port zeekr-companion-web-1              # the address and port you set
+```
+
+Then open `http://<host-address>:<WEB_PORT>` in a browser and sign in. If `WEB_BIND_ADDRESS` is still loopback, that works from the host only.
+
+Optional full check from a development machine with the repo checked out: `infra/smoke.sh` starts a throwaway copy of the stack (own project name, own secrets, removed afterwards) and tests routing, headers, the body cap, network isolation and the login rate limit. It never touches the real stack or its data.
+
+## 6. Reach it from a phone
+
+Over plain HTTP, Safari on iPhone will open the app but gives no service worker, so no offline shell and no install to the Home Screen. For that you need HTTPS. The runbook for private HTTPS with Tailscale Serve is in `infra/README.md` (steps 0 and 4 to 7). Tailscale is approved in ADR-003 but **has not been run** on the owner's host, so treat that runbook as unverified.
+
+## 7. Update
+
+1. If the new version has a database migration, take a fresh encrypted export first. Migrations run automatically when `api` starts, and the export is the rollback point. How to take and check one is in `infra/backup/RESTORE.md`, section "Off-machine backup". A change with no migration does not need one.
+2. `git pull`
+3. `cd infra && docker compose up -d --build --wait`
+4. Check `/health`, `docker compose ps` and `docker compose exec api alembic current`.
+
+This rebuilds `api` and `web` from the new code. `db` is left running and its data is kept. The old steps of building the client on a Mac, running `check-dist.sh` and copying it with `rsync` are no longer needed: the image build runs `infra/check-dist.sh` itself and fails if the build has no `index.html`, or has dotfiles or source maps.
+
+## 8. Back up
+
+The only backup is an encrypted copy pulled to the owner's Mac (owner decision 2026-10-27). The setup and the scripts are in `infra/backup/RESTORE.md`. A backup that was never restored is not a backup: run the restore check before relying on it.
+
+## 9. Stop and roll back
+
+- Stop, keep the data: `docker compose down`.
+- Back to the previous version: `docker compose down`, check out the previous commit, `docker compose up -d --build --wait`. A migration is not undone this way. Use the pre-update export, restored into a throwaway database first (`infra/backup/RESTORE.md`).
+- Never run `docker compose down -v`, `docker volume prune` or `docker volume rm zeekr-companion_pgdata` unless you mean to delete all the data.
+
+## 10. Moving a host that used the old web setup
+
+The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_DIST_DIR` folder. The new compose file bakes all three into an image.
+
+- Run the usual update (section 7). Compose recreates `web` from the new image. `api` and `db`, the volumes and the port are unchanged.
+- A leftover `WEB_DIST_DIR` line in `.env` is ignored. You may delete it.
+- The `dist` folder you used to copy to the host is no longer read. You may delete it.
+- `WEB_BIND_ADDRESS`, `WEB_PORT` and `WEB_HSTS` keep their meaning.
+
+## What is verified and what is not
+
+- Verified on the development machine: the compose file validates, the web image builds, the image holds the real client and no dotfiles or source maps, and `infra/smoke.sh` passes against the stack (62 checks).
+- **Not run:** a fresh install on a clean Ubuntu host following this guide, a build on the owner's host (time, memory, disk), switching the owner's running host to the new web image, and any iPhone check.
