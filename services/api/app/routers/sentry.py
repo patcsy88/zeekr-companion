@@ -19,8 +19,10 @@ from app.openapi_docs import (
     UPSTREAM,
     responses,
 )
-from app.routers.deps import SentryCommandServiceDep, require_auth
+from app.routers.deps import AutoSentrySettingsServiceDep, SentryCommandServiceDep, require_auth
 from app.schemas import (
+    AutoSentryIn,
+    AutoSentryOut,
     CommandLogLimit,
     CommandLogOut,
     SentryCommandIn,
@@ -55,6 +57,27 @@ def sentry_log(
     limit: Annotated[CommandLogLimit, Query(json_schema_extra={"minimum": 1, "maximum": 100})] = 20,
 ) -> CommandLogOut:
     return service.log_items(limit)
+
+
+@router.get(
+    "/vehicle/sentry/auto",
+    response_model=AutoSentryOut,
+    responses=responses(UNAUTHENTICATED, INTERNAL),
+)
+def get_auto_sentry(service: AutoSentrySettingsServiceDep) -> AutoSentryOut:
+    """The automatic Sentry on toggle and quiet period (ADR-011). Off by default; no car read."""
+    return service.view()
+
+
+@router.put(
+    "/vehicle/sentry/auto",
+    response_model=AutoSentryOut,
+    responses=responses(BAD_REQUEST, UNAUTHENTICATED, CONFLICT, INTERNAL),
+)
+def put_auto_sentry(body: AutoSentryIn, service: AutoSentrySettingsServiceDep) -> AutoSentryOut:
+    """Saves the toggle and the quiet period. Turning it on is 409 unless the host switch, live
+    readings and the geofence are all on. Turning it off always works. Sends nothing."""
+    return service.save(body)
 
 
 @router.get(

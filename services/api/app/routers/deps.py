@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.errors import Unauthenticated
 from app.repositories.advisory import AdvisoryRepository
+from app.repositories.auto_sentry_settings import AutoSentrySettingsRepository
 from app.repositories.car_command_log import CarCommandLogRepository
 from app.repositories.expenses import ExpenseRepository
 from app.repositories.geofence_settings import GeofenceSettingsRepository
@@ -18,6 +19,7 @@ from app.repositories.vehicle import VehicleRepository
 from app.repositories.warranty import WarrantyClaimRepository, WarrantyCoverageRepository
 from app.services.advisory import AdvisoryService
 from app.services.auth import AuthService
+from app.services.auto_sentry import AutoSentrySettingsService
 from app.services.expenses import ExpenseService
 from app.services.geofence_settings import GeofenceSettingsService
 from app.services.live_vehicle import LiveVehicleService
@@ -113,6 +115,14 @@ def get_geofence_settings_service(request: Request, session: SessionDep) -> Geof
     return GeofenceSettingsService(GeofenceSettingsRepository(session), request.app.state.settings)
 
 
+def get_auto_sentry_settings_service(
+    request: Request, session: SessionDep
+) -> AutoSentrySettingsService:
+    return AutoSentrySettingsService(
+        AutoSentrySettingsRepository(session), request.app.state.settings
+    )
+
+
 VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
@@ -126,4 +136,7 @@ LiveVehicleServiceDep = Annotated[LiveVehicleService, Depends(get_live_vehicle_s
 SentryCommandServiceDep = Annotated[SentryCommandService, Depends(get_sentry_command_service)]
 GeofenceSettingsServiceDep = Annotated[
     GeofenceSettingsService, Depends(get_geofence_settings_service)
+]
+AutoSentrySettingsServiceDep = Annotated[
+    AutoSentrySettingsService, Depends(get_auto_sentry_settings_service)
 ]

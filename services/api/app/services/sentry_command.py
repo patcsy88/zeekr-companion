@@ -1,8 +1,9 @@
 """Sentry on or off from the app (ADR-010). The only service that sends a command to the car.
 
 One send at a time, never sooner than MIN_SPACING_S after the last logged one, and only on the
-owner's request: nothing here is scheduled and nothing calls it but the route. The state shown
-afterwards is what the car reports on a read, never an assumption that the command worked.
+owner's request or, for Sentry on only, the geofence check (ADR-011, `auto_sentry.py`): nothing
+here is scheduled. The state shown afterwards is what the car reports on a read, never an
+assumption that the command worked.
 """
 
 from __future__ import annotations
@@ -61,7 +62,7 @@ class SentryCommandService:
         self._hub = hub
         self._now = now
 
-    def send(self, desired: str) -> SentryCommandOut:
+    def send(self, desired: str, source: str = "manual") -> SentryCommandOut:
         provider = self._provider
         vehicle_of = getattr(provider.source, "vehicle", None) if provider else None
         if provider is None or vehicle_of is None:
@@ -75,24 +76,28 @@ class SentryCommandService:
             if not self._live_lock.acquire(timeout=LIVE_LOCK_WAIT_S):
                 raise Conflict(_BUSY)
             try:
-                return self._send_locked(desired, vehicle_of)
+                return self._send_locked(desired, vehicle_of, source)
             finally:
                 self._live_lock.release()
         finally:
             self._send_lock.release()
 
-    def _send_locked(self, desired: str, vehicle_of: Callable[[], Any]) -> SentryCommandOut:
-        out = self._send_once(desired, vehicle_of)
+    def _send_locked(
+        self, desired: str, vehicle_of: Callable[[], Any], source: str
+    ) -> SentryCommandOut:
+        out = self._send_once(desired, vehicle_of, source)
         if self._hub is not None and out.state_after is not None:
             self._hub.publish(out.state_after, self._now())
         return out
 
-    def _send_once(self, desired: str, vehicle_of: Callable[[], Any]) -> SentryCommandOut:
+    def _send_once(
+        self, desired: str, vehicle_of: Callable[[], Any], source: str
+    ) -> SentryCommandOut:
         try:
             vehicle = vehicle_of()
             before = _label(vehicle.get_remote_control_state())
         except Exception:
-            self._record(desired, "failed", None)
+            self._record(desired, "failed", None, source)
             raise UpstreamFailed(_FAILED) from None
         if before == desired:
             return SentryCommandOut(desired=desired, sent=False, state_after=before, confirmed=True)
@@ -102,7 +107,7 @@ class SentryCommandService:
             after = _label(vehicle.get_remote_control_state())
         except Exception:
             after = None
-        self._record(desired, "sent" if accepted else "refused", after)
+        self._record(desired, "sent" if accepted else "refused", after, source)
         if not accepted:
             raise UpstreamFailed(_REFUSED)
         return SentryCommandOut(
@@ -112,14 +117,14 @@ class SentryCommandService:
             confirmed=after == desired,
         )
 
-    def _record(self, desired: str, result: str, state_after: str | None) -> None:
+    def _record(self, desired: str, result: str, state_after: str | None, source: str) -> None:
         now = self._now()
         try:
             self._repo.add(
                 {
                     "created_at": now,
                     "desired": desired,
-                    "source": "manual",
+                    "source": source,
                     "result": result,
                     "state_after": state_after,
                 },
@@ -140,6 +145,7 @@ class SentryCommandService:
                     source=r.source,
                     result=r.result,
                     state_after=r.state_after,
+                    skip_reason=r.skip_reason,
                 )
                 for r in rows
             ],

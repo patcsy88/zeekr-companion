@@ -860,9 +860,10 @@ class CommandLogItem(BaseModel):
     id: uuid.UUID
     created_at: UtcDateTime
     desired: Literal["on", "off"]
-    source: Literal["manual"]
-    result: Literal["sent", "refused", "failed"]
+    source: Literal["manual", "auto"]
+    result: Literal["sent", "refused", "failed", "skipped"]
     state_after: Literal["on", "off"] | None
+    skip_reason: Literal["quiet_period", "host_off", "busy"] | None
 
 
 class CommandLogOut(BaseModel):
@@ -871,6 +872,33 @@ class CommandLogOut(BaseModel):
 
 
 CommandLogLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_bounded_limit(100))]
+
+
+# Automatic Sentry on (ADR-011, approved 2026-11-06). The quiet period is 5 to 1440 whole minutes.
+AUTO_QUIET_MIN = 5
+AUTO_QUIET_MAX = 1440
+
+
+class AutoSentryIn(_Input):
+    enabled: Annotated[bool, Field(strict=True)]
+    quiet_minutes: Annotated[int, Field(strict=True, ge=AUTO_QUIET_MIN, le=AUTO_QUIET_MAX)]
+
+
+class AutoSentryRangeOut(BaseModel):
+    min: int
+    max: int
+
+
+class AutoSentryLimitsOut(BaseModel):
+    quiet_minutes: AutoSentryRangeOut
+
+
+class AutoSentryOut(BaseModel):
+    enabled: bool
+    quiet_minutes: int
+    host_allowed: bool
+    can_enable: bool
+    limits: AutoSentryLimitsOut
 
 
 # Geofence settings (Piece C, approved 2026-11-05). The codes are the pick lists; nothing else is

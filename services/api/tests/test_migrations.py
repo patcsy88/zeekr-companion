@@ -33,7 +33,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0015"
             )
     finally:
         engine.dispose()
@@ -364,7 +364,15 @@ def test_0012_command_log_downgrades_and_reapplies(fresh_database_url: str) -> N
     run_migrations(fresh_database_url)
     engine = create_engine(fresh_database_url)
     cols = {c["name"] for c in inspect(engine).get_columns("car_command_log")}
-    assert cols == {"id", "created_at", "desired", "source", "result", "state_after"}
+    assert cols == {
+        "id",
+        "created_at",
+        "desired",
+        "source",
+        "result",
+        "state_after",
+        "skip_reason",
+    }
     engine.dispose()
 
 
@@ -482,6 +490,88 @@ def test_0014_geofence_settings_checks_and_downgrade(fresh_database_url: str) ->
         engine = create_engine(fresh_database_url)
         with engine.connect() as conn:
             assert conn.execute(text("SELECT to_regclass('geofence_settings')")).scalar() is None
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+
+
+def test_0015_auto_sentry_checks_and_downgrade(fresh_database_url: str) -> None:
+    import os
+    import uuid
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def log_row(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {
+            "id": uuid.uuid4(),
+            "t": dt.datetime.now(dt.UTC),
+            "d": "on",
+            "s": "manual",
+            "r": "sent",
+            "a": "on",
+            "k": None,
+        }
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO car_command_log (id, created_at, desired, source, result, "
+                "state_after, skip_reason) VALUES (:id, :t, :d, :s, :r, :a, :k)"
+            ),
+            values,
+        )
+
+    def setting(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {"id": 1, "e": False, "q": 60, "t": dt.datetime.now(dt.UTC)}
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO auto_sentry_settings (id, enabled, quiet_minutes, updated_at) "
+                "VALUES (:id, :e, :q, :t)"
+            ),
+            values,
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        log_row(conn)
+        log_row(conn, s="auto", r="failed", a=None)
+        log_row(conn, s="auto", r="skipped", a=None, k="quiet_period")
+        setting(conn)
+    for bad_log in (
+        {"s": "robot"},
+        {"r": "maybe"},
+        {"k": "because"},
+        {"r": "skipped", "s": "auto", "a": None},  # a skip needs its reason
+        {"k": "busy"},  # a reason only goes with a skip
+        {"r": "skipped", "s": "manual", "a": None, "k": "busy"},  # only automatic sends are skipped
+    ):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            log_row(conn, **bad_log)
+    for bad_setting in ({"id": 2}, {"q": 4}, {"q": 1441}):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            conn.execute(text("DELETE FROM auto_sentry_settings"))
+            setting(conn, **bad_setting)
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0014")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT to_regclass('auto_sentry_settings')")).scalar() is None
+            left = conn.execute(text("SELECT source, result FROM car_command_log")).all()
+        assert [tuple(r) for r in left] == [("manual", "sent")]
+        assert "skip_reason" not in {
+            c["name"] for c in inspect(engine).get_columns("car_command_log")
+        }
         engine.dispose()
     finally:
         os.environ.pop("DATABASE_URL", None)

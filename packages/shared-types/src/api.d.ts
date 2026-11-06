@@ -391,6 +391,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicle/sentry/auto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Auto Sentry
+         * @description The automatic Sentry on toggle and quiet period (ADR-011). Off by default; no car read.
+         */
+        get: operations["get_auto_sentry_api_v1_vehicle_sentry_auto_get"];
+        /**
+         * Put Auto Sentry
+         * @description Saves the toggle and the quiet period. Turning it on is 409 unless the host switch, live
+         *     readings and the geofence are all on. Turning it off always works. Sends nothing.
+         */
+        put: operations["put_auto_sentry_api_v1_vehicle_sentry_auto_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicle/sentry/events": {
         parameters: {
             query?: never;
@@ -742,6 +767,36 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** AutoSentryIn */
+        AutoSentryIn: {
+            /** Enabled */
+            enabled: boolean;
+            /** Quiet Minutes */
+            quiet_minutes: number;
+        };
+        /** AutoSentryLimitsOut */
+        AutoSentryLimitsOut: {
+            quiet_minutes: components["schemas"]["AutoSentryRangeOut"];
+        };
+        /** AutoSentryOut */
+        AutoSentryOut: {
+            /** Can Enable */
+            can_enable: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Host Allowed */
+            host_allowed: boolean;
+            limits: components["schemas"]["AutoSentryLimitsOut"];
+            /** Quiet Minutes */
+            quiet_minutes: number;
+        };
+        /** AutoSentryRangeOut */
+        AutoSentryRangeOut: {
+            /** Max */
+            max: number;
+            /** Min */
+            min: number;
+        };
         /** CommandLogItem */
         CommandLogItem: {
             /**
@@ -763,12 +818,14 @@ export interface components {
              * Result
              * @enum {string}
              */
-            result: "sent" | "refused" | "failed";
+            result: "sent" | "refused" | "failed" | "skipped";
+            /** Skip Reason */
+            skip_reason: ("quiet_period" | "host_off" | "busy") | null;
             /**
              * Source
-             * @constant
+             * @enum {string}
              */
-            source: "manual";
+            source: "manual" | "auto";
             /** State After */
             state_after: ("on" | "off") | null;
         };
@@ -3740,6 +3797,104 @@ export interface operations {
             };
             /** @description upstream_error: the car's service refused or could not be reached */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_auto_sentry_api_v1_vehicle_sentry_auto_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoSentryOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_auto_sentry_api_v1_vehicle_sentry_auto_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoSentryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoSentryOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,4 +1,7 @@
-"""Geofence alert (Piece B, owner-approved 2026-11-05). Read-only: nothing here writes to the car.
+"""Geofence alert (Piece B, owner-approved 2026-11-05). Nothing here writes to the car itself.
+
+The one exception is ADR-011: when a new alert opens and the owner has switched automatic Sentry on,
+`AutoSentrySender` sends Sentry on once, through the same service as the manual switch.
 
 Every `GEOFENCE_INTERVAL_MINUTES` the app takes one reading through the same provider, spacing,
 lock and login cap as the Vehicle card. An alert is open while all of these hold on a fresh
@@ -29,6 +32,7 @@ from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
 from app.services import advisory_checks as checks
 from app.services.advisory import MAX_PROPOSALS
+from app.services.auto_sentry import AutoSentrySender
 from app.services.geofence_home import Fetch, HomePoint, HomeResolver
 from app.services.geofence_settings import DEFAULT_CODES_SET as DEFAULT_CODES
 from app.services.geofence_settings import Effective, effective
@@ -157,7 +161,13 @@ class GeofenceCheck:
         )
         self.last_age_minutes = verdict.age_minutes
         if verdict.result in ("alert", "clear"):
-            return self._apply(verdict, moment)
+            outcome = self._apply(verdict, moment)
+            if outcome == "alert opened":
+                # ADR-011: once, for this new alert only. None means the toggle is off.
+                sent = AutoSentrySender(app).after_alert_opened(moment)
+                if sent is not None:
+                    return f"{outcome}; automatic send: {sent}"
+            return outcome
         return {"no_reading": "no reading"}.get(verdict.result, verdict.result)
 
     def _apply(self, verdict: Verdict, now: dt.datetime) -> str:

@@ -131,7 +131,7 @@ def client(database_url: str, password_hash: str) -> Iterator[TestClient]:
             text(
                 "TRUNCATE service_record, vehicle, reminder, expense, "
                 "warranty_claim, warranty_coverage, advisory_model_call, advisory_proposal, "
-                "live_reading, car_command_log, geofence_settings"
+                "live_reading, car_command_log, geofence_settings, auto_sentry_settings"
             )
         )
     with TestClient(app) as test_client:

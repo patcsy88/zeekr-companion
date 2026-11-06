@@ -27,8 +27,12 @@ class CarCommandLogRepository:
             raise
 
     def last_created(self) -> dt.datetime | None:
+        """When the last command was logged. A skipped row is not a command and is ignored."""
         value = self._session.scalars(
-            select(CarCommandLog.created_at).order_by(desc(CarCommandLog.created_at)).limit(1)
+            select(CarCommandLog.created_at)
+            .where(CarCommandLog.result != "skipped")
+            .order_by(desc(CarCommandLog.created_at))
+            .limit(1)
         ).first()
         self._session.rollback()
         return value
