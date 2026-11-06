@@ -195,53 +195,36 @@ function CardBody({
               />
             </div>
           ) : null}
-          <p className="dash-range">
-            <span className="dash-label">Range</span> <strong>{km(r.range_km)}</strong>
-          </p>
           <p className="badges">
             <span className={badgeClass(r.plugged_in)}>Plugged in: {yesNo(r.plugged_in)}</span>
             <span className={badgeClass(r.charging)}>Charging: {yesNo(r.charging)}</span>
           </p>
         </div>
+        <dl className="stats">
+          <Stat label="Range" value={km(r.range_km)} />
+          <Stat label="Odometer" value={km(r.odometer_km)} />
+          <Stat label="12 V battery" value={volts(r.battery_12v_volts)} />
+          <Stat
+            label="Next service in"
+            value={`${serviceKm(r.service_distance_km)}, ${days(r.service_days)}`}
+          />
+        </dl>
+        <h3 className="group-title">Tyres</h3>
         <div className="tyres">
           <Tyre label="Passenger front" kpaValue={t.passenger_front} c={tc.passenger_front} />
+          <CarOutline />
           <Tyre label="Driver front" kpaValue={t.driver_front} c={tc.driver_front} />
           <Tyre label="Passenger rear" kpaValue={t.passenger_rear} c={tc.passenger_rear} />
           <Tyre label="Driver rear" kpaValue={t.driver_rear} c={tc.driver_rear} />
         </div>
-        <dl className="details">
-          <dt>12 V battery</dt>
-          <dd>{volts(r.battery_12v_volts)}</dd>
-          <dt>Odometer</dt>
-          <dd>{km(r.odometer_km)}</dd>
-          <dt>Next service in</dt>
-          <dd>
-            {serviceKm(r.service_distance_km)}, {days(r.service_days)}
-          </dd>
-        </dl>
       </div>
-      <h3 className="small">Reported on / off</h3>
-      <dl className="details" data-testid="live-indicators">
-        <dt>Pre-climate</dt>
-        <dd>
-          <ReadOnlyToggle label="Pre-climate" value={ind.pre_climate_active} />
-        </dd>
-        <dt>Fragrance</dt>
-        <dd>
-          <ReadOnlyToggle label="Fragrance" value={ind.fragrance_active} />
-        </dd>
-        <dt>Overheat protection</dt>
-        <dd>
-          <ReadOnlyToggle label="Overheat protection" value={ind.overheat_protection_active} />
-        </dd>
-        <dt>VTM TS</dt>
-        <dd>
-          <ReadOnlyToggle label="VTM TS" value={ind.vtm_ts_active} />
-        </dd>
-        <dt>Engine enable running</dt>
-        <dd>
-          <ReadOnlyToggle label="Engine enable running" value={ind.engine_enable_running} />
-        </dd>
+      <h3 className="group-title">Reported on / off</h3>
+      <dl className="group" data-testid="live-indicators">
+        <Flag label="Pre-climate" value={ind.pre_climate_active} />
+        <Flag label="Fragrance" value={ind.fragrance_active} />
+        <Flag label="Overheat protection" value={ind.overheat_protection_active} />
+        <Flag label="VTM TS" value={ind.vtm_ts_active} />
+        <Flag label="Engine enable running" value={ind.engine_enable_running} />
       </dl>
       <p className="muted small">
         These are the car's own reported flags. Their exact meanings are not verified, and this page
@@ -254,6 +237,45 @@ function CardBody({
         History
       </Link>
     </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="stat">
+      <dt className="dash-label">{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function Flag({ label, value }: { label: string; value: boolean | null }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>
+        <ReadOnlyToggle label={label} value={value} />
+      </dd>
+    </div>
+  );
+}
+
+/** A plain top view of a car, front at the top, between the four tyre readings. */
+function CarOutline() {
+  return (
+    <svg
+      className="car-outline"
+      viewBox="0 0 60 120"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="8" y="4" width="44" height="112" rx="16" />
+      <path d="M14 34c10-6 22-6 32 0l-3 12H17zM17 84h26l3 10c-10 5-22 5-32 0z" />
+    </svg>
   );
 }
 
