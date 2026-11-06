@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { Logo } from './components/Logo';
 import { SignIn } from './components/SignIn';
 import { SyncBar } from './components/SyncBar';
 import { TabIcon } from './components/TabIcon';
@@ -57,7 +58,10 @@ function Layout() {
       </a>
       <UpdatePrompt />
       <header className="top">
-        <p className="brand">Zeekr Companion</p>
+        <p className="brand">
+          <Logo size={26} />
+          <span>Zeekr Companion</span>
+        </p>
         {session.signedIn ? <AccountMenu /> : null}
       </header>
       <SyncBar />
