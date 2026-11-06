@@ -69,7 +69,7 @@ describe('SEC-W3 / SEC-W4: no silent loss of queued claims', () => {
     const user = userEvent.setup();
     reportReachable(false);
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(/2 changes have not reached the server/);
   });

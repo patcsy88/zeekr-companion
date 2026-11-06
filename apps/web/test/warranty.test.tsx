@@ -417,7 +417,7 @@ describe('AC-63: account and local data', () => {
     const user = open('/warranty');
     render(<App />);
     await screen.findByText('Wipe me');
-    await user.click(screen.getByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(/warranty coverages and claims/);
     await user.click(within(dialog).getByRole('button', { name: 'Clear local data and sign out' }));

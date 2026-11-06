@@ -643,7 +643,7 @@ describe('QA offline and local data', () => {
     apiDown();
     reportReachable(false);
     await enqueueExpenseCreate(body(9, { notes: 'queued-note' }));
-    await user.click(screen.getByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
         name: 'Clear local data and sign out',
@@ -661,7 +661,7 @@ describe('QA offline and local data', () => {
   it('QA-W7 the clear-data dialog mentions expenses', async () => {
     const user = open();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(/expenses/i);
   });
 });

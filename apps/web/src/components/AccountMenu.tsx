@@ -4,7 +4,7 @@ import { useQueueCounts } from '../data/hooks';
 import { notifyData } from '../lib/events';
 import { clearAllLocalData } from '../storage/db';
 
-/** The only sign out: clears the cache, the queue and the sync markers. Asks first and says how many unsent changes would be lost. */
+/** The only sign out, labelled "Sign out": clears the cache, the queue and the sync markers. Asks first and says how many unsent changes would be lost. */
 export function AccountMenu() {
   const { pending, failed, blocked } = useQueueCounts();
   const unsent = pending + failed + blocked;
@@ -37,12 +37,11 @@ export function AccountMenu() {
       <div className="account">
         <button
           type="button"
-          className="link"
           onClick={() => {
             setConfirming(true);
           }}
         >
-          Sign out and clear local data
+          Sign out
         </button>
       </div>
       {confirming ? (

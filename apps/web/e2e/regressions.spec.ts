@@ -136,11 +136,11 @@ test('W2: sign out and clear local data asks first and clears everything', async
   await page.route('**/api/**', (r) => r.abort('connectionrefused'));
   const description = unique('W2');
   await addRecord(page, { description });
-  await page.getByRole('button', { name: 'Sign out and clear local data' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toContainText('1 change has not reached the server');
   await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('link', { name: new RegExp(description) })).toBeVisible();
-  await page.getByRole('button', { name: 'Sign out and clear local data' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.getByRole('button', { name: 'Clear local data and sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(description) })).toHaveCount(0);
