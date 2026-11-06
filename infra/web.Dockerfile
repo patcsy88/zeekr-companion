@@ -3,7 +3,8 @@
 #   docker build -f infra/web.Dockerfile .      (compose does this for you)
 # Optional build argument VITE_SENTRY_DSN turns on browser error reporting (ADR-007); empty is off.
 
-FROM node:26-alpine AS build
+# Node 26.12.1 and later carry the Brotli decoder fix (CVE-2026-111497); keep this at 26.13 or newer.
+FROM node:26.13-alpine AS build
 RUN apk add --no-cache bash
 WORKDIR /repo
 
