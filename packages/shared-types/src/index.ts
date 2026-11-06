@@ -57,6 +57,9 @@ export type GeofenceSettings = Schemas["GeofenceSettingsOut"];
 export type GeofenceSettingsInput = Schemas["GeofenceSettingsIn"];
 export type GeofenceOption = Schemas["GeofenceOptionOut"];
 export type CommandLog = Schemas["CommandLogOut"];
+export type CommandLogItem = Schemas["CommandLogItem"];
+export type AutoSentry = Schemas["AutoSentryOut"];
+export type AutoSentryInput = Schemas["AutoSentryIn"];
 
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];

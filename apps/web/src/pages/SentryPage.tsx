@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { request } from '../api/client';
 import type { AdvisoryProposal, AdvisoryProposalList } from '../api/types';
+import { AutoSentryPanel } from '../components/AutoSentryPanel';
 import { SentryPanel } from '../components/SentryPanel';
 import { useConnectivity, useSession } from '../data/hooks';
 import { Skeleton } from '../components/Skeleton';
@@ -115,6 +116,7 @@ export function SentryPage() {
       </p>
       <SentryPanel onNote={setNote} />
       {noteEl}
+      <AutoSentryPanel />
     </section>
   );
 }
