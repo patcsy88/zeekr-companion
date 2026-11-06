@@ -36,9 +36,7 @@ describe('W2: sign out versus clear local data', () => {
     apiDown();
     setToken('tok-test', 3600);
     render(<App />);
-    expect(
-      await screen.findByRole('button', { name: 'Sign out and clear local data' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /keep local data/i })).not.toBeInTheDocument();
   });
 
@@ -50,7 +48,7 @@ describe('W2: sign out versus clear local data', () => {
     await enqueueCreate(rec);
     const user = userEvent.setup();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent(/1 change/i);
     expect(dialog).toHaveTextContent(/not reached the server/i);
@@ -68,7 +66,7 @@ describe('W2: sign out versus clear local data', () => {
     await enqueueCreate(rec);
     const user = userEvent.setup();
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
         name: 'Clear local data and sign out',
@@ -86,7 +84,7 @@ describe('W2: sign out versus clear local data', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByText('Online');
-    await user.click(screen.getByRole('button', { name: 'Sign out and clear local data' }));
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).not.toHaveTextContent(/not reached the server/i);
   });

@@ -17,7 +17,7 @@ The app works fully from manual records. Live car data is optional and off by de
 - **Geofence:** an in-app notice when the car is parked outside your home area with Sentry off. The home point is set on the host and never stored in the repo.
 - **Advisory:** rule-based suggestions, such as a service pace check, that you can accept or decline. They are proposals only and never act on their own. A hosted model can explain them, but it is off by default and has never been called.
 - **Offline use:** records are cached on the device and changes made offline are queued, then sent when you are back online.
-- **Sign in:** one owner account with a username and password. There is a single "Sign out and clear local data" button.
+- **Sign in:** one owner account with a username and password. There is a single "Sign out" button. It asks first, then signs out and clears the data saved on the device. Your records stay on the server.
 - **Backups:** scheduled database dumps and an encrypted off-site export, with a restore check (`infra/backup/RESTORE.md`).
 
 The only command the app can send to the car is Sentry on or off (ADR-010). Everything else it reads from the car is read-only.

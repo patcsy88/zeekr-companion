@@ -97,7 +97,7 @@ export async function closeDbForTests(): Promise<void> {
   }
 }
 
-/** Removes cache, queue and meta. Used only by "Sign out and clear local data" after confirmation. */
+/** Removes cache, queue and meta. Used only by "Sign out" after confirmation. */
 export async function clearAllLocalData(): Promise<void> {
   const db = await getDb();
   const tx = db.transaction(['cache', 'queue', 'meta'], 'readwrite');
