@@ -6,6 +6,7 @@ import { useWarranty } from '../data/hooks';
 import { saveClaimEdit, saveCoverageEdit, saveNewClaim, saveNewCoverage } from '../data/mutations';
 import { issuesByField } from '../lib/forms';
 import { isUuid, uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 export function NewCoveragePage() {
   const nav = useNavigate();
@@ -31,7 +32,7 @@ export function EditCoveragePage() {
 function EditCoverage({ id }: { id: string }) {
   const nav = useNavigate();
   const snap = useWarranty();
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const view = snap.coverages.find((v) => v.coverage.id === id);
   if (!view) return <p>Coverage not found.</p>;
   async function submit(v: CoverageFormValues) {
@@ -62,7 +63,7 @@ function NewClaim({ coverageId }: { coverageId: string }) {
   const nav = useNavigate();
   const claimId = useMemo(() => uuid(), []);
   const snap = useWarranty();
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const view = snap.coverages.find((v) => v.coverage.id === coverageId);
   if (!view) return <p>Coverage not found.</p>;
   async function submit(v: ClaimFormValues) {
@@ -92,7 +93,7 @@ export function EditClaimPage() {
 function EditClaim({ id }: { id: string }) {
   const nav = useNavigate();
   const snap = useWarranty();
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const cv = snap.claims.find((c) => c.claim.id === id);
   const cov = cv ? snap.coverages.find((v) => v.coverage.id === cv.claim.coverage_id) : undefined;
   if (!cv || !cov) return <p>Claim not found.</p>;

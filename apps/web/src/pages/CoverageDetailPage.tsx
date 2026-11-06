@@ -12,6 +12,7 @@ import { isUuid } from '../lib/uuid';
 import { CLAIM_STATUS_LABELS, TERMS_LINE } from '../lib/warrantyText';
 import { discardFailedCoverage, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
+import { Skeleton } from '../components/Skeleton';
 
 export function CoverageDetailPage() {
   const { id } = useParams();
@@ -104,7 +105,7 @@ function CoverageDetail({ id }: { id: string }) {
     if (confirming) cancelRef.current?.focus();
   }, [confirming]);
 
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const view = snap.coverages.find((v) => v.coverage.id === id);
   if (!view) {
     return (

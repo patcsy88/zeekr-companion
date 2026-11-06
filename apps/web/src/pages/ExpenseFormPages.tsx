@@ -5,6 +5,7 @@ import { useExpense } from '../data/hooks';
 import { saveExpenseEdit, saveNewExpense } from '../data/mutations';
 import { issuesByField } from '../lib/forms';
 import { isUuid, uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 export function NewExpensePage() {
   const nav = useNavigate();
@@ -31,7 +32,7 @@ export function EditExpensePage() {
 function EditExpense({ id }: { id: string }) {
   const nav = useNavigate();
   const data = useExpense(id);
-  if (data === undefined) return <p role="status">Loading…</p>;
+  if (data === undefined) return <Skeleton />;
   if (data.view === null) return <p>Expense not found.</p>;
   const { expense, error } = data.view;
   async function submit(v: ExpenseFormValues) {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BasisNote, ReminderItem } from '../components/ReminderParts';
 import { useConnectivity, useReminders, useSession } from '../data/hooks';
 import { IN_APP_ONLY } from '../lib/reminderText';
+import { Skeleton } from '../components/Skeleton';
 
 export function RemindersPage() {
   const snap = useReminders();
@@ -10,7 +11,7 @@ export function RemindersPage() {
   const session = useSession();
   const [showCompleted, setShowCompleted] = useState(false);
 
-  if (snap === undefined) return <p role="status">Loading…</p>;
+  if (snap === undefined) return <Skeleton />;
   const overdue = snap.views.filter((v) => v.reminder.status === 'overdue');
   const upcoming = snap.views.filter((v) => v.reminder.status === 'upcoming');
   const completed = snap.views.filter((v) => v.reminder.status === 'completed');

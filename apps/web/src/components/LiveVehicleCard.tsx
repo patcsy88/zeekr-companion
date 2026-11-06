@@ -14,6 +14,7 @@ import {
   volts,
   yesNo,
 } from '../lib/liveVehicle';
+import { Skeleton } from './Skeleton';
 import { ReadOnlyToggle } from './ReadOnlyToggle';
 import { usePullToRefresh } from '../lib/pullToRefresh';
 
@@ -105,7 +106,11 @@ export function LiveVehicleCard() {
           Needs a connection.
         </p>
       ) : card === null ? (
-        <p role="status">{failed ? 'Could not load live readings.' : 'Loading…'}</p>
+        failed ? (
+          <p role="status">Could not load live readings.</p>
+        ) : (
+          <Skeleton lines={4} />
+        )
       ) : (
         <CardBody card={card} failed={failed} note={note} />
       )}

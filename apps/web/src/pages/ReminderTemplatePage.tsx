@@ -7,6 +7,7 @@ import { saveReminderBatch } from '../data/mutations';
 import { addMonths, isIsoDate } from '../lib/dates';
 import { KIND_LABELS, KINDS } from '../lib/reminderText';
 import { uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 interface RowEdit {
   selected?: boolean;
@@ -28,7 +29,7 @@ export function ReminderTemplatePage() {
   const vehicle = useVehicle();
   const reminders = useReminders();
   if (templates === undefined || vehicle === undefined || reminders === undefined)
-    return <p role="status">Loading…</p>;
+    return <Skeleton />;
   const template = templates.items[0];
   if (!template) {
     return (

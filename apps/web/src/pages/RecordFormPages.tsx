@@ -5,6 +5,7 @@ import { useRecord } from '../data/hooks';
 import { saveNewRecord, saveRecordEdit } from '../data/mutations';
 import { issuesByField } from '../lib/forms';
 import { isUuid, uuid } from '../lib/uuid';
+import { Skeleton } from '../components/Skeleton';
 
 export function NewRecordPage() {
   const nav = useNavigate();
@@ -31,7 +32,7 @@ export function EditRecordPage() {
 function EditRecord({ id }: { id: string }) {
   const nav = useNavigate();
   const data = useRecord(id);
-  if (data === undefined) return <p role="status">Loading…</p>;
+  if (data === undefined) return <Skeleton />;
   if (data.view === null) return <p>Record not found.</p>;
   const { record, error } = data.view;
   async function submit(v: RecordFormValues) {

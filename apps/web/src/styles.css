@@ -23,6 +23,10 @@
   --knob: #fff;
   --dashed: #8a8f98;
   --border: #ccc;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
   font-family:
     system-ui,
     -apple-system,
@@ -77,7 +81,7 @@ main,
 .syncbar {
   max-width: 42rem;
   margin: 0 auto;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
 }
 .top {
   display: flex;
@@ -92,11 +96,11 @@ main,
 }
 h1 {
   font-size: 1.4rem;
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
 }
 h2 {
   font-size: 1.1rem;
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
 }
 .skip {
   position: absolute;
@@ -106,14 +110,14 @@ h2 {
   left: 0.5rem;
   top: 0.5rem;
   background: var(--card);
-  padding: 0.5rem;
+  padding: var(--space-2);
   z-index: 10;
 }
 .syncbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
+  gap: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--line);
 }
 .syncbar p {
@@ -160,27 +164,27 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 0.75rem;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 .plain {
   list-style: none;
-  margin: 0.25rem 0 0.75rem;
+  margin: var(--space-1) 0 var(--space-3);
   padding: 0;
 }
 .list {
   list-style: none;
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .item {
   background: var(--card);
@@ -189,13 +193,13 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding-right: 0.75rem;
+  gap: var(--space-2);
+  padding-right: var(--space-3);
 }
 .item a {
   flex: 1;
   display: block;
-  padding: 0.75rem;
+  padding: var(--space-3);
   color: inherit;
   text-decoration: none;
   min-height: 3rem;
@@ -211,15 +215,15 @@ h2 {
   font-size: 0.9rem;
 }
 .field {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 .hint {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
   color: var(--muted);
   font-size: 0.85rem;
 }
@@ -241,21 +245,21 @@ textarea[aria-invalid='true'] {
 }
 .error {
   color: var(--bad);
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   font-weight: 600;
 }
 .explain {
   background: var(--warn-bg);
   color: var(--warn);
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   border-radius: 0.5rem;
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
 }
 button,
 .button {
   font: inherit;
   min-height: 2.75rem;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: 0.5rem;
   border: 1px solid var(--control-border);
   background: var(--control-bg);
@@ -295,14 +299,14 @@ button.link {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.35rem 1rem;
+  gap: 0.35rem var(--space-4);
 }
 .details dt {
   color: var(--muted);
@@ -316,8 +320,8 @@ button.link {
 }
 .notice {
   border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0.5rem 0;
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
 }
 .notice.bad {
   background: var(--bad-bg);
@@ -328,18 +332,18 @@ button.link {
   color: var(--info);
 }
 .notice p {
-  margin: 0.25rem 0;
+  margin: var(--space-1) 0;
 }
 .update {
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: center;
   justify-content: center;
   background: var(--info-bg);
-  padding: 0.5rem;
+  padding: var(--space-2);
 }
 .tabs {
   position: fixed;
@@ -360,7 +364,7 @@ button.link {
   justify-content: center;
   gap: 0.15rem;
   text-align: center;
-  padding: 0.5rem 0.1rem 0.45rem;
+  padding: var(--space-2) 0.1rem 0.45rem;
   font-size: 0.5rem;
   color: var(--muted);
   text-decoration: none;
@@ -403,7 +407,7 @@ button.link {
 .check {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-height: 2.75rem;
   font-weight: 600;
 }
@@ -414,7 +418,7 @@ select {
   width: 100%;
   min-height: 2.75rem;
   font: inherit;
-  padding: 0.5rem;
+  padding: var(--space-2);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--control-bg);
@@ -422,14 +426,14 @@ select {
 .live-card {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0.75rem 0;
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0;
 }
 .live-card h2 {
   margin: 0;
 }
 .trend {
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
 }
 .trend svg {
   display: block;
@@ -440,7 +444,7 @@ select {
 .ro-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   pointer-events: none;
 }
 .ro-track {
@@ -469,10 +473,10 @@ select {
 .sentry-switch {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   background: transparent;
   border: 0;
-  padding: 0.25rem 0;
+  padding: var(--space-1) 0;
   cursor: pointer;
   font: inherit;
   color: inherit;
@@ -495,7 +499,7 @@ select {
   display: none;
 }
 .dash-hero {
-  padding: 0.25rem 0 0.5rem;
+  padding: var(--space-1) 0 var(--space-2);
 }
 .dash-label {
   margin: 0;
@@ -510,7 +514,7 @@ select {
   font-variant-numeric: tabular-nums;
 }
 .dash-range {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   font-variant-numeric: tabular-nums;
 }
 .bar {
@@ -531,7 +535,7 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
 }
 .badge {
   padding: 0.2rem 0.6rem;
@@ -551,11 +555,11 @@ select {
 .tyres {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
 }
 .tyre {
-  padding: 0.5rem 0.6rem;
+  padding: var(--space-2) 0.6rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
 }
@@ -565,8 +569,8 @@ select {
   font-variant-numeric: tabular-nums;
 }
 .sentry-panel {
-  padding: 0.5rem 0.75rem;
-  margin: 0.5rem 0;
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
   border: 1px solid var(--line);
   border-left-width: 0.4rem;
   border-radius: 0.5rem;
@@ -581,7 +585,7 @@ select {
   border-left-width: 1px;
 }
 .geofence-alert {
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem var(--space-3);
   border: 1px solid var(--warn);
   border-left-width: 0.4rem;
   border-radius: 0.5rem;
@@ -592,14 +596,14 @@ select {
   color: var(--warn);
 }
 .empty {
-  padding: 1.25rem 1rem;
-  margin: 0.75rem 0;
+  padding: 1.25rem var(--space-4);
+  margin: var(--space-3) 0;
   border: 1px dashed var(--dashed);
   border-radius: 0.75rem;
   text-align: center;
 }
 .empty p {
-  margin: 0.25rem 0;
+  margin: var(--space-1) 0;
 }
 .card,
 .item,
@@ -608,7 +612,7 @@ select {
 }
 .live-card {
   border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   background: var(--card);
 }
 .ro-track,
@@ -630,5 +634,46 @@ button,
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.skeleton-line {
+  display: block;
+  height: 1rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, var(--line) 25%, var(--card) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line:nth-child(2) {
+  width: 85%;
+}
+.skeleton-line:nth-child(3) {
+  width: 65%;
+}
+.skeleton-line:nth-child(4) {
+  width: 75%;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
