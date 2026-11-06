@@ -56,19 +56,21 @@ describe('theme', () => {
     expect(barColours()).toEqual(['#0f5e57', '#0f1514']);
   });
 
-  it('the picker shows the saved choice and changes it', async () => {
+  it('the icon button shows the saved choice and taps through Auto, Light, Dark', async () => {
     localStorage.setItem(THEME_KEY, 'dark');
     const user = userEvent.setup();
     render(<ThemePicker />);
-    const select = screen.getByLabelText('Appearance');
-    expect(select).toHaveValue('dark');
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'Auto',
-      'Light',
-      'Dark',
-    ]);
-    await user.selectOptions(select, 'light');
+    const button = screen.getByRole('button', { name: 'Appearance: Dark' });
+    await user.click(button);
+    expect(button).toHaveAccessibleName('Appearance: Auto');
+    expect(localStorage.getItem(THEME_KEY)).toBeNull();
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+    await user.click(button);
+    expect(button).toHaveAccessibleName('Appearance: Light');
     expect(localStorage.getItem(THEME_KEY)).toBe('light');
     expect(document.documentElement.dataset.theme).toBe('light');
+    await user.click(button);
+    expect(button).toHaveAccessibleName('Appearance: Dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });
