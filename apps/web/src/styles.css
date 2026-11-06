@@ -564,3 +564,30 @@ select {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.sentry-panel {
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  border: 1px solid var(--line);
+  border-left-width: 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--card);
+}
+.sentry-panel-on {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+.sentry-panel-unknown {
+  border-style: dashed;
+  border-left-width: 1px;
+}
+.geofence-alert {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--warn);
+  border-left-width: 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.geofence-alert h2 {
+  color: var(--warn);
+}

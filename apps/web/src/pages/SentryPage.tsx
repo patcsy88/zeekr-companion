@@ -92,7 +92,7 @@ export function SentryPage() {
       ) : (
         <ul className="list" aria-label="Geofence alerts">
           {items.map((p) => (
-            <li key={p.id} data-testid="geofence-alert">
+            <li key={p.id} data-testid="geofence-alert" className="geofence-alert">
               <h2>The car is parked outside your home area with Sentry off.</h2>
               <p>
                 Last reported {String(p.inputs.reading_age_minutes ?? '?')} minutes before this
