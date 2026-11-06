@@ -37,7 +37,7 @@
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #0b0f0f;
     --fg: #e6eceb;
     --muted: #a3b0ad;
@@ -65,6 +65,38 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
     --glass: rgb(22 29 28 / 0.82);
   }
+}
+:root[data-theme='dark'] {
+  --bg: #0b0f0f;
+  --fg: #e6eceb;
+  --muted: #a3b0ad;
+  --card: #161d1c;
+  --line: #28322f;
+  --brand: #4fc3b6;
+  --brand-fg: #06201d;
+  --bad: #ff8a80;
+  --bad-bg: #3a1a18;
+  --info-bg: #14253f;
+  --info: #8ab8ff;
+  --ok-bg: #12301f;
+  --ok: #7ad9a0;
+  --warn-bg: #35280a;
+  --warn: #f2c14e;
+  --on-bad: #2b0a08;
+  --control-bg: #1c2625;
+  --control-border: #7f918d;
+  --focus: #7ab4ff;
+  --switch-off: #6f7a82;
+  --switch-on: #3fa56b;
+  --knob: #fff;
+  --dashed: #8a9a97;
+  --border: #3a4745;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --glass: rgb(22 29 28 / 0.82);
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 * {
   box-sizing: border-box;
@@ -707,4 +739,17 @@ button,
   to {
     background-position: -200% 0;
   }
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.theme-picker select {
+  width: auto;
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  font-weight: 600;
+  color: var(--fg);
 }

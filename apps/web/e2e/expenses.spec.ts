@@ -40,6 +40,8 @@ async function addExpense(
   await page.getByLabel('Amount (MYR)').fill(o.amount);
   await page.getByLabel('Notes').fill(o.notes);
   await page.getByRole('button', { name: 'Save' }).click();
+  // Save navigates back to the list only after the write; wait, or a late redirect leaves the next form.
+  await expect(page).toHaveURL(/\/expenses$/);
 }
 
 test('AC-30/38/43/35: an expense is stored on the server, visible from a second profile, survives reload', async ({
