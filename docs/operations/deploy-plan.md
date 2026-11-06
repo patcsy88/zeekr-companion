@@ -244,3 +244,5 @@ Push to GitHub, install anything on or connect to the host, create a Tailscale a
 
 - 2026-11-06, iPhone check of the beautify deploy (owner-reported, in three short replies; no screenshots or text pasted). The owner accepted the new-version prompt, replied "OK" to removing and re-adding the home-screen app, and said "Dark mode works." **Not stated, so not recorded as seen:** the new icon and splash screen on the phone, the tab icons, the Vehicle dashboard, the Sentry tint and amber notice signed in, the skeletons, and which pages were looked at in dark mode. Treat the iPhone check as partly done: dark mode reported working, the rest unconfirmed.
 
+- 2026-11-06, iPhone check of the beautify deploy, follow-up (owner-reported, one line: "iPhone ok"; nothing pasted). The owner says the iPhone check is ok. The reply does not list which items were looked at, so the record does not say which. The icon, splash, tab icons, Vehicle dashboard, Sentry tint and skeletons are therefore reported ok as a group, not individually seen.
+
