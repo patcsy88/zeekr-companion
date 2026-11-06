@@ -4,12 +4,7 @@ import { useQueueCounts } from '../data/hooks';
 import { notifyData } from '../lib/events';
 import { clearAllLocalData } from '../storage/db';
 
-/**
- * Two different actions, named for what they do:
- * - "Sign out, keep local data": forgets the token only. Cache and unsent changes stay on the device.
- * - "Sign out and clear local data": also deletes the cache, the queue and the sync markers.
- *   Unsent changes would be lost, so it asks first and says how many.
- */
+/** The only sign out: clears the cache, the queue and the sync markers. Asks first and says how many unsent changes would be lost. */
 export function AccountMenu() {
   const { pending, failed, blocked } = useQueueCounts();
   const unsent = pending + failed + blocked;
@@ -40,9 +35,6 @@ export function AccountMenu() {
   return (
     <>
       <div className="account">
-        <button type="button" className="link" onClick={signOut}>
-          Sign out, keep local data
-        </button>
         <button
           type="button"
           className="link"
