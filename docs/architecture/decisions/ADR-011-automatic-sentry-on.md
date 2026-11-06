@@ -43,6 +43,7 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 - The owner finds out about an automatic send only by opening the app. A silent send at night is possible, and the app cannot warn first.
 - Sentry may draw on the 12 V battery. This is unmeasured, and the effect of an automatic send you did not watch is unknown.
 - A wrong geofence verdict (for example a bad reading or a wrong home point) now causes a command, not only a notice. The geofence's own proof on a real asleep-and-away case is still **unrun**, so the first automatic send would be on an untested real case.
+- **Update 2026-11-06:** the owner reported the first real automatic send (car away more than 5 km, in-app switch on, host switch `true`; one send, then the alert closed). See `docs/operations/deploy-plan.md`. The owner then accepted the feature as done (see below).
 - Zeekr's terms on repeated or unattended commands are unconfirmed. Account-lock risk is unknown.
 - Gear and `usageMode` labels are unverified except for the owner's readings (`0` and `0`).
 
@@ -66,3 +67,12 @@ Safeguards the owner chose earlier and that stay: off by default, fresh reading 
 - ~~The owner's written approval of this ADR as a whole.~~ Given on 2026-11-06.
 - ~~The owner's approval of the data model and the API contract amendment.~~ Given on 2026-11-06. The final table is `auto_sentry_settings` (`enabled`, `quiet_minutes`), with the `source` check widened and `skipped` and `skip_reason` added to `car_command_log`, as written in `api-contracts.md`.
 - ~~The quiet-period range.~~ Confirmed on 2026-11-06: 5 to 1440 whole minutes.
+
+## Acceptance (2026-11-06)
+
+The owner stated in chat that the feature is "good and tested" and asked for it to be marked properly done. Recorded as the owner's acceptance. What the engineering record itself shows:
+
+- **Seen by the agent:** the code, the tests and gates on the Mac, the pasted deploy output, and the pasted host log lines of the first automatic send (`alert opened; automatic send: sent`, then `alert closed`, then `clear`).
+- **Owner-reported only:** that the car was away more than 5 km, asleep or not (not stated), that the in-app switch was on, and that the result was as intended.
+- **Not resolved:** the owner said they also sent Sentry on manually at 16:11 KL, yet the automatic send was not skipped by the quiet period. The command log rows were not shown, so whether the quiet-period guard failed or the order of events differed is **unknown**. Restating this does not reopen the decision; it is recorded so the gap is not lost.
+- **Still open risks:** the effect of Sentry on the 12 V battery, Zeekr's terms on unattended commands and account-lock risk, a silent send at night (the app has no push), and the position having no timestamp of its own.
