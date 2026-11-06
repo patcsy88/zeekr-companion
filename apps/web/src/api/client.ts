@@ -69,7 +69,7 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
  * /reminder-templates, /expenses, /warranty-coverages, /warranty-claims, /warranty-templates and
  * the {uuid} forms of the three collections, with a plain query string on lists. The advisory
  * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well, and so are
- * /geofence/settings (Piece C), /vehicle/sentry, /vehicle/sentry/log, /vehicle/sentry/state and /vehicle/sentry/events (ADR-010).
+ * /geofence/settings (Piece C), /vehicle/sentry, /vehicle/sentry/log, /vehicle/sentry/state and /vehicle/sentry/events (ADR-010), and /vehicle/sentry/auto (ADR-011).
  * Anything else (traversal, encoded slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -122,7 +122,7 @@ export function assertContractPath(path: string): void {
           parts[3] === 'log' &&
           (query === undefined || QUERY_RE.test(query))) ||
         (parts.length === 4 &&
-          (parts[3] === 'state' || parts[3] === 'events') &&
+          (parts[3] === 'state' || parts[3] === 'events' || parts[3] === 'auto') &&
           query === undefined));
     if (!sentryOk) throw new ClientError('Refused a request outside the API contract.');
     return;

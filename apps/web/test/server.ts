@@ -705,6 +705,18 @@ const liveHandlers = [
   http.get('*/api/v1/live-vehicle', () => HttpResponse.json(OFF_CARD)),
   http.get('*/api/v1/advisory/proposals', () => HttpResponse.json({ items: [] })),
   http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
+  http.get('*/api/v1/vehicle/sentry/auto', () =>
+    HttpResponse.json({
+      enabled: false,
+      quiet_minutes: 60,
+      host_allowed: false,
+      can_enable: false,
+      limits: { quiet_minutes: { min: 5, max: 1440 } },
+    }),
+  ),
+  http.get('*/api/v1/vehicle/sentry/log', () =>
+    HttpResponse.json({ items: [], retention_months: 12 }),
+  ),
   http.get('*/api/v1/vehicle/sentry/events', ({ request }) => {
     // Open and silent, like an idle stream; it ends when the page aborts.
     const body = new ReadableStream({
