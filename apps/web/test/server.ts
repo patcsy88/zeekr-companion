@@ -20,6 +20,8 @@ export interface FakeApi {
   rejectDate: boolean;
   down: boolean;
   tokenIssued: string | null;
+  /** When set, sign-in also needs this code (two-step sign-in, ADR-013). */
+  mfaCode: string | null;
   vehicle: Vehicle | null;
   /** Enforce the contract's 'date not in the future' rule (Asia/Kuala_Lumpur date) using the (possibly faked) clock. */
   klDateRule: boolean;
@@ -129,6 +131,7 @@ export const fake: FakeApi = {
   rejectDate: false,
   down: false,
   tokenIssued: null,
+  mfaCode: null,
   vehicle: null,
   klDateRule: false,
   reminders: new Map(),
@@ -167,6 +170,7 @@ export function resetFake(): void {
   fake.rejectDate = false;
   fake.down = false;
   fake.tokenIssued = null;
+  fake.mfaCode = null;
   fake.vehicle = null;
   fake.klDateRule = false;
   fake.reminders.clear();
@@ -208,8 +212,9 @@ export const err = (
 
 export const handlers = [
   http.post('*/api/v1/auth/token', async ({ request }) => {
-    const body = (await request.json()) as { username: string; password: string };
-    if (body.username === 'owner' && body.password === 'correct-horse') {
+    const body = (await request.json()) as { username: string; password: string; code?: string };
+    const codeOk = !fake.mfaCode || body.code === fake.mfaCode;
+    if (body.username === 'owner' && body.password === 'correct-horse' && codeOk) {
       fake.tokenIssued = 'tok-test';
       return HttpResponse.json({ access_token: 'tok-test', expires_in: 3600 });
     }

@@ -52,10 +52,12 @@ Amended 2026-10-11 (owner-approved addition of 429 and documentation of existing
 
 `POST /api/v1/auth/token`
 
-Request: `{ "username": "string", "password": "string" }`
+Request: `{ "username": "string", "password": "string", "code": "string (optional)" }`
 Response `200`: `{ "access_token": "string", "expires_in": 3600 }`
 Response `401`: `unauthenticated`
 Response `429`: `rate_limited`, with a `Retry-After` header (seconds)
+
+`code` (ADR-013, owner-approved 2026-11-06) is the second factor: either the 6-digit code from the authenticator app, or one recovery code. It is trimmed, at most 64 characters, and may be absent or empty. If two-step sign-in is **not** set up, a supplied `code` is ignored and the endpoint behaves as before. If it **is** set up, a correct password with a missing, wrong, expired or already-used code returns the same `401 unauthenticated` ("Invalid credentials.") as a wrong password, and counts as a failed attempt toward the lockout below. An app code works once: a code for a time step that was already accepted, or an earlier one, is refused. A recovery code works once. The code is never logged and never returned.
 
 Rate-limited. Failed attempts are logged without logging the password or the submitted username.
 
@@ -64,6 +66,8 @@ After too many failed attempts within a sliding window, the endpoint returns `42
 Defaults (configurable by the operator, so not guaranteed): 5 failed attempts per client within 900 seconds (`LOGIN_MAX_FAILURES`, `LOGIN_WINDOW_SECONDS`). A successful login clears that client's failure count.
 
 The account is a single owner account stored in the database. It is created and reset by a server command (`python -m app.cli.set_owner`); there is no signup endpoint. If no account exists, the endpoint returns `401`.
+
+Two-step sign-in is set up, replaced and removed by a server command (`python -m app.cli.set_mfa`, `--off` to remove); there is no endpoint that turns it on, off or resets it.
 
 ### Vehicle
 

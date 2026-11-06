@@ -100,6 +100,8 @@ class TokenRequest(BaseModel):
 
     username: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=1024, repr=False)
+    # Second factor (ADR-013): the app code or a recovery code. Ignored while MFA is off.
+    code: str | None = Field(default=None, max_length=64, repr=False)
 
     @field_validator("username")
     @classmethod

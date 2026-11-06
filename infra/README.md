@@ -6,6 +6,7 @@ Docker Compose stack: `db` (PostgreSQL), `api` (FastAPI) and `web` (Caddy: stati
 ./install.sh              # creates .env with random POSTGRES_PASSWORD and TOKEN_SECRET (or: cp .env.example .env and fill them in)
 docker compose up -d --build --wait
 docker compose exec api python -m app.cli.set_owner    # create the owner login (prompts)
+docker compose exec api python -m app.cli.set_mfa      # optional: authenticator-app code at sign-in (ADR-013)
 ```
 
 - Only `web` publishes a port: `${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}`. Never default it to `0.0.0.0`. `api` and `db` have no `ports`.

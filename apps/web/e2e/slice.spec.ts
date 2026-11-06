@@ -18,11 +18,11 @@ test('sign in with a wrong password or username is refused, correct login works'
   await page.getByLabel('Username').fill(process.env.E2E_USERNAME ?? 'e2e-owner');
   await page.getByLabel('Password').fill('definitely-not-the-password');
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('alert')).toContainText('Wrong username or password');
+  await expect(page.getByRole('alert')).toContainText('Wrong username, password or code');
   await page.getByLabel('Username').fill('someone-else');
   await page.getByLabel('Password').fill(process.env.E2E_PASSWORD ?? '');
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('alert')).toContainText('Wrong username or password');
+  await expect(page.getByRole('alert')).toContainText('Wrong username, password or code');
   await signIn(page);
 });
 

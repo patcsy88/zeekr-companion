@@ -21,6 +21,8 @@ dependencies = [
     "langsmith==0.14.16",
     # ADR-009 gate 2, pinned exactly. Not imported anywhere yet.
     "zeekr-ev-api==0.1.15",
+    # ADR-013, owner-approved 2026-11-06, pinned exactly. Draws the setup QR in the terminal only.
+    "segno==1.6.6",
 ]
 
 [project.optional-dependencies]

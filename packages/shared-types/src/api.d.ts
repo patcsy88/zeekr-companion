@@ -1536,6 +1536,8 @@ export interface components {
         };
         /** TokenRequest */
         TokenRequest: {
+            /** Code */
+            code?: string | null;
             /** Password */
             password: string;
             /** Username */

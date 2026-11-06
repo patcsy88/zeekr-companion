@@ -33,7 +33,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0015"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0016"
             )
     finally:
         engine.dispose()
@@ -572,6 +572,63 @@ def test_0015_auto_sentry_checks_and_downgrade(fresh_database_url: str) -> None:
         assert "skip_reason" not in {
             c["name"] for c in inspect(engine).get_columns("car_command_log")
         }
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+
+
+def test_0016_owner_mfa_checks_and_downgrade(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import DataError, IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {
+            "id": 1,
+            "s": "A" * 32,
+            "l": 0,
+            "r": ["scrypt:x"],
+            "t": dt.datetime.now(dt.UTC),
+        }
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO owner_mfa (id, secret, last_step, recovery_hashes, created_at, "
+                "updated_at) VALUES (:id, :s, :l, :r, :t, :t)"
+            ),
+            values,
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        insert(conn)
+    for bad in ({"id": 2}, {"s": "short"}, {"l": -1}, {"r": None}):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            conn.execute(text("DELETE FROM owner_mfa"))
+            insert(conn, **bad)
+    with pytest.raises(DataError), engine.begin() as conn:
+        conn.execute(text("DELETE FROM owner_mfa"))
+        insert(conn, s="A" * 65)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(text("DELETE FROM owner_mfa"))
+        insert(conn)
+        insert(conn)
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0015")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT to_regclass('owner_mfa')")).scalar() is None
         engine.dispose()
     finally:
         os.environ.pop("DATABASE_URL", None)

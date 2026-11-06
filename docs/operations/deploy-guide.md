@@ -95,6 +95,24 @@ docker compose exec api python -m app.cli.set_owner
 
 The same command resets a forgotten password. It takes effect at the next sign-in. Until it has run, every sign-in returns 401.
 
+### Optional: a code from an authenticator app at sign-in (ADR-013)
+
+Needs the owner login from above. Run it in a private terminal on the host, not in a shared session:
+
+```
+docker compose exec api python -m app.cli.set_mfa
+```
+
+It draws a QR code in the terminal, prints the same key as text, and asks for the 6-digit code now shown in the app (Google Authenticator or any app that reads time-based codes). It saves nothing until that code is right. It then prints 8 recovery codes once. Write them down and keep them off the phone. The QR code, the key and the recovery codes are secrets: do not paste them into chat, a ticket or a saved log.
+
+Once it is on, every sign-in needs the password and a code, with no trusted devices. A recovery code works once, in place of the app code. To replace the setup (new key, new recovery codes), run the command again. To turn it off, for example if the phone is lost and the recovery codes are gone:
+
+```
+docker compose exec api python -m app.cli.set_mfa --off
+```
+
+Codes depend on the host clock being right to within about 30 seconds; check that the host clock is synchronised. Sessions already signed in stay valid for up to an hour. To end them at once, change `TOKEN_SECRET` and run `docker compose up -d`. The update that adds this runs a database migration (`0016`), so take a fresh encrypted export first (section 7). The `segno` QR library is installed into the `api` image by the normal build; there is nothing extra to install.
+
 ## 5. Check it
 
 ```
@@ -149,7 +167,7 @@ Needs a host with Docker Engine and the Compose plugin, on **x86_64** (the image
 1. Make a folder and download three files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`), `infra/.env.example` and `infra/install.sh` (then `chmod +x install.sh`).
 2. Run `./install.sh --version v0.1.0` (use the released tag you want). It writes `.env` with random secrets and the version. Never paste `.env` anywhere, and keep a private copy.
 3. `docker compose up -d --wait`. It pulls the images, so there is no build and no `npm ci`.
-4. Create the owner login: `docker compose exec api python -m app.cli.set_owner`.
+4. Create the owner login: `docker compose exec api python -m app.cli.set_owner`. Optional second step: `docker compose exec api python -m app.cli.set_mfa` (see section 4).
 5. Check it as in section 5.
 6. To update: change `ZEEKR_VERSION` to the new tag, then `docker compose pull` and `docker compose up -d --wait`. To go back, set the old tag. A migration runs when `api` starts, so take a fresh encrypted export first when the release notes mention one (section 7).
 

@@ -42,6 +42,7 @@ The images are `linux/amd64` only. Check with `uname -m`.
 3. Run `docker compose up -d --wait`.
 4. Create the app login. It asks for a username and a password of at least 12 characters:
    `docker compose exec api python -m app.cli.set_owner`
+   Optional second step (authenticator-app code, ADR-013): `docker compose exec api python -m app.cli.set_mfa`. See `docs/operations/deploy-guide.md`.
 5. Open the app on port 8080. By default it listens on `127.0.0.1` only. To reach it from your phone, read `WEB_BIND_ADDRESS` in `docs/operations/deploy-guide.md` first.
 
 There is no `latest` tag. To update, set `ZEEKR_VERSION` in `.env` to the new tag, then run `docker compose pull` and `docker compose up -d --wait`.
