@@ -119,6 +119,19 @@ describe('sentry control', () => {
     expect(posts).toEqual([{ desired: 'on' }]);
   });
 
+  it('clears the result line when Refresh loads a new reading', async () => {
+    serve(false);
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByRole('switch', { name: 'Sentry: off' }));
+    await user.click(screen.getByRole('button', { name: 'Send Sentry on' }));
+    await screen.findByTestId('sentry-result');
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('sentry-result')).toBeNull();
+    });
+  });
+
   it('does not claim success when the car has not reported the change', async () => {
     serve(false, () =>
       HttpResponse.json({ desired: 'on', sent: true, state_after: 'off', confirmed: false }),

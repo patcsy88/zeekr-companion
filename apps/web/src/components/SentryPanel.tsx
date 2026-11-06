@@ -120,6 +120,7 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
         type="button"
         disabled={busy}
         onClick={() => {
+          onNote(null);
           setBusy(true);
           void load();
         }}
