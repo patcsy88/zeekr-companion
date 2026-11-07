@@ -115,7 +115,8 @@ def test_real_read_is_stored_and_shown(
     assert body["observed_at"] == moment.isoformat().replace("+00:00", "Z")
     r = body["readings"]
     assert r["odometer_km"] == 4321 and r["battery_percent"] == 64.0 and r["range_km"] == 349
-    assert r["plugged_in"] is True and r["charging"] is False
+    # chargerState "3": not charging, and plugged in is unknown (no field for it yet).
+    assert r["plugged_in"] is None and r["charging"] is False
     assert r["tyres_kpa"] == {
         "driver_front": 236,
         "passenger_front": 240,

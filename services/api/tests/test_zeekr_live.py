@@ -44,8 +44,10 @@ def status(**overrides: Any) -> dict[str, Any]:
                 "chargeLevel": "64.0",
                 "stateOfCharge": "",
                 "distanceToEmptyOnBatteryOnly": "349",
-                "isCharging": False,
+                # These two stayed false while the car was charging (owner, 2026-11-08): ignored.
+                "isCharging": True,
                 "isPluggedIn": True,
+                "chargerState": "3",
             },
             "climateStatus": {
                 "updateTime": UPDATE_MS,
@@ -77,7 +79,7 @@ def test_map_keeps_the_allow_listed_fields() -> None:
     assert snap.distance_to_service_km == 35000
     assert snap.tyres_kpa == TyrePressures(236, 240, 238, 233)
     assert snap.is_charging is False
-    assert snap.is_plugged_in is True
+    assert snap.is_plugged_in is None
     assert snap.observed_at == dt.datetime.fromtimestamp(UPDATE_MS / 1000, tz=dt.UTC)
 
 
@@ -132,10 +134,46 @@ def test_missing_groups_and_wrong_shapes_give_empty_snapshot() -> None:
         assert snap.odometer_km is None and snap.tyres_kpa is None and snap.observed_at is None
 
 
-def test_non_boolean_flags_are_not_trusted() -> None:
+@pytest.mark.parametrize(
+    ("code", "charging", "plugged_in"),
+    [
+        ("2", True, True),
+        ("3", False, None),
+        ("1", None, None),
+        ("0", None, None),
+        ("", None, None),
+        (" 2", None, None),
+        (2, None, None),
+        (True, None, None),
+        (None, None, None),
+    ],
+)
+def test_charging_comes_from_charger_state(
+    code: object, charging: bool | None, plugged_in: bool | None
+) -> None:
     body = status()
-    body["additionalVehicleStatus"]["electricVehicleStatus"]["isCharging"] = "true"
-    assert map_status(body).is_charging is None
+    body["additionalVehicleStatus"]["electricVehicleStatus"]["chargerState"] = code
+    snap = map_status(body)
+    assert snap.is_charging is charging
+    assert snap.is_plugged_in is plugged_in
+
+
+def test_is_charging_and_is_plugged_in_flags_are_ignored() -> None:
+    body = status()
+    ev = body["additionalVehicleStatus"]["electricVehicleStatus"]
+    del ev["chargerState"]
+    ev["isCharging"] = True
+    ev["isPluggedIn"] = True
+    snap = map_status(body)
+    assert snap.is_charging is None
+    assert snap.is_plugged_in is None
+    # The owner's charging reading: the flags said false while chargerState said "2".
+    ev["isCharging"] = False
+    ev["isPluggedIn"] = False
+    ev["chargerState"] = "2"
+    snap = map_status(body)
+    assert snap.is_charging is True
+    assert snap.is_plugged_in is True
 
 
 class FakeVehicle:

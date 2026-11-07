@@ -971,3 +971,8 @@ ADR-011 is accepted (2026-11-06). The owner approved this data model and contrac
 
 (26) The toggle is off by default and with no row. (27) `PUT enabled=true` is `409` unless the host switch, live readings and geofence are all on. (28) A new alert with the toggle on and a fresh reading showing Sentry off sends `on` once and logs one `auto` row. (29) Sentry reading on, a stale or incomplete reading, or no new alert sends nothing. (30) A command logged within the quiet period gives a `skipped` row and no car call. (31) A `skipped` row does not start the quiet period or the 60-second spacing. (32) A failure or refusal is not retried in the same episode. (33) The same alert never sends twice, including after an API restart while the alert is still open. (34) The log holds no payload, position or distance. (35) Nothing but `on` can be sent automatically. (36) `quiet_minutes` outside 5 to 1440, or not a whole number, is `400`. (37) "Use the host values" on the Geofence tab leaves the toggle and the quiet period alone.
 
+### Amendment: charging and plugged in source (owner approved 2026-11-08; no migration)
+
+- `readings.charging` now comes from `electricVehicleStatus.chargerState`: `"2"` is `true`, `"3"` is `false`, anything else `null` (owner-observed codes, ADR-009 build record 2026-11-08). `isCharging` is no longer read: it stayed false while the car was charging.
+- `readings.plugged_in` is `true` when `charging` is `true`, otherwise `null`, until a field for the cable is confirmed. `isPluggedIn` is no longer read.
+- Shape unchanged: both stay `true`, `false` or `null`. The card already shows `null` as "no reading". Readings stored before this change keep their stored values.
