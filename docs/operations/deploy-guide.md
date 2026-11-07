@@ -162,7 +162,7 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 
 **Not run yet.** No image has been published, and the workflow has never run. Do not rely on this until the checks at the end of this section have been done once.
 
-Needs a host with Docker Engine and the Compose plugin, on **x86_64** (the images are `linux/amd64` only). Check with `uname -m`.
+Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory.
 
 1. Make a folder and download three files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`), `infra/.env.example` and `infra/install.sh` (then `chmod +x install.sh`).
 2. Run `./install.sh --version v0.1.0` (use the released tag you want). It writes `.env` with random secrets and the version. Never paste `.env` anywhere, and keep a private copy.

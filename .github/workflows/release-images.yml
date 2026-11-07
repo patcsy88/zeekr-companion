@@ -1,6 +1,12 @@
 # Builds and publishes the api and web images to ghcr.io (ADR-012).
 # Runs only when a version tag is pushed, for example:  git tag v0.1.0 && git push origin v0.1.0
 # It never runs on a push to main. Uses the built-in GITHUB_TOKEN only: no stored secret.
+#
+# Two CPU types (ADR-012 amendment 2026-11-07): linux/amd64 for the x86_64 host and linux/arm64
+# for an aarch64 host such as a Raspberry Pi 3 on a 64-bit OS. Each is built natively on its own
+# GitHub-hosted runner (no emulation), checked, and pushed as <version>-amd64 / <version>-arm64.
+# The last job joins them under the plain version tag, which is what a host pulls. If either
+# build fails, the plain version tag is not created.
 name: release-images
 
 on:
@@ -14,11 +20,19 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     env:
       OWNER: ${{ github.repository_owner }}
       VERSION: ${{ github.ref_name }}
+      ARCH: ${{ matrix.arch }}
     steps:
       # Actions are pinned to commit hashes (the tag is in the comment), so a moved tag cannot
       # change what runs.
@@ -37,28 +51,30 @@ jobs:
       - name: Name the images (lower case, as ghcr.io requires)
         run: |
           owner="${OWNER,,}"
-          echo "API_IMAGE=ghcr.io/${owner}/zeekr-companion-api:${VERSION}" >> "$GITHUB_ENV"
-          echo "WEB_IMAGE=ghcr.io/${owner}/zeekr-companion-web:${VERSION}" >> "$GITHUB_ENV"
+          echo "API_IMAGE=ghcr.io/${owner}/zeekr-companion-api:${VERSION}-${ARCH}" >> "$GITHUB_ENV"
+          echo "WEB_IMAGE=ghcr.io/${owner}/zeekr-companion-web:${VERSION}-${ARCH}" >> "$GITHUB_ENV"
 
       # Built into the local Docker store first, so they can be checked before anything is pushed.
-      - name: Build api (linux/amd64)
+      - name: Build api
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: services/api
-          platforms: linux/amd64
+          platforms: linux/${{ matrix.arch }}
           load: true
           push: false
+          provenance: false
           tags: ${{ env.API_IMAGE }}
 
       # VITE_SENTRY_DSN is not passed, so browser error reporting is off in the published image.
-      - name: Build web (linux/amd64)
+      - name: Build web
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: infra/web.Dockerfile
-          platforms: linux/amd64
+          platforms: linux/${{ matrix.arch }}
           load: true
           push: false
+          provenance: false
           tags: ${{ env.WEB_IMAGE }}
 
       - name: Check the images hold no dotfiles, source maps or env files
@@ -71,8 +87,46 @@ jobs:
           if [ -n "$bad" ]; then echo "api image has files that must not ship:"; echo "$bad"; exit 1; fi
           echo "images ok"
 
+      - name: Check the images are the expected CPU type and start
+        run: |
+          for img in "$API_IMAGE" "$WEB_IMAGE"; do
+            got="$(docker image inspect --format '{{.Architecture}}' "$img")"
+            if [ "$got" != "$ARCH" ]; then echo "$img is $got, expected $ARCH"; exit 1; fi
+          done
+          # The compiled Python packages must load on this CPU type (no database is needed).
+          docker run --rm --entrypoint python "$API_IMAGE" -c \
+            "import psycopg, pydantic_core, segno, app.main; print('api imports ok')"
+          docker run --rm --entrypoint caddy "$WEB_IMAGE" version
+
       - name: Push
         run: |
           docker push "$API_IMAGE"
           docker push "$WEB_IMAGE"
           echo "Pushed $API_IMAGE and $WEB_IMAGE"
+
+  # Joins the two CPU types under the plain version tag. A host pulling <version> gets its own.
+  combine:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OWNER: ${{ github.repository_owner }}
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the multi-CPU version tags
+        run: |
+          owner="${OWNER,,}"
+          for name in zeekr-companion-api zeekr-companion-web; do
+            image="ghcr.io/${owner}/${name}"
+            docker buildx imagetools create -t "${image}:${VERSION}" \
+              "${image}:${VERSION}-amd64" "${image}:${VERSION}-arm64"
+            docker buildx imagetools inspect "${image}:${VERSION}"
+          done

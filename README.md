@@ -35,7 +35,7 @@ You need a Linux host with Docker Engine and the Compose plugin. The app has no 
 
 ### Option A: published images (one compose file, no build)
 
-The images are `linux/amd64` only. Check with `uname -m`.
+The images are `linux/amd64` and `linux/arm64` (releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`: `x86_64` or `aarch64` works, 32-bit ARM (`armv7l`) does not.
 
 1. Make a folder and download three files from `infra/` into it: `docker-compose.release.yml` (save it as `docker-compose.yml`), `.env.example` and `install.sh`. Then run `chmod +x install.sh`.
 2. Run `./install.sh --version v0.1.0`. It writes `.env` with random `POSTGRES_PASSWORD` and `TOKEN_SECRET` values, never prints them, and sets the file to mode 600. It refuses to run if `.env` already exists, because a new database password would lock the app out of an existing database.
