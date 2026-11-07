@@ -2,7 +2,7 @@
 # This is the one file to download. No clone and no build. Put a .env next to it (see
 # .env.example in the repository), then:  docker compose up -d --wait
 # Set ZEEKR_VERSION in .env to a released tag, for example v0.1.0. There is no "latest".
-# The images are linux/amd64 only. Keep this file in step with docker-compose.yml: run
+# The images are linux/amd64 and linux/arm64 (up to v0.1.3, amd64 only). Keep this file in step with docker-compose.yml: run
 # infra/check-release-compose.sh after changing either one.
 # Only "web" publishes a port, on 127.0.0.1 by default (NFR-6). Do not expose it to the public
 # internet. "api" and "db" are reachable only on the private compose network.
