@@ -128,10 +128,6 @@ def _whole(value: object, low: int = 0, high: int | None = None) -> int | None:
     return int(number)
 
 
-def _flag(value: object) -> bool | None:
-    return value if isinstance(value, bool) else None
-
-
 def _onoff(value: object) -> bool | None:
     """A real boolean, or the text "true" or "false" in any letter case. Anything else is None."""
     if isinstance(value, bool):
@@ -141,6 +137,23 @@ def _onoff(value: object) -> bool | None:
         if text in ("true", "false"):
             return text == "true"
     return None
+
+
+def _charging(value: object) -> bool | None:
+    """`electricVehicleStatus.chargerState` (owner readings, 2026-11-08): "2" while charging, "3"
+    once charging stopped with the cable still in. Other codes are unknown and are no reading.
+    `isCharging` and `isPluggedIn` stayed false while the car was charging, so they are not used."""
+    if value == "2":
+        return True
+    if value == "3":
+        return False
+    return None
+
+
+def _plugged_in(charging: bool | None) -> bool | None:
+    """No field is known yet that says the cable is in when the car is not charging. Charging
+    implies plugged in; otherwise there is no reading, never a guessed "no"."""
+    return True if charging is True else None
 
 
 def _sentry(value: object) -> bool | None:
@@ -240,6 +253,7 @@ def map_status(status: object) -> Snapshot:
     if percent is not None and not BATTERY_PERCENT[0] <= percent <= BATTERY_PERCENT[1]:
         percent = None
     range_km = _whole(_dig(status, (*_ELEC, "distanceToEmptyOnBatteryOnly")), *RANGE_KM)
+    charging = _charging(_dig(status, (*_ELEC, "chargerState")))
     return Snapshot(
         observed_at=_observed_at(_dig(status, (*_CLIMATE, "updateTime"))),
         odometer_km=_whole(_dig(status, (*_MAINT, "odometer")), *ODOMETER_KM),
@@ -250,8 +264,8 @@ def map_status(status: object) -> Snapshot:
             _dig(status, (*_MAINT, "distanceToService")), *SERVICE_DISTANCE_KM
         ),
         tyres_kpa=_tyres(status),
-        is_charging=_flag(_dig(status, (*_ELEC, "isCharging"))),
-        is_plugged_in=_flag(_dig(status, (*_ELEC, "isPluggedIn"))),
+        is_charging=charging,
+        is_plugged_in=_plugged_in(charging),
         battery_12v_volts=_volts(_dig(status, (*_MAINT, "mainBatteryStatus", "voltage"))),
         tyres_celsius=_tyre_celsius(status),
         pre_climate_active=_onoff(_dig(status, (*_CLIMATE, "preClimateActive"))),
