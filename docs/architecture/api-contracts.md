@@ -76,6 +76,8 @@ Two-step sign-in is set up, replaced and removed by a server command (`python -m
 | `PUT` | `/api/v1/vehicle` | Create or replace the single vehicle profile |
 | `GET` | `/api/v1/vehicle` | `404` if not yet created |
 
+**Web-only note (owner decision 2026-11-08, no contract change):** the web form fills `variant`, `drive` and `tyre_spec` from dropdowns (AC-87 to AC-90). `variant` holds the variant name with the model year appended, for example "AWD Performance (2025)". The server still accepts any text within the limits below.
+
 Vehicle object:
 
 ```json

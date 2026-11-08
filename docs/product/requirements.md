@@ -6,7 +6,7 @@ Status: **confirmed**, **proposed** or **unverified**. Each requirement has an I
 
 | ID | Requirement | Status |
 |---|---|---|
-| FR-1 | Create, view, edit the vehicle profile: model, variant, drive (AWD), steering side (RHD), registration, VIN, purchase date, purchase price, tyre specification | proposed |
+| FR-1 | Create, view, edit the vehicle profile: model, variant, drive (AWD), steering side (RHD), registration, VIN, purchase date, purchase price, tyre specification. **Amended 2026-11-08:** variant, model year, drive and tyre specification are chosen from dropdowns (AC-87 to AC-90) | proposed |
 | FR-2 | Record a service: date, odometer, provider, description, cost, notes | proposed |
 | FR-3 | List service history, newest first, and view one record | proposed |
 | FR-4 | Edit and delete a service record, with confirmation before delete | proposed |
@@ -209,6 +209,17 @@ Covers FR-9. Plan: `docs/product/tyres-slice-plan.md`. Contract: "Tyre events" i
 | AC-84 | The new-event form prefills the odometer with the current odometer (editable) and, for Replace, the size with the vehicle tyre specification when it is at most 50 characters. |
 | AC-85 | Every tyre route returns 401 without a token. Text fields are shown as plain text. At most 1,000 events are stored; a create beyond that returns 400 on field `body`, and an identical replay is still accepted at the cap. |
 | AC-86 | Migration `0017` applies to an empty database, re-runs cleanly and downgrades; all quality gates pass. |
+
+## Acceptance criteria: Vehicle profile variant list (approved by the owner 2026-11-08)
+
+Covers FR-1. Owner answers (2026-11-08): Black Nova is included with 265/45 R20; dropdowns only, no free text; drive is filled in from the variant but stays editable; the model year is appended to the variant text (no migration). Web only: the list lives in `apps/web/src/lib/vehicleCatalogue.ts`, the API contract and the database are unchanged, and the server still accepts any text. Every list entry is `unverified` (research M43).
+
+| ID | Criterion |
+|---|---|
+| AC-87 | The vehicle form offers a Variant dropdown with RWD Standard Range, RWD Long Range, AWD Performance and Black Nova, and a Model year dropdown with the years for that variant (2025 and 2026; Black Nova 2026 only, picked automatically). A variant is required, and a model year is required for a listed variant. The saved `variant` is the name with the year appended, for example "AWD Performance (2025)". |
+| AC-88 | Choosing a variant fills the Tyre specification with that variant's default size (255/50 R19 for the RWD variants, 265/45 R20 for AWD Performance and Black Nova). The tyre dropdown lists only that variant's sizes (255/50 R19, 265/45 R20, 265/40 R21) plus "Not set". A size the owner picked is kept when the variant changes. |
+| AC-89 | Choosing a variant fills Drive (AWD or RWD) until the owner changes Drive; Drive stays editable. Steering stays fixed. |
+| AC-90 | Editing an existing profile reads a saved listed variant, year, drive and size back into the form. An older variant or tyre value not in the list is kept as a "Current: ..." option and is saved unchanged unless the owner picks another. |
 
 ## Open questions for the owner
 

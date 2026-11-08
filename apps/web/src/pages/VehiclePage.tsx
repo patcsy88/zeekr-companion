@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Vehicle } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
@@ -14,6 +14,64 @@ import { uuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import {
+  ALL_TYRES,
+  DRIVES,
+  VARIANTS,
+  findVariant,
+  parseVariant,
+  variantText,
+} from '../lib/vehicleCatalogue';
+
+/** A labelled native select, with the same hint and error wiring as TextField. */
+function SelectField({
+  id,
+  label,
+  hint,
+  error,
+  value,
+  onChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  const described = [hint ? `${id}-hint` : '', error ? `${id}-error` : '']
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      {hint ? (
+        <p id={`${id}-hint`} className="hint">
+          {hint}
+        </p>
+      ) : null}
+      <select
+        id={id}
+        name={id}
+        value={value}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={described || undefined}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+      >
+        {children}
+      </select>
+      {error ? (
+        <p id={`${id}-error`} className="error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export function VehiclePage() {
   const snap = useVehicle();
@@ -109,7 +167,15 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 type Errs = Partial<
   Record<
-    'model' | 'vin' | 'purchase_date' | 'price' | 'form' | 'registration' | 'variant' | 'tyre_spec',
+    | 'model'
+    | 'vin'
+    | 'purchase_date'
+    | 'price'
+    | 'form'
+    | 'registration'
+    | 'variant'
+    | 'year'
+    | 'tyre_spec',
     string
   >
 >;
@@ -124,19 +190,48 @@ export function VehicleEditPage() {
 function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () => void }) {
   const [id] = useState(() => initial?.id ?? uuid());
   const [model, setModel] = useState(initial?.model ?? '7X');
-  const [variant, setVariant] = useState(initial?.variant ?? '');
+  // A saved variant that is not in the list (older free text) is kept as its own option.
+  const [parsed] = useState(() => (initial?.variant ? parseVariant(initial.variant) : null));
+  const legacyVariant = initial?.variant && parsed === null ? initial.variant : null;
+  const [variant, setVariant] = useState(parsed?.name ?? legacyVariant ?? '');
+  const [year, setYear] = useState(parsed?.year != null ? String(parsed.year) : '');
+  const [drive, setDrive] = useState(initial?.drive ?? 'AWD');
+  const [driveTouched, setDriveTouched] = useState(false);
   const [registration, setRegistration] = useState(initial?.registration ?? '');
   const [vin, setVin] = useState(initial?.vin ?? '');
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchase_date ?? '');
   const [price, setPrice] = useState(initial ? senToInput(initial.purchase_price_minor) : '0.00');
   const [tyre, setTyre] = useState(initial?.tyre_spec ?? '');
+  // A saved tyre specification counts as the owner's own pick, so a variant change keeps it.
+  const [tyreTouched, setTyreTouched] = useState(Boolean(initial?.tyre_spec));
   const [errors, setErrors] = useState<Errs>({});
   const [busy, setBusy] = useState(false);
+
+  const entry = findVariant(variant);
+  const tyreOptions = entry ? entry.tyres : ALL_TYRES;
+  const legacyTyre =
+    initial?.tyre_spec && !ALL_TYRES.includes(initial.tyre_spec) ? initial.tyre_spec : null;
+
+  function chooseVariant(name: string) {
+    setVariant(name);
+    const v = findVariant(name);
+    if (!v) {
+      setYear('');
+      return;
+    }
+    if (v.years.length === 1) setYear(String(v.years[0]));
+    else if (!v.years.map(String).includes(year)) setYear('');
+    if (!driveTouched) setDrive(v.drive);
+    const keep = tyreTouched && (tyre === '' || v.tyres.includes(tyre) || tyre === legacyTyre);
+    if (!keep) setTyre(v.tyres[0] ?? '');
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     const next: Errs = {};
     if (model.trim() === '') next.model = 'Model is required.';
+    if (variant === '') next.variant = 'Choose a variant.';
+    else if (entry && year === '') next.year = 'Choose a model year.';
     const v = vin.trim();
     if (v !== '' && v.length !== 17) next.vin = 'A VIN has 17 characters.';
     if (purchaseDate !== '' && !isIsoDate(purchaseDate)) next.purchase_date = 'Enter a valid date.';
@@ -149,15 +244,15 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
       await saveVehicle({
         id,
         model: model.trim(),
-        variant: variant.trim(),
-        drive: initial?.drive ?? 'AWD',
+        variant: entry ? variantText(variant, Number(year)) : variant,
+        drive,
         steering: initial?.steering ?? 'RHD',
         registration: registration.trim() === '' ? null : registration.trim(),
         vin: v === '' ? null : v,
         purchase_date: purchaseDate === '' ? null : purchaseDate,
         purchase_price_minor: money.minor,
         currency: 'MYR',
-        tyre_spec: tyre.trim() === '' ? null : tyre.trim(),
+        tyre_spec: tyre === '' ? null : tyre,
       });
       onDone();
     } catch (err) {
@@ -181,15 +276,57 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
           }}
           error={errors.model}
         />
-        <TextField
+        <SelectField
           id="variant"
           label="Variant"
+          hint="Malaysian 7X variants (press listings, unverified)."
           value={variant}
-          onChange={(e) => {
-            setVariant(e.target.value);
-          }}
+          onChange={chooseVariant}
           error={errors.variant}
-        />
+        >
+          <option value="">Choose a variant</option>
+          {legacyVariant ? <option value={legacyVariant}>Current: {legacyVariant}</option> : null}
+          {VARIANTS.map((v) => (
+            <option key={v.name} value={v.name}>
+              {v.name}
+            </option>
+          ))}
+        </SelectField>
+        {entry ? (
+          <SelectField
+            id="model-year"
+            label="Model year"
+            value={year}
+            onChange={setYear}
+            error={errors.year}
+          >
+            <option value="">Choose a year</option>
+            {entry.years.map((y) => (
+              <option key={y} value={String(y)}>
+                {y}
+              </option>
+            ))}
+          </SelectField>
+        ) : null}
+        <SelectField
+          id="drive"
+          label="Drive"
+          hint="Filled in from the variant. You can change it."
+          value={drive}
+          onChange={(value) => {
+            setDrive(value);
+            setDriveTouched(true);
+          }}
+        >
+          {(DRIVES as readonly string[]).includes(drive) ? null : (
+            <option value={drive}>Current: {drive}</option>
+          )}
+          {DRIVES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </SelectField>
         <TextField
           id="registration"
           label="Registration"
@@ -232,18 +369,27 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
           }}
           error={errors.price}
         />
-        <TextField
+        <SelectField
           id="tyre"
           label="Tyre specification"
+          hint="The first size is the variant's usual fit. Check the door-jamb placard."
           value={tyre}
-          onChange={(e) => {
-            setTyre(e.target.value);
+          onChange={(value) => {
+            setTyre(value);
+            setTyreTouched(true);
           }}
           error={errors.tyre_spec}
-        />
+        >
+          <option value="">Not set</option>
+          {legacyTyre ? <option value={legacyTyre}>Current: {legacyTyre}</option> : null}
+          {tyreOptions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </SelectField>
         <p className="muted small">
-          Drive {initial?.drive ?? 'AWD'} and steering {initial?.steering ?? 'RHD'} are fixed for
-          this vehicle.
+          Steering {initial?.steering ?? 'RHD'} is fixed for this vehicle.
         </p>
         {errors.form ? (
           <p role="alert" className="error">
