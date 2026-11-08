@@ -99,6 +99,7 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-83 | `tyres.test.tsx` (Add reminder prefilled with Service, "Rotate tyres", odometer + N; nothing saved until Save; offered only on Rotate) |
 | AC-84 | `tyres.test.tsx` (current odometer, all four wheels, size from the tyre specification only when at most 50 characters) |
 | AC-85 | `test_tyre_events.py` (401 on every route, cap 1,000 with replay at the cap, concurrent creates at the cap, text stored verbatim); `tyres.test.tsx` (plain-text rendering) |
+| AC-87, AC-88, AC-89, AC-90 | `vehicle-profile.test.tsx` (variant and year lists, required fields, year appended, tyre default and override, drive follows the variant until changed, existing and older values kept; 10 of 11 fail on the old form) and Playwright `e2e/slice.spec.ts` (create and edit with the dropdowns). Manual iPhone check: **deferred, not run** |
 | AC-86 | `test_migrations.py` (migration `0017`: constraints, apply, re-run, downgrade to `0016`) and all gates. Manual iPhone check: **deferred, not run** |
 
 Warranty security review: `docs/security/review-2026-10-23-warranty.md`. SEC-W3 and SEC-W4 fixed (`warranty-sec.test.tsx`); SEC-W1, W2, W5, W6 open.

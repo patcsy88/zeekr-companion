@@ -38,19 +38,26 @@ test('vehicle profile: create, view, edit (FR-1)', async ({ page }) => {
   await page.goto('/vehicle');
   await signIn(page);
   await page.getByRole('link', { name: /Create vehicle profile|Create or edit anyway/ }).click();
-  await page.getByLabel('Variant').fill('Test variant');
+  await page.getByLabel('Variant').selectOption('AWD Performance');
+  await page.getByLabel('Model year').selectOption('2025');
+  await expect(page.getByLabel('Tyre specification')).toHaveValue('265/45 R20');
   await page.getByLabel('VIN').fill('TESTVIN1234567890'); // 17 characters, not a real VIN
   await page.getByLabel('Purchase price (MYR)').fill('250000.00');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('heading', { name: 'Vehicle' })).toBeVisible();
   await expect(page.getByText('RM 250,000.00')).toBeVisible();
-  await expect(page.getByText('Test variant')).toBeVisible();
+  await expect(page.getByText('AWD Performance (2025)')).toBeVisible();
+  await expect(page.getByText('265/45 R20')).toBeVisible();
   await expect(page.getByTestId('pending-count')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Edit' }).click();
-  await page.getByLabel('Variant').fill('Edited variant');
+  await page.getByLabel('Variant').selectOption('RWD Long Range');
+  await page.getByLabel('Model year').selectOption('2026');
+  await page.getByLabel('Drive').selectOption('RWD');
+  await page.getByLabel('Tyre specification').selectOption('255/50 R19');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText('Edited variant')).toBeVisible();
+  await expect(page.getByText('RWD Long Range (2026)')).toBeVisible();
+  await expect(page.getByText('255/50 R19')).toBeVisible();
 });
 
 test('AC-6: record survives reload and is on the server (second profile)', async ({
@@ -100,7 +107,7 @@ test('AC-7 (amended 2026-11-07): cold start offline shows only the sign-in form,
   await signIn(page);
   await expect(page.getByRole('link', { name: new RegExp(description) })).toBeVisible();
   await page.getByRole('link', { name: 'Vehicle' }).click();
-  await expect(page.getByText('Edited variant')).toBeVisible();
+  await expect(page.getByText('RWD Long Range (2026)')).toBeVisible(); // saved by the FR-1 test
 });
 
 test('service worker never caches /api responses', async ({ page }) => {
