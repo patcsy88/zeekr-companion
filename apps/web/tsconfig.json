@@ -19,5 +19,5 @@
     "noEmit": true,
     "paths": { "@zeekr-companion/shared-types": ["../../packages/shared-types/src/index.ts"] }
   },
-  "include": ["src", "test", "e2e", "*.ts"]
+  "include": ["src", "test", "e2e", "screenshots", "*.ts"]
 }

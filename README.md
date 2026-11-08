@@ -22,6 +22,20 @@ The app works fully from manual records. Live car data is optional and off by de
 
 The only command the app can send to the car is Sentry on or off (ADR-010). Everything else it reads from the car is read-only.
 
+## Screens
+
+iPhone width (390 px), light and dark. Every value shown is made up: no real car, account or location. To retake them, run `npm run screenshots` in `apps/web`. It needs no API or database because the script answers every request with sample data.
+
+| Vehicle | Service history | Reminders |
+|---|---|---|
+| <img src="docs/screenshots/vehicle-light.png" width="180" alt="Vehicle, light"> <img src="docs/screenshots/vehicle-dark.png" width="180" alt="Vehicle, dark"> | <img src="docs/screenshots/service-history-light.png" width="180" alt="Service history, light"> <img src="docs/screenshots/service-history-dark.png" width="180" alt="Service history, dark"> | <img src="docs/screenshots/reminders-light.png" width="180" alt="Reminders, light"> <img src="docs/screenshots/reminders-dark.png" width="180" alt="Reminders, dark"> |
+| Live card: battery, range, odometer, next service and tyres | Service records, newest first | Overdue and upcoming, by date and odometer |
+
+| Sentry | Geofence |
+|---|---|
+| <img src="docs/screenshots/sentry-light.png" width="180" alt="Sentry, light"> <img src="docs/screenshots/sentry-dark.png" width="180" alt="Sentry, dark"> | <img src="docs/screenshots/geofence-light.png" width="180" alt="Geofence, light"> <img src="docs/screenshots/geofence-dark.png" width="180" alt="Geofence, dark"> |
+| A geofence notice and the Sentry switch, which asks before it sends | Radius, check interval and the vehicle states that count. No map or position. |
+
 ## How it is built
 
 - **Client:** React, Vite and TypeScript PWA (`apps/web`), served same-origin through a Caddy container.
