@@ -162,7 +162,7 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 
 Images are published for every release from `v0.1.0`; the newest is `v0.1.10`. Use a released tag; there is no `latest`. What has and has not been checked is at the end of this section.
 
-Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory.
+Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory. For a 512 MB host, see "On a 512 MB host" below.
 
 1. Make a folder and download three files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`), `infra/.env.example` and `infra/install.sh` (then `chmod +x install.sh`).
 2. Run `./install.sh --version v0.1.0` (use the released tag you want). It writes `.env` with random secrets and the version. Never paste `.env` anywhere, and keep a private copy.
@@ -172,6 +172,36 @@ Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch
 6. To update: change `ZEEKR_VERSION` to the new tag, then `docker compose pull` and `docker compose up -d --wait`. To go back, set the old tag. A migration runs when `api` starts, so take a fresh encrypted export first when the release notes mention one (section 7).
 
 Browser error reporting (`VITE_SENTRY_DSN`) is **off** in the published web image. To have it, install from a clone.
+
+### On a 512 MB host (Raspberry Pi Zero 2 W)
+
+Not tested on a real Pi. The figures below come from the `arm64` images on the development Mac, with all containers sharing one memory limit and swap off (ADR-006 amendment 2026-11-09).
+
+- **Release:** the first release **after `v0.1.11`**. Older API images ignore `PASSWORD_HASH_CONCURRENCY`, so a burst of sign-ins can still run them out of memory.
+- **System:** a 64-bit OS. `uname -m` must print `aarch64`; `armv7l` (32-bit) is not supported. A Lite (no desktop) image leaves the most memory.
+- **Install from images only**, as above. Never `--build` on the Pi.
+- **Swap or zram is required.** The containers need about 288 MB at peak, and the OS and Docker need some of the 512 MB too (not measured). Check with `free -m`: the `Swap:` line must not be 0. How to set up swap or zram depends on the OS release; the repository does not give the commands.
+- **Memory limits must work.** Run `docker info`. If it warns `No memory limit support`, the kernel has the memory cgroup off and the limits below are ignored. Turn it on as your OS's documentation says, then reboot.
+
+Turn on the low-memory overlay:
+
+1. Download `infra/docker-compose.lowmem.yml` into the same folder as `docker-compose.yml`.
+2. Add this line to `.env`: `COMPOSE_FILE=docker-compose.yml:docker-compose.lowmem.yml`
+3. `docker compose up -d --wait`. Every later `docker compose` command in that folder uses both files.
+4. Check: `docker compose exec api printenv PASSWORD_HASH_CONCURRENCY` prints `1`.
+
+What the overlay does (`infra/docker-compose.lowmem.yml`):
+
+| Container   | Change                                   | Limit  | Measured                                                        |
+| ----------- | ---------------------------------------- | ------ | --------------------------------------------------------------- |
+| `db`        | small buffers, no parallel query workers | 96 MB  | about 44 MB peak                                                |
+| `api`       | one password check at a time             | 288 MB | about 90 MB idle, about 220 MB during a sign-in                 |
+| `web`       | none                                     | 64 MB  | about 31 MB peak                                                |
+| `tailscale` | none                                     | 96 MB  | about 40 MB before tailnet sign-in; not measured once connected |
+
+The result: with all containers sharing **288 MB**, 8 sign-ins at once and 1,500 requests all succeeded, with nothing killed. At 256 MB the API was killed. Without the overlay it needs about 400 MB. Sign-ins that arrive together now wait in line, so each one can take a few seconds longer. Nothing else in the app changes.
+
+To turn it off, remove the `COMPOSE_FILE` line and run `docker compose up -d --wait`.
 
 ### Publishing a release (owner)
 
