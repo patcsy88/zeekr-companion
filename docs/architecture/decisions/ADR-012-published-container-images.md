@@ -29,13 +29,13 @@ Labels: **confirmed** (read from a source or stated by the owner), **proposed**,
 - A new host needs the release compose file, a `.env`, and `docker compose up -d`. No clone, no build, no `npm ci`.
 - Browser error reporting stays off in published images. An owner who wants it builds locally with the existing compose file.
 - A tag push publishes. A wrong tag publishes a wrong image, so a tag should be pushed only after the gates pass.
-- The workflow and the release compose file are **untested against the real registry** until the owner pushes the first tag, makes the packages public, and pulls on a host.
+- The workflow has published every release since `v0.1.0` (see Not verified for what is still unchecked).
 
 ## Not verified
 
-- That the workflow runs: it has never run. Action versions were checked against their repositories only.
-- That the packages link to the repository and can be made public, and that a pull works without a login.
-- That the images start on the owner's host.
+- A fresh install from the images on a clean host. On the owner's arm64 host, the owner reports the app working on `v0.1.10` (owner-reported, not seen by the agent).
+
+Checked on 2026-11-08: the workflow ran for every tag from `v0.1.0` to `v0.1.10`, and every run succeeded. For `v0.1.10`, both packages list `linux/amd64` and `linux/arm64`, and they can be pulled without a login.
 - That the free container registry terms stay free.
 
 ## Revisit when

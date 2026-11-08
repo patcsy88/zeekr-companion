@@ -17,7 +17,7 @@ Everything is in `infra/docker-compose.yml`. Nothing is mounted from the host ex
 ## Two ways to install
 
 - **From a clone (what the owner's host runs today):** sections 2 to 10 below. It builds the images on the host.
-- **From published images, one file (ADR-012):** the section "Install from published images" at the end. It needs no clone and no build, but it works only after the first release has been published.
+- **From published images, one file (ADR-012):** the section "Install from published images" at the end. It needs no clone and no build.
 
 ## 1. Prerequisites
 
@@ -160,7 +160,7 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 
 ## Install from published images (one file, ADR-012)
 
-**Not run yet.** No image has been published, and the workflow has never run. Do not rely on this until the checks at the end of this section have been done once.
+Images are published for every release from `v0.1.0`; the newest is `v0.1.10`. Use a released tag; there is no `latest`. What has and has not been checked is at the end of this section.
 
 Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory.
 
@@ -185,8 +185,16 @@ The images are built by the GitHub Actions workflow `.github/workflows/release-i
 
 ### What is not verified for this install
 
-- The workflow has not run, the packages do not exist, and a pull has not been tried.
-- The images have not been started on the owner's host.
+Checked on 2026-11-08, from the Mac:
+
+- The workflow ran for every tag from `v0.1.0` to `v0.1.10`, and every run succeeded.
+- For `v0.1.10`, both `zeekr-companion-api` and `zeekr-companion-web` list `linux/amd64` and `linux/arm64`, and the registry hands them out without a login, so the packages are public.
+- The `v0.1.10` web image holds the built client.
+
+Not checked by the agent:
+
+- A fresh install from these images on a clean host, following the steps above.
+- An update on the owner's arm64 host. The owner reports the app working there on `v0.1.10`; the commands and their output were not shown.
 - GitHub says the Container registry is "currently free" and promises a month's notice before that changes.
 
 ## What is verified and what is not
