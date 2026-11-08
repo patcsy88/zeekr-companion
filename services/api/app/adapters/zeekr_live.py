@@ -141,19 +141,38 @@ def _onoff(value: object) -> bool | None:
 
 def _charging(value: object) -> bool | None:
     """`electricVehicleStatus.chargerState` (owner readings, 2026-11-08): "2" while charging, "3"
-    once charging stopped with the cable still in. Other codes are unknown and are no reading.
+    once charging stopped with the cable still in, "0" unplugged. Other codes are no reading.
     `isCharging` and `isPluggedIn` stayed false while the car was charging, so they are not used."""
     if value == "2":
         return True
-    if value == "3":
+    if value in ("3", "0"):
         return False
     return None
 
 
-def _plugged_in(charging: bool | None) -> bool | None:
-    """No field is known yet that says the cable is in when the car is not charging. Charging
-    implies plugged in; otherwise there is no reading, never a guessed "no"."""
-    return True if charging is True else None
+def _connection(value: object) -> bool | None:
+    """Cable codes seen on the car (owner readings, 2026-11-08): "3" charging and "1" stopped with
+    the cable in, "0" unplugged. Other codes are no reading."""
+    if value in ("1", "3"):
+        return True
+    if value == "0":
+        return False
+    return None
+
+
+def _plugged_in(connection: object, cross_check: object, charging: bool | None) -> bool | None:
+    """`statusOfChargerConnection`, checked against `disChargeConnectStatus`, which matched it in
+    every reading. If the two disagree, or the cable reads "no" while charging, there is no reading
+    rather than a guess. With no cable reading, charging still means plugged in."""
+    plugged = _connection(connection)
+    check = _connection(cross_check)
+    if plugged is not None and check is not None and plugged != check:
+        return None
+    if plugged is None:
+        return True if charging is True else None
+    if plugged is False and charging is True:
+        return None
+    return plugged
 
 
 def _sentry(value: object) -> bool | None:
@@ -265,7 +284,11 @@ def map_status(status: object) -> Snapshot:
         ),
         tyres_kpa=_tyres(status),
         is_charging=charging,
-        is_plugged_in=_plugged_in(charging),
+        is_plugged_in=_plugged_in(
+            _dig(status, (*_ELEC, "statusOfChargerConnection")),
+            _dig(status, (*_ELEC, "disChargeConnectStatus")),
+            charging,
+        ),
         battery_12v_volts=_volts(_dig(status, (*_MAINT, "mainBatteryStatus", "voltage"))),
         tyres_celsius=_tyre_celsius(status),
         pre_climate_active=_onoff(_dig(status, (*_CLIMATE, "preClimateActive"))),

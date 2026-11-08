@@ -47,7 +47,10 @@ def status(**overrides: Any) -> dict[str, Any]:
                 # These two stayed false while the car was charging (owner, 2026-11-08): ignored.
                 "isCharging": True,
                 "isPluggedIn": True,
+                # Stopped by the charger with the cable still in (owner codes, 2026-11-08).
                 "chargerState": "3",
+                "statusOfChargerConnection": "1",
+                "disChargeConnectStatus": "1",
             },
             "climateStatus": {
                 "updateTime": UPDATE_MS,
@@ -79,7 +82,7 @@ def test_map_keeps_the_allow_listed_fields() -> None:
     assert snap.distance_to_service_km == 35000
     assert snap.tyres_kpa == TyrePressures(236, 240, 238, 233)
     assert snap.is_charging is False
-    assert snap.is_plugged_in is None
+    assert snap.is_plugged_in is True
     assert snap.observed_at == dt.datetime.fromtimestamp(UPDATE_MS / 1000, tz=dt.UTC)
 
 
@@ -140,7 +143,7 @@ def test_missing_groups_and_wrong_shapes_give_empty_snapshot() -> None:
         ("2", True, True),
         ("3", False, None),
         ("1", None, None),
-        ("0", None, None),
+        ("0", False, None),
         ("", None, None),
         (" 2", None, None),
         (2, None, None),
@@ -152,7 +155,9 @@ def test_charging_comes_from_charger_state(
     code: object, charging: bool | None, plugged_in: bool | None
 ) -> None:
     body = status()
-    body["additionalVehicleStatus"]["electricVehicleStatus"]["chargerState"] = code
+    ev = body["additionalVehicleStatus"]["electricVehicleStatus"]
+    ev["chargerState"] = code
+    del ev["statusOfChargerConnection"], ev["disChargeConnectStatus"]
     snap = map_status(body)
     assert snap.is_charging is charging
     assert snap.is_plugged_in is plugged_in
@@ -161,7 +166,7 @@ def test_charging_comes_from_charger_state(
 def test_is_charging_and_is_plugged_in_flags_are_ignored() -> None:
     body = status()
     ev = body["additionalVehicleStatus"]["electricVehicleStatus"]
-    del ev["chargerState"]
+    del ev["chargerState"], ev["statusOfChargerConnection"], ev["disChargeConnectStatus"]
     ev["isCharging"] = True
     ev["isPluggedIn"] = True
     snap = map_status(body)
@@ -174,6 +179,49 @@ def test_is_charging_and_is_plugged_in_flags_are_ignored() -> None:
     snap = map_status(body)
     assert snap.is_charging is True
     assert snap.is_plugged_in is True
+
+
+@pytest.mark.parametrize(
+    ("charger", "connection", "cross_check", "charging", "plugged_in"),
+    [
+        # The three owner readings (codes only, 2026-11-08), with the flags left false.
+        ("2", "3", "3", True, True),
+        ("3", "1", "1", False, True),
+        ("0", "0", "0", False, False),
+        # The two cable fields disagree: no reading rather than a guess.
+        ("3", "1", "0", False, None),
+        ("0", "0", "1", False, None),
+        # The cable says unplugged while charging: no reading.
+        ("2", "0", "0", True, None),
+        # The cross-check is missing or unknown: the main field decides.
+        ("3", "1", None, False, True),
+        ("0", "0", "", False, False),
+        # Unknown cable codes and types are no reading; charging still means plugged in.
+        ("3", "2", "2", False, None),
+        ("3", 1, 1, False, None),
+        ("3", " 1", "1", False, None),
+        ("2", None, None, True, True),
+    ],
+)
+def test_plugged_in_comes_from_the_charger_connection(
+    charger: object,
+    connection: object,
+    cross_check: object,
+    charging: bool | None,
+    plugged_in: bool | None,
+) -> None:
+    body = status()
+    ev = body["additionalVehicleStatus"]["electricVehicleStatus"]
+    ev.update(
+        chargerState=charger,
+        statusOfChargerConnection=connection,
+        disChargeConnectStatus=cross_check,
+        isCharging=False,
+        isPluggedIn=False,
+    )
+    snap = map_status(body)
+    assert snap.is_charging is charging
+    assert snap.is_plugged_in is plugged_in
 
 
 class FakeVehicle:
