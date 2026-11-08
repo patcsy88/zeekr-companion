@@ -6,7 +6,8 @@
 # - Caddy replaces any client-supplied X-Forwarded-For with the real peer address (no
 #   `trusted_proxies` is configured on purpose), so a client cannot choose its own rate-limit bucket.
 # - HSTS is added only when WEB_HSTS=on (see infra/README.md); browsers ignore it over plain HTTP.
-# - Remote access is Tailscale Serve on the host, proxying to this port (ADR-003). Serve adds
+# - Remote access is Tailscale Serve in the optional `tailscale` sidecar, proxying to web:8080
+#   (ADR-003 amendment 2026-11-08). Serve adds
 #   Tailscale-User-Login (an account email), Tailscale-User-Name, Tailscale-User-Profile-Pic and
 #   Tailscale-Headers-Info. They are deleted from every request below so the API, the static file
 #   server and the logs never see them, and nothing can be keyed on them.

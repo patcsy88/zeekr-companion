@@ -52,7 +52,7 @@ def _env_example() -> dict[str, str]:
     return values
 
 
-@pytest.mark.parametrize("key", ["TOKEN_SECRET", "POSTGRES_PASSWORD"])
+@pytest.mark.parametrize("key", ["TOKEN_SECRET", "POSTGRES_PASSWORD", "TS_AUTHKEY", "TS_HOSTNAME"])
 def test_env_example_secrets_are_empty(key: str) -> None:
     assert _env_example()[key] == ""
 
@@ -63,3 +63,18 @@ def test_compose_requires_all_secrets() -> None:
         assert f"${{{key}:?" in compose
     # DATABASE_URL interpolates POSTGRES_PASSWORD; it must use the required form too.
     assert "zeekr:${POSTGRES_PASSWORD}@" not in compose
+
+
+@pytest.mark.parametrize("name", ["docker-compose.yml", "docker-compose.release.yml"])
+def test_tailscale_sidecar_is_opt_in_and_private(name: str) -> None:
+    compose = (REPO / "infra" / name).read_text()
+    block = compose.split("\n  tailscale:\n", 1)[1].split("\nconfigs:\n", 1)[0]
+    assert '    profiles: ["tailscale"]' in block
+    assert "    image: tailscale/tailscale:v" in block
+    assert "TS_AUTHKEY: ${TS_AUTHKEY:-}" in block
+    for banned in ("ports:", "cap_add:", "devices:", "network_mode:", "backend", "/dev/net/tun"):
+        assert banned not in block
+    assert "    networks:\n      - edge\n" in block
+    serve = compose.split("\nconfigs:\n", 1)[1].split("\nnetworks:\n", 1)[0]
+    assert '"Proxy": "http://web:8080"' in serve
+    assert '"AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }' in serve

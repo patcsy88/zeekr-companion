@@ -135,6 +135,64 @@ services:
       retries: 5
       start_period: 5s
 
+  # Optional private HTTPS through a Tailscale sidecar (ADR-003 amendment 2026-11-08, option B).
+  # Off unless COMPOSE_PROFILES=tailscale is set in .env. Only this container joins the tailnet;
+  # it terminates HTTPS with Serve and proxies to web:8080 over the edge network. It is not on
+  # backend, so it cannot reach api or db. Runbook: infra/README.md, "Tailscale sidecar".
+  tailscale:
+    image: tailscale/tailscale:v1.104.4
+    profiles: ["tailscale"]
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      # Neutral machine name only: it is published in Certificate Transparency logs.
+      TS_HOSTNAME: ${TS_HOSTNAME:-}
+      # Optional. Empty means log in once through the link in "docker compose logs tailscale".
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_AUTH_ONCE: "true"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_ACCEPT_DNS: "false"
+      TS_SERVE_CONFIG: /etc/tailscale-serve/serve.json
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+    configs:
+      - source: tailscale_serve
+        target: /etc/tailscale-serve/serve.json
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    # No "ports": reached only over the tailnet. edge is the only network with a route out.
+    networks:
+      - edge
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/tailscale
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9002/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+configs:
+  # Serve: HTTPS on 443 to web:8080, Funnel off. "$$" keeps ${TS_CERT_DOMAIN} for Tailscale to fill.
+  tailscale_serve:
+    content: |
+      {
+        "TCP": { "443": { "HTTPS": true } },
+        "Web": {
+          "$${TS_CERT_DOMAIN}:443": { "Handlers": { "/": { "Proxy": "http://web:8080" } } }
+        },
+        "AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }
+      }
+
 networks:
   # api and db live here only. "internal" removes the default route, so neither can reach (or be
   # reached from) outside the host, and there is nowhere to publish a port from.
@@ -145,7 +203,7 @@ networks:
         # Static subnet so the proxy has a fixed address the API can trust. Change both
         # WEB_SUBNET and WEB_PROXY_IP together if it clashes with another network.
         - subnet: ${WEB_SUBNET:-172.28.77.0/24}
-  # web only. Published ports are served through this network.
+  # web, plus the optional tailscale sidecar. Published ports are served through this network.
   edge:
   # api only (ADR-008 step 4, owner decision 2026-10-30): a route out for the hosted model and
   # optional tracing. Nothing is published from it and db is not on it.
@@ -154,3 +212,4 @@ networks:
 volumes:
   geofence_state:
   pgdata:
+  tailscale_state:

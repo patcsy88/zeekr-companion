@@ -128,7 +128,7 @@ Optional full check from a development machine with the repo checked out: `infra
 
 ## 6. Reach it from a phone
 
-Over plain HTTP, Safari on iPhone will open the app but gives no service worker, so no offline shell and no install to the Home Screen. For that you need HTTPS. The runbook for private HTTPS with Tailscale Serve is in `infra/README.md` (steps 0 and 4 to 7). Tailscale is approved in ADR-003 but **has not been run** on the owner's host, so treat that runbook as unverified.
+Over plain HTTP, Safari on iPhone will open the app but gives no service worker, so no offline shell and no install to the Home Screen. For that you need HTTPS. The runbook for private HTTPS is in `infra/README.md`, "Owner runbook: private HTTPS with the Tailscale sidecar" (owner choice 2026-11-08, ADR-003 amendment). It is an optional `tailscale` service in the same compose file, switched on with `COMPOSE_PROFILES=tailscale` in `.env`; nothing is installed on the host. It **has not been run** on the owner's host or the Pi, so treat that runbook as unverified.
 
 ## 7. Update
 
