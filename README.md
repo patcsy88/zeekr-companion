@@ -24,7 +24,7 @@ The only command the app can send to the car is Sentry on or off (ADR-010). Ever
 
 ## Screens
 
-iPhone width (390 px), light and dark. Every value shown is made up: no real car, account or location. To retake them, run `npm run screenshots` in `apps/web`. It needs no API or database because the script answers every request with sample data.
+iPhone width (390 px), light and dark. Every value shown is synthetic (an RWD Long Range in 2030 with invented readings and settings). None of it comes from a real car, account, location or history. To retake them, run `npm run screenshots` in `apps/web`. It needs no API or database because the script answers every request with sample data.
 
 | Vehicle | Service history | Reminders |
 |---|---|---|
