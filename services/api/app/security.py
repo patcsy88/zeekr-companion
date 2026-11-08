@@ -18,7 +18,19 @@ SCRYPT_P = 1
 # hashlib needs headroom above 128 * N * r (128 MiB at the default cost).
 _SCRYPT_MAXMEM = 256 * 1024 * 1024
 # Each verification holds ~128 MiB; cap parallel ones so a burst of logins cannot exhaust memory.
-_scrypt_slots = threading.BoundedSemaphore(2)
+# The API sets this from PASSWORD_HASH_CONCURRENCY at startup (1 on a 512 MB host).
+DEFAULT_HASH_CONCURRENCY = 2
+_scrypt_slots = threading.BoundedSemaphore(DEFAULT_HASH_CONCURRENCY)
+
+
+def set_hash_concurrency(slots: int) -> None:
+    """Set how many scrypt hashes may run at once in this process. Call before serving."""
+    global _scrypt_slots
+    if slots < 1:
+        raise ValueError("hash concurrency must be at least 1")
+    _scrypt_slots = threading.BoundedSemaphore(slots)
+
+
 _DKLEN = 32
 _PREFIX = "scrypt"
 

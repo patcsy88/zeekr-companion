@@ -36,6 +36,8 @@ services:
       DATABASE_URL: postgresql+psycopg://zeekr:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}@db:5432/zeekr
       TOKEN_SECRET: ${TOKEN_SECRET:?set TOKEN_SECRET in infra/.env}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Password checks at once (about 128 MiB each). 1 on a 512 MB host (docker-compose.lowmem.yml).
+      PASSWORD_HASH_CONCURRENCY: ${PASSWORD_HASH_CONCURRENCY:-2}
       # Optional error reporting (ADR-007). Empty means off.
       SENTRY_DSN: ${SENTRY_DSN_API:-}
       # Optional advisory model (ADR-008). Off and empty by default; keys live in infra/.env only.

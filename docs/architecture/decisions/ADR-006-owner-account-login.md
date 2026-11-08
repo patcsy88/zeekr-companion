@@ -50,6 +50,12 @@ Nothing is deployed yet, so no existing login needs migrating.
 3. ✅ Keep only per-client and global lockout; no per-account lockout.
 4. ✅ Sequence: build after the remaining MVP items and the deploy plan.
 
+## Amendment 2026-11-09: password-check concurrency (owner-approved, option B)
+
+- **Context.** A scrypt check at the OWASP cost (N=2^17, r=8) holds about 128 MiB. The API ran 2 at a time, plus one dummy hash at startup. A 512 MB arm64 test of the `v0.1.11` images (all containers sharing one memory limit, swap off) showed: 400 MB survives 8 parallel sign-ins; 320 MB does not (the API was killed for running out of memory and returned 502). With one check at a time, 320 MB and 288 MB both passed.
+- **Decision.** New setting `PASSWORD_HASH_CONCURRENCY`, default 2 (unchanged behaviour), allowed 1 to 4. A 512 MB host sets 1, so sign-ins beyond that wait in line instead of using more memory. The scrypt cost is **not** lowered; that would weaken stored hashes.
+- **Consequences.** With 1, a burst of sign-ins takes longer (about one scrypt time each). The lockout counts and responses are unchanged. SEC-L1 (accepted) is unchanged: the queue only slows a burst. The low-memory Compose file (`infra/docker-compose.lowmem.yml`) sets 1.
+
 ## Open questions for the owner
 
 - Approve the contract amendment below.

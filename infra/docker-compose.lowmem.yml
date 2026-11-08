@@ -1,0 +1,48 @@
+# Low-memory overlay for a 512 MB host (for example a Raspberry Pi Zero 2 W). It adds to
+# docker-compose.yml (from a clone, or the release file saved under that name); it changes nothing
+# else. Turn it on with one line in infra/.env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.lowmem.yml
+# Swap or zram is still required on such a host: see docs/operations/deploy-guide.md.
+# Measured 2026-11-09 with arm64 images, all containers sharing one limit, swap off: 288 MB of
+# containers survived 8 parallel sign-ins and 1,500 requests with this file (ADR-006 amendment).
+# The memory limits only work if the kernel has the memory cgroup on: check that "docker info"
+# does not warn "No memory limit support".
+
+services:
+  db:
+    # Small buffers and no parallel query workers. Plenty for one owner's records.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=16MB
+      - -c
+      - max_connections=20
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - wal_buffers=1MB
+      - -c
+      - max_worker_processes=2
+      - -c
+      - max_parallel_workers=0
+      - -c
+      - max_parallel_workers_per_gather=0
+    # Measured peak with these settings: about 44 MB.
+    mem_limit: 96m
+
+  api:
+    environment:
+      # One password check at a time (about 128 MiB each): a burst of sign-ins waits in line.
+      PASSWORD_HASH_CONCURRENCY: "1"
+    # Measured: about 90 MB idle, about 220 MB during a sign-in.
+    mem_limit: 288m
+
+  web:
+    # Measured peak: about 31 MB.
+    mem_limit: 64m
+
+  tailscale:
+    # Measured about 40 MB before sign-in to the tailnet; more once connected (not measured).
+    mem_limit: 96m
