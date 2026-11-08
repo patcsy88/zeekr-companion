@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 from typing import Any
 
 import pytest
@@ -33,7 +34,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0016"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0017"
             )
     finally:
         engine.dispose()
@@ -633,3 +634,81 @@ def test_0016_owner_mfa_checks_and_downgrade(fresh_database_url: str) -> None:
     finally:
         os.environ.pop("DATABASE_URL", None)
     run_migrations(fresh_database_url)
+
+
+def test_ac86_tyre_event_migration_constraints_downgrade_and_reapply(
+    fresh_database_url: str,
+) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {
+            "id": str(uuid.uuid4()),
+            "d": dt.date(2026, 1, 1),
+            "k": "replace",
+            "w": ["driver_front"],
+            "o": 100,
+            "b": "brand",
+            "c": 0,
+            "cur": "MYR",
+        }
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO tyre_event (id, date, kind, wheels, odometer, brand, cost_minor, "
+                "currency) VALUES (:id, :d, :k, CAST(:w AS varchar(20)[]), :o, :b, :c, :cur)"
+            ),
+            values,
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        insert(conn)
+        insert(conn, k="rotate", b=None, c=None, w=["driver_front", "passenger_rear"])
+    for bad in (
+        {"k": "swap"},
+        {"w": []},
+        {"w": ["spare"]},
+        {"w": ["driver_front"] * 5},
+        {"o": -1},
+        {"o": 10_000_001},
+        {"c": -1},
+        {"c": 10**12 + 1},
+        {"cur": "USD"},
+        {"d": dt.date(1999, 12, 31)},
+        {"k": "rotate"},  # brand set on a non-replace kind
+    ):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            insert(conn, **bad)
+    insp = inspect(engine)
+    assert "ix_tyre_event_history" in {i["name"] for i in insp.get_indexes("tyre_event")}
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0016")
+        engine = create_engine(fresh_database_url)
+        tables = set(inspect(engine).get_table_names())
+        assert "tyre_event" not in tables
+        assert "owner_mfa" in tables
+        with engine.connect() as conn:
+            assert (
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0016"
+            )
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    assert "tyre_event" in inspect(engine).get_table_names()
+    engine.dispose()

@@ -15,6 +15,9 @@ import { EditRecordPage, NewRecordPage } from './pages/RecordFormPages';
 import { ExpenseDetailPage } from './pages/ExpenseDetailPage';
 import { EditExpensePage, NewExpensePage } from './pages/ExpenseFormPages';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { TyreEventDetailPage } from './pages/TyreEventDetailPage';
+import { EditTyreEventPage, NewTyreEventPage } from './pages/TyreEventFormPages';
+import { TyresPage } from './pages/TyresPage';
 import { CompleteServicePage } from './pages/CompleteServicePage';
 import { ReminderDetailPage } from './pages/ReminderDetailPage';
 import { EditReminderPage, NewReminderPage } from './pages/ReminderFormPages';
@@ -108,6 +111,10 @@ function Layout() {
             <Route path="/vehicle" element={<VehiclePage />} />
             <Route path="/vehicle/live" element={<LiveHistoryPage />} />
             <Route path="/vehicle/edit" element={<VehicleEditPage />} />
+            <Route path="/vehicle/tyres" element={<TyresPage />} />
+            <Route path="/vehicle/tyres/new" element={<NewTyreEventPage />} />
+            <Route path="/vehicle/tyres/:id" element={<TyreEventDetailPage />} />
+            <Route path="/vehicle/tyres/:id/edit" element={<EditTyreEventPage />} />
             <Route path="*" element={<p>Page not found.</p>} />
           </Routes>
         )}

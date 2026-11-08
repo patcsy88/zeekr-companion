@@ -136,6 +136,7 @@ export function assertContractPath(path: string): void {
         parts[1] === 'service-records' ||
         parts[1] === 'reminders' ||
         parts[1] === 'expenses' ||
+        parts[1] === 'tyre-events' ||
         parts[1] === 'warranty-coverages' ||
         parts[1] === 'warranty-claims' ||
         parts[1] === 'warranty-templates' ||
@@ -149,6 +150,7 @@ export function assertContractPath(path: string): void {
         (parts[1] === 'service-records' ||
           parts[1] === 'reminders' ||
           parts[1] === 'expenses' ||
+          parts[1] === 'tyre-events' ||
           parts[1] === 'warranty-coverages' ||
           parts[1] === 'warranty-claims') &&
         isUuid(parts[2])));
@@ -156,7 +158,10 @@ export function assertContractPath(path: string): void {
     ok &&
     (parts[1] !== 'auth' || parts[2] === 'token') &&
     (query === undefined ||
-      ((parts[1] === 'service-records' || parts[1] === 'reminders' || parts[1] === 'expenses') &&
+      ((parts[1] === 'service-records' ||
+        parts[1] === 'reminders' ||
+        parts[1] === 'expenses' ||
+        parts[1] === 'tyre-events') &&
         parts.length === 2 &&
         QUERY_RE.test(query)));
   if (!fullOk) throw new ClientError('Refused a request outside the API contract.');

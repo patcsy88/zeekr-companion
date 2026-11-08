@@ -5,6 +5,7 @@ import type {
   Reminder,
   ReminderTemplate,
   ServiceRecord,
+  TyreEvent,
   Vehicle,
   WarrantyClaim,
   WarrantyCoverage,
@@ -44,6 +45,15 @@ export interface FakeApi {
   /** Page size the fake list uses regardless of `limit` (to force several pages). */
   expensePageCap: number | null;
   expenseGets: number;
+  tyreEvents: Map<string, TyreEvent>;
+  tyrePosts: unknown[];
+  tyrePatches: unknown[];
+  tyreDeletes: string[];
+  /** Status codes to answer the next tyre event POSTs with, one per call (0 = succeed). */
+  tyrePostFailures: number[];
+  /** Page size the fake list uses regardless of `limit` (to force several pages). */
+  tyrePageCap: number | null;
+  tyreGets: number;
   coverages: Map<string, WarrantyCoverage>;
   claims: Map<string, WarrantyClaim>;
   coveragePosts: WarrantyCoverage[];
@@ -150,6 +160,13 @@ export const fake: FakeApi = {
   expensePostFailures: [],
   expensePageCap: null,
   expenseGets: 0,
+  tyreEvents: new Map(),
+  tyrePosts: [],
+  tyrePatches: [],
+  tyreDeletes: [],
+  tyrePostFailures: [],
+  tyrePageCap: null,
+  tyreGets: 0,
   coverages: new Map(),
   claims: new Map(),
   coveragePosts: [],
@@ -189,6 +206,13 @@ export function resetFake(): void {
   fake.expensePostFailures = [];
   fake.expensePageCap = null;
   fake.expenseGets = 0;
+  fake.tyreEvents.clear();
+  fake.tyrePosts = [];
+  fake.tyrePatches = [];
+  fake.tyreDeletes = [];
+  fake.tyrePostFailures = [];
+  fake.tyrePageCap = null;
+  fake.tyreGets = 0;
   fake.coverages.clear();
   fake.claims.clear();
   fake.coveragePosts = [];
@@ -512,6 +536,105 @@ export const expenseHandlers = [
   }),
 ];
 
+const TYRE_FIELDS = [
+  'date',
+  'kind',
+  'odometer',
+  'brand',
+  'model',
+  'size',
+  'cost_minor',
+  'shop',
+  'notes',
+] as const;
+const sameTyre = (a: TyreEvent, b: TyreEvent) =>
+  TYRE_FIELDS.every((f) => (a[f] ?? null) === (b[f] ?? null)) &&
+  a.wheels.join() === b.wheels.join();
+
+function tyreIssues(body: Partial<TyreEvent>, partial: boolean) {
+  const out: { field: string; issue: string }[] = [];
+  if (!partial || body.date !== undefined) {
+    if (typeof body.date !== 'string' || body.date > klToday())
+      out.push({ field: 'date', issue: 'must not be in the future' });
+  }
+  if (!partial || body.wheels !== undefined) {
+    if (!Array.isArray(body.wheels) || body.wheels.length < 1)
+      out.push({ field: 'wheels', issue: 'must hold 1 to 4 wheels' });
+  }
+  return out;
+}
+
+/** Fake of /tyre-events following the contract: newest first, cursor paging, current odometer. */
+export const tyreHandlers = [
+  http.get('*/api/v1/tyre-events', ({ request }) => {
+    fake.tyreGets += 1;
+    if (fake.down) return err(500, 'internal_error', 'Internal server error.');
+    const url = new URL(request.url);
+    const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), fake.tyrePageCap ?? 100);
+    const all = [...fake.tyreEvents.values()].sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.id < b.id ? 1 : a.id > b.id ? -1 : 0,
+    );
+    const start = Number(url.searchParams.get('cursor') ?? 0);
+    const next = start + limit < all.length ? String(start + limit) : null;
+    return HttpResponse.json({
+      items: all.slice(start, start + limit),
+      next_cursor: next,
+      current_odometer: fakeOdometer(),
+    });
+  }),
+  http.post('*/api/v1/tyre-events', async ({ request }) => {
+    const body = (await request.json()) as TyreEvent;
+    fake.tyrePosts.push(body);
+    const fail = fake.tyrePostFailures.shift();
+    if (fail === 400)
+      return err(400, 'validation_error', 'Request failed validation.', [
+        { field: 'odometer', issue: 'rejected by test' },
+      ]);
+    if (fail !== undefined && fail !== 0)
+      return err(fail, 'internal_error', 'Internal server error.');
+    const existing = fake.tyreEvents.get(body.id);
+    if (existing) {
+      if (!sameTyre(existing, body)) return err(409, 'conflict', 'Different content.');
+      return HttpResponse.json(existing, { status: 200 });
+    }
+    const issues = tyreIssues(body, false);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    const x: TyreEvent = {
+      ...body,
+      brand: body.brand ?? null,
+      model: body.model ?? null,
+      size: body.size ?? null,
+      cost_minor: body.cost_minor ?? null,
+      currency: body.currency || 'MYR',
+      shop: body.shop ?? null,
+      notes: body.notes ?? null,
+      created_at: STAMP,
+      updated_at: STAMP,
+    };
+    fake.tyreEvents.set(x.id, x);
+    return HttpResponse.json(x, { status: 201 });
+  }),
+  http.patch('*/api/v1/tyre-events/:id', async ({ request, params }) => {
+    const x = fake.tyreEvents.get(String(params.id));
+    if (!x) return err(404, 'not_found', 'Tyre event not found.');
+    const patch = (await request.json()) as Partial<TyreEvent>;
+    fake.tyrePatches.push(patch);
+    const issues = tyreIssues(patch, true);
+    if (issues.length > 0)
+      return err(400, 'validation_error', 'Request failed validation.', issues);
+    const updated = { ...x, ...patch };
+    fake.tyreEvents.set(x.id, updated);
+    return HttpResponse.json(updated);
+  }),
+  http.delete('*/api/v1/tyre-events/:id', ({ params }) => {
+    const id = String(params.id);
+    fake.tyreDeletes.push(id);
+    if (!fake.tyreEvents.delete(id)) return err(404, 'not_found', 'Tyre event not found.');
+    return new HttpResponse(null, { status: 204 });
+  }),
+];
+
 const sameCoverage = (a: WarrantyCoverage, b: WarrantyCoverage) =>
   a.name === b.name &&
   a.provider_type === b.provider_type &&
@@ -743,5 +866,6 @@ export const server = setupServer(
   ...liveHandlers,
   ...reminderHandlers,
   ...expenseHandlers,
+  ...tyreHandlers,
   ...warrantyHandlers,
 );

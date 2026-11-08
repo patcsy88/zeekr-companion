@@ -352,6 +352,43 @@ export interface paths {
         patch: operations["patch_record_api_v1_service_records__record_id__patch"];
         trace?: never;
     };
+    "/api/v1/tyre-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tyre Events */
+        get: operations["list_tyre_events_api_v1_tyre_events_get"];
+        put?: never;
+        /** Create Tyre Event */
+        post: operations["create_tyre_event_api_v1_tyre_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyre-events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Tyre Event */
+        get: operations["get_tyre_event_api_v1_tyre_events__event_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Tyre Event */
+        delete: operations["delete_tyre_event_api_v1_tyre_events__event_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Tyre Event */
+        patch: operations["patch_tyre_event_api_v1_tyre_events__event_id__patch"];
+        trace?: never;
+    };
     "/api/v1/vehicle": {
         parameters: {
             query?: never;
@@ -1538,6 +1575,129 @@ export interface components {
             access_token: string;
             /** Expires In */
             expires_in: number;
+        };
+        /** TyreEventCreate */
+        TyreEventCreate: {
+            /** Brand */
+            brand?: string | null;
+            /** Cost Minor */
+            cost_minor?: number | null;
+            /**
+             * Currency
+             * @default MYR
+             * @constant
+             */
+            currency?: "MYR";
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "replace" | "rotate" | "repair" | "alignment" | "balancing";
+            /** Model */
+            model?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Odometer */
+            odometer: number;
+            /** Shop */
+            shop?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Wheels */
+            wheels: ("driver_front" | "passenger_front" | "driver_rear" | "passenger_rear")[];
+        };
+        /** TyreEventOut */
+        TyreEventOut: {
+            /** Brand */
+            brand: string | null;
+            /** Cost Minor */
+            cost_minor: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "replace" | "rotate" | "repair" | "alignment" | "balancing";
+            /** Model */
+            model: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Odometer */
+            odometer: number;
+            /** Shop */
+            shop: string | null;
+            /** Size */
+            size: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Wheels */
+            wheels: ("driver_front" | "passenger_front" | "driver_rear" | "passenger_rear")[];
+        };
+        /** TyreEventPage */
+        TyreEventPage: {
+            current_odometer: components["schemas"]["CurrentOdometer"] | null;
+            /** Items */
+            items: components["schemas"]["TyreEventOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /**
+         * TyreEventPatch
+         * @description Partial update. Omitted fields are unchanged. `date`, `kind`, `wheels`, `odometer` and
+         *     `currency` may not be null.
+         */
+        TyreEventPatch: {
+            /** Brand */
+            brand?: string | null;
+            /** Cost Minor */
+            cost_minor?: number | null;
+            /** Currency */
+            currency?: "MYR" | null;
+            /** Date */
+            date?: string | null;
+            /** Kind */
+            kind?: ("replace" | "rotate" | "repair" | "alignment" | "balancing") | null;
+            /** Model */
+            model?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Odometer */
+            odometer?: number | null;
+            /** Shop */
+            shop?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Wheels */
+            wheels?: ("driver_front" | "passenger_front" | "driver_rear" | "passenger_rear")[] | null;
         };
         /** VehicleIn */
         VehicleIn: {
@@ -3581,6 +3741,301 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceRecordOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_tyre_events_api_v1_tyre_events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreEventPage"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_tyre_event_api_v1_tyre_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Identical replay of an existing event */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreEventOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreEventOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_tyre_event_api_v1_tyre_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreEventOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_tyre_event_api_v1_tyre_events__event_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_tyre_event_api_v1_tyre_events__event_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreEventPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreEventOut"];
                 };
             };
             /** @description validation_error: body or parameters failed validation */

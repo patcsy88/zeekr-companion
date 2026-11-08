@@ -25,6 +25,10 @@ import type {
   ServiceRecordPatch,
   ReminderEdit,
   TokenResponse,
+  TyreEvent,
+  TyreEventCreate,
+  TyreEventEdit,
+  TyreEventPage,
   Vehicle,
   VehicleInput,
 } from './types';
@@ -132,6 +136,27 @@ export async function patchExpense(id: string, body: ExpenseEdit): Promise<Expen
 
 export async function deleteExpense(id: string): Promise<void> {
   await request({ method: 'DELETE', path: expensePath(id) });
+}
+
+export async function listTyreEvents(limit: number, cursor: string | null): Promise<TyreEventPage> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor !== null) q.set('cursor', cursor);
+  return (await request<TyreEventPage>({ method: 'GET', path: `/tyre-events?${q.toString()}` }))
+    .data;
+}
+
+export async function createTyreEvent(body: TyreEventCreate): Promise<TyreEvent> {
+  return (await request<TyreEvent>({ method: 'POST', path: '/tyre-events', body })).data;
+}
+
+const tyreEventPath = (id: string) => `/tyre-events/${encodeURIComponent(assertUuid(id))}`;
+
+export async function patchTyreEvent(id: string, body: TyreEventEdit): Promise<TyreEvent> {
+  return (await request<TyreEvent>({ method: 'PATCH', path: tyreEventPath(id), body })).data;
+}
+
+export async function deleteTyreEvent(id: string): Promise<void> {
+  await request({ method: 'DELETE', path: tyreEventPath(id) });
 }
 
 export async function getReminderTemplates(): Promise<ReminderTemplateList> {

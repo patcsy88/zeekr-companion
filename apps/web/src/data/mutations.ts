@@ -10,6 +10,8 @@ import type {
   ServiceCompleteIn,
   ServiceRecordCreate,
   ServiceRecordPatch,
+  TyreEventCreate,
+  TyreEventEdit,
   Vehicle,
 } from '../api/types';
 import { ClientError } from '../api/client';
@@ -36,6 +38,9 @@ import {
   enqueueReminderCreate,
   enqueueReminderDelete,
   enqueueReminderEdit,
+  enqueueTyreEventCreate,
+  enqueueTyreEventDelete,
+  enqueueTyreEventEdit,
 } from '../storage/queue';
 
 /**
@@ -93,6 +98,21 @@ export async function saveExpenseEdit(id: string, patch: ExpenseEdit): Promise<v
 
 export async function removeExpense(id: string): Promise<void> {
   await enqueueExpenseDelete(id);
+  await afterEnqueue();
+}
+
+export async function saveNewTyreEvent(body: TyreEventCreate): Promise<void> {
+  await enqueueTyreEventCreate(body);
+  await afterEnqueue();
+}
+
+export async function saveTyreEventEdit(id: string, patch: TyreEventEdit): Promise<void> {
+  await enqueueTyreEventEdit(id, patch);
+  await afterEnqueue();
+}
+
+export async function removeTyreEvent(id: string): Promise<void> {
+  await enqueueTyreEventDelete(id);
   await afterEnqueue();
 }
 

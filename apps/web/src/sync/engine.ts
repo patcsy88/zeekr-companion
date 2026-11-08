@@ -4,6 +4,7 @@ import type {
   Expense,
   Reminder,
   ServiceRecord,
+  TyreEvent,
   Vehicle,
   WarrantyClaim,
   WarrantyClaimCreate,
@@ -18,6 +19,11 @@ import {
   upsertRecordInCache,
 } from '../data/repository';
 import { refreshExpenses, removeExpenseFromCache, upsertExpenseInCache } from '../data/expenses';
+import {
+  refreshTyreEvents,
+  removeTyreEventFromCache,
+  upsertTyreEventInCache,
+} from '../data/tyreEvents';
 import {
   refreshReminders,
   refreshTemplates,
@@ -150,6 +156,13 @@ async function applySuccess(entry: QueueEntry, data: unknown): Promise<void> {
     case 'delete-expense':
       await removeExpenseFromCache(entry.record_id);
       break;
+    case 'create-tyre-event':
+    case 'edit-tyre-event':
+      await upsertTyreEventInCache(data as TyreEvent);
+      break;
+    case 'delete-tyre-event':
+      await removeTyreEventFromCache(entry.record_id);
+      break;
     case 'create-coverage':
     case 'edit-coverage':
       await upsertCoverageInCache(data as WarrantyCoverage);
@@ -197,6 +210,8 @@ async function send(entry: QueueEntry): Promise<Outcome> {
         else if (entry.kind === 'delete-claim') await removeClaimFromCache(entry.record_id);
         else if (entry.kind === 'delete-reminder') await removeReminderFromCache(entry.record_id);
         else if (entry.kind === 'delete-expense') await removeExpenseFromCache(entry.record_id);
+        else if (entry.kind === 'delete-tyre-event')
+          await removeTyreEventFromCache(entry.record_id);
         else await removeRecordFromCache(entry.record_id);
         await removeEntry(entry.seq);
         return 'done';
@@ -381,6 +396,7 @@ export async function syncAll(force = false): Promise<void> {
     await refreshWarranty();
     await refreshWarrantyTemplates().catch(() => undefined);
     await refreshExpenses();
+    await refreshTyreEvents();
     // The template is static: one fetch per sync is enough, and a failure here is not fatal.
     await refreshTemplates().catch(() => undefined);
     setStatus({ lastError: null });

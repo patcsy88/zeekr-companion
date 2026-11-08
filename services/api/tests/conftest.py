@@ -129,7 +129,7 @@ def client(database_url: str, password_hash: str) -> Iterator[TestClient]:
     with app.state.engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE service_record, vehicle, reminder, expense, "
+                "TRUNCATE service_record, vehicle, reminder, expense, tyre_event, "
                 "warranty_claim, warranty_coverage, advisory_model_call, advisory_proposal, "
                 "live_reading, car_command_log, geofence_settings, auto_sentry_settings"
             )

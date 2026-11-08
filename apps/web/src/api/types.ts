@@ -47,6 +47,12 @@ import type {
   ServiceRecordPatch,
   TemplateCheckpoint,
   TokenResponse,
+  TyreEvent,
+  TyreEventCreate,
+  TyreEventPage,
+  TyreEventPatch,
+  TyreKind,
+  TyreWheel,
   Vehicle,
   VehicleInput,
 } from '@zeekr-companion/shared-types';
@@ -91,6 +97,12 @@ export type {
   ServiceRecordPatch,
   TemplateCheckpoint,
   TokenResponse,
+  TyreEvent,
+  TyreEventCreate,
+  TyreEventPage,
+  TyreEventPatch,
+  TyreKind,
+  TyreWheel,
   Vehicle,
   VehicleInput,
 };
@@ -118,6 +130,20 @@ export interface ExpenseEdit {
   amount_minor?: number;
   notes?: string | null;
   energy_wh?: number | null;
+}
+
+/** What the tyre forms edit and the queue sends. Date, kind, wheels and odometer are never null. */
+export interface TyreEventEdit {
+  date?: string;
+  kind?: TyreKind;
+  wheels?: TyreWheel[];
+  odometer?: number;
+  brand?: string | null;
+  model?: string | null;
+  size?: string | null;
+  cost_minor?: number | null;
+  shop?: string | null;
+  notes?: string | null;
 }
 
 /** What the reminder forms edit and the queue sends. Required fields are never null. */

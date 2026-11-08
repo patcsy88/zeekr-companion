@@ -29,9 +29,22 @@ function readAdvisoryState(state: unknown): AdvisoryState | null {
   };
 }
 
+/** From a Rotate tyre event (AC-83): a Service reminder, prefilled, saved only by the owner. */
+function readTyreState(state: unknown): { title: string; due_odometer: number } | null {
+  if (typeof state !== 'object' || state === null) return null;
+  const p = (state as Record<string, unknown>).tyrePrefill as Record<string, unknown> | undefined;
+  if (typeof p !== 'object' || p === null) return null;
+  if (typeof p.title !== 'string' || typeof p.due_odometer !== 'number') return null;
+  if (!Number.isInteger(p.due_odometer) || p.due_odometer < 0 || p.due_odometer > 10_000_000)
+    return null;
+  return { title: p.title, due_odometer: p.due_odometer };
+}
+
 export function NewReminderPage() {
   const nav = useNavigate();
-  const advisory = readAdvisoryState(useLocation().state);
+  const state: unknown = useLocation().state;
+  const advisory = readAdvisoryState(state);
+  const tyre = advisory ? null : readTyreState(state);
   const id = useMemo(() => uuid(), []);
   async function submit(v: ReminderFormValues) {
     await saveNewReminder({ id, ...v });
@@ -55,7 +68,7 @@ export function NewReminderPage() {
     <section aria-labelledby="new-rem-title">
       <h1 id="new-rem-title">Add reminder</h1>
       <ReminderForm
-        prefill={advisory?.prefill}
+        prefill={advisory?.prefill ?? tyre ?? undefined}
         submitLabel="Save"
         onSubmit={submit}
         onCancel={() => void nav(advisory ? '/advisory' : '/reminders')}

@@ -9,6 +9,8 @@ import type {
   ReminderEdit,
   ServiceRecordCreate,
   ServiceRecordPatch,
+  TyreEventCreate,
+  TyreEventEdit,
   Vehicle,
 } from '../api/types';
 import { notifyData } from '../lib/events';
@@ -337,6 +339,76 @@ export async function enqueueExpenseDelete(id: string): Promise<void> {
           'delete-expense',
           'DELETE',
           `/expenses/${encodeURIComponent(id)}`,
+          undefined,
+          id,
+        ) as QueueEntry,
+      );
+    }
+  }
+  await tx.done;
+  notifyData();
+}
+
+/** Queue a tyre event creation. The event id is the entry id (idempotent POST). */
+export async function enqueueTyreEventCreate(body: TyreEventCreate): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const existing = (await tx.store.index('by_record').getAll(body.id)).find(
+    (e) => e.kind === 'create-tyre-event' && e.status !== 'sending',
+  );
+  if (existing) await tx.store.put(resetCreate(existing, body));
+  else
+    await tx.store.add(
+      base('create-tyre-event', 'POST', '/tyre-events', body, body.id, body.id) as QueueEntry,
+    );
+  await tx.done;
+  notifyData();
+}
+
+/** Same coalescing as service records: an edit of an unsent create is folded into that create. */
+export async function enqueueTyreEventEdit(id: string, patch: TyreEventEdit): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = (await tx.store.index('by_record').getAll(id)).sort((a, b) => a.seq - b.seq);
+  const create = entries.find((e) => e.kind === 'create-tyre-event' && e.status !== 'sending');
+  const lastEdit = [...entries].reverse().find((e) => e.kind === 'edit-tyre-event');
+  if (create) {
+    await tx.store.put(resetCreate(create, { ...(create.body as TyreEventCreate), ...patch }));
+  } else if (lastEdit && lastEdit.status !== 'sending') {
+    await tx.store.put(reset(lastEdit, { ...(lastEdit.body as TyreEventEdit), ...patch }));
+  } else {
+    await tx.store.add(
+      base(
+        'edit-tyre-event',
+        'PATCH',
+        `/tyre-events/${encodeURIComponent(id)}`,
+        patch,
+        id,
+      ) as QueueEntry,
+    );
+  }
+  await tx.done;
+  notifyData();
+}
+
+/** Same rule as enqueueDelete: an unattempted create is cancelled together with its edits. */
+export async function enqueueTyreEventDelete(id: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('queue', 'readwrite');
+  const entries = await tx.store.index('by_record').getAll(id);
+  const create = entries.find((e) => e.kind === 'create-tyre-event');
+  if (create && create.attempts === 0 && create.status !== 'sending') {
+    for (const e of entries) await tx.store.delete(e.seq);
+  } else {
+    for (const e of entries) {
+      if (e.kind === 'edit-tyre-event' && e.status !== 'sending') await tx.store.delete(e.seq);
+    }
+    if (!entries.some((e) => e.kind === 'delete-tyre-event')) {
+      await tx.store.add(
+        base(
+          'delete-tyre-event',
+          'DELETE',
+          `/tyre-events/${encodeURIComponent(id)}`,
           undefined,
           id,
         ) as QueueEntry,

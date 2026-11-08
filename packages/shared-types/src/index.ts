@@ -40,6 +40,13 @@ export type ExpenseCategoryTotal = Schemas["ExpenseCategoryTotal"];
 export type ExpenseMonthTotal = Schemas["ExpenseMonthTotal"];
 export type ExpenseCategory = Expense["category"];
 
+export type TyreEvent = Schemas["TyreEventOut"];
+export type TyreEventCreate = Schemas["TyreEventCreate"];
+export type TyreEventPatch = Schemas["TyreEventPatch"];
+export type TyreEventPage = Schemas["TyreEventPage"];
+export type TyreKind = TyreEvent["kind"];
+export type TyreWheel = TyreEvent["wheels"][number];
+
 export type AdvisoryProposal = Schemas["AdvisoryProposalOut"];
 export type AdvisoryProposalList = Schemas["AdvisoryProposalList"];
 export type AdvisoryRun = Schemas["AdvisoryRunOut"];

@@ -14,7 +14,7 @@ Status: **confirmed**, **proposed** or **unverified**. Each requirement has an I
 | FR-6 | Record warranty details and warranty claims | proposed |
 | FR-7 | Create reminders (service, insurance renewal, road tax renewal) with a due date or due odometer (km). Malaysian context: road tax is administered by JPJ. | proposed |
 | FR-8 | Show upcoming and overdue reminders | proposed |
-| FR-9 | Record tyre changes and rotations | proposed |
+| FR-9 | Record tyre changes and rotations (Tyres slice, approved 2026-11-08: AC-75 to AC-86) | approved |
 | FR-10 | Attach a photo or document to a service record or expense | proposed |
 | FR-11 | Authenticate before any data is accessible | proposed |
 | FR-12 | Offer the official AWD Performance service schedule (every 40,000 km or 2 years, whichever comes first, the first visit with work; research M12) as a suggested reminder template. The owner reviews, edits and explicitly accepts it before any reminder is created. It is never applied silently. Not part of the initial vertical slice. Included in the Reminders slice (owner approved the slice 2026-10-22; see AC-10 to AC-29). | proposed |
@@ -190,6 +190,25 @@ Status: **approved by the owner on 2026-10-22 ("Approve all"; Q10 to Q25 accepte
 | AC-72 | Completing a service needs a connection. It is disabled offline with an explanation and is never queued. Insurance and road-tax reminders keep "Mark complete". |
 | AC-73 | Reminder status uses the larger of the latest service record and the newest stored live reading; a tie keeps the service record; live readings are ignored when the provider is off. Warranty is unchanged and never uses the live reading. |
 | AC-74 | When live readings are on, the API reads the car at most once per Kuala Lumpur day at or after 08:00, only while an open service reminder with a due date is within 30 days of it or past it, and stops when it is completed. |
+
+## Acceptance criteria: Tyres slice (approved by the owner 2026-11-08)
+
+Covers FR-9. Plan: `docs/product/tyres-slice-plan.md`. Contract: "Tyre events" in `docs/architecture/api-contracts.md`. Owner answers (2026-11-08): T1 tyre costs are not copied into Expenses; T2 a rotation reminder is an ordinary Service reminder opened prefilled, with the interval typed by the owner; T3 five kinds: Replace, Rotate, Repair, Alignment, Balancing (Alignment and Balancing separate); T4 all four wheels ticked by default, no swap pattern; T5 the odometer is prefilled from the latest known odometer; T6 the vehicle tyre specification (FR-1) is unchanged and only prefills the size.
+
+| ID | Criterion |
+|---|---|
+| AC-75 | A tyre event can be recorded with a date, odometer (km), kind (Replace, Rotate, Repair, Alignment, Balancing), wheels (1 to 4 of driver front, passenger front, driver rear, passenger rear), and optionally brand, model and size (Replace only), cost (MYR), shop and notes. It is stored on the server, is returned from a different browser profile and survives a reload. |
+| AC-76 | Create and edit return `400 validation_error` for: a missing, malformed, pre-2000 or future (Asia/Kuala_Lumpur) date; an odometer that is not a strict integer or is outside 0 to 10,000,000; an unknown kind; wheels that are empty, more than 4, repeated or unknown; brand, model or size on a kind other than Replace; brand or model over 100, size over 50, shop over 200 or notes over 5,000 characters; a cost that is not a strict integer or is outside 0 to 10^12; a currency other than MYR; any unknown field. Wheels are returned in the fixed order above. |
+| AC-77 | The same id replayed with the same content returns 200 and changes nothing; with different content it returns 409. |
+| AC-78 | An event can be edited (partial; date, kind, wheels and odometer may not be null) and deleted after a confirmation. An unknown id returns 404. |
+| AC-79 | The list is newest first (date, then created time, then id), pages with a cursor, and carries `current_odometer`: the larger of the latest service record and the newest stored live reading (live readings are ignored when the provider is off), as for reminders. |
+| AC-80 | The Tyres page shows "Current tyres": for each wheel, the latest Replace that included it (brand, model, size, date, odometer and km since), and the latest Rotate with km since. It is computed on the device and never stored. Km since is shown only when the current odometer is known and not below the event odometer. If not all events are on the device, a partial warning is shown. |
+| AC-81 | Creating, editing and deleting work offline: the change is shown as pending and is sent exactly once when the server is reachable. |
+| AC-82 | A tyre event never creates or changes an expense, and the page says that tyre costs are not included in Expenses. |
+| AC-83 | On a Rotate event the owner can type an interval N km and choose "Add rotation reminder". This opens the normal Add reminder form prefilled with kind Service, title "Rotate tyres" and due odometer = the event odometer + N. Nothing is saved until the owner saves that form. The app suggests no interval. |
+| AC-84 | The new-event form prefills the odometer with the current odometer (editable) and, for Replace, the size with the vehicle tyre specification when it is at most 50 characters. |
+| AC-85 | Every tyre route returns 401 without a token. Text fields are shown as plain text. At most 1,000 events are stored; a create beyond that returns 400 on field `body`, and an identical replay is still accepted at the cap. |
+| AC-86 | Migration `0017` applies to an empty database, re-runs cleanly and downgrades; all quality gates pass. |
 
 ## Open questions for the owner
 
