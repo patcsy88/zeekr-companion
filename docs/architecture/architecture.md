@@ -49,7 +49,7 @@ Routers never query the database directly. Services never import HTTP types.
 | `expense` | id, vehicle_id, date, category, amount_minor, notes |
 | `reminder` | id, vehicle_id, kind, due_date, due_odometer, completed_at |
 | `warranty` / `warranty_claim` | coverage, start, end, claim details |
-| `tyre_record` | position, brand, spec, fitted_date, odometer |
+| `tyre_event` | see "Tyres data model" below (replaces the `tyre_record` placeholder) |
 | `attachment` | id, owner_type, owner_id, path, mime_type |
 
 The slice implements `vehicle` and `service_record` first. Other tables are added in later increments, each with a migration.
@@ -106,6 +106,20 @@ Refines the placeholder `warranty` / `warranty_claim` row. Contract: "Warranty" 
 - No personal data: there is no provider name, certificate number or VIN column. Owner documents (research O1 to O8) are used only as the owner's reference when typing values; their identifiers are never stored in the repository.
 - Web: cache keys for coverages and claims, queue kinds for both entities with a dependency rule (a claim create waits on its coverage create), a pure `warrantyStatus` function with shared vectors, a template screen modelled on `ReminderTemplatePage`. Service worker unchanged.
 - Known limit: `km_limit` is compared with the odometer reading, not with km since the start date (Q13).
+
+### Tyres data model (approved 2026-11-08)
+
+Replaces the `tyre_record` placeholder (one row per event, not per tyre, so a rotation is one row). Contract: "Tyre events" in `api-contracts.md`.
+
+| Table | Fields |
+|---|---|
+| `tyre_event` | `id` uuid PK (client generated), `date` date, `kind` varchar(20), `wheels` varchar(20)[], `odometer` integer, `brand` varchar(100) null, `model` varchar(100) null, `size` varchar(50) null, `cost_minor` bigint null, `currency` varchar(3) default 'MYR', `shop` varchar(200) null, `notes` text null, `created_at`, `updated_at` timestamptz |
+
+- Check constraints (named): `kind` in the five values; `cardinality(wheels)` 1 to 4 and `wheels <@` the four names (repeats are refused by the API, which also sorts them); `odometer` 0 to 10,000,000; `cost_minor` null or 0 to 10^12; `currency = 'MYR'`; `date >= '2000-01-01'`; brand, model and size null unless `kind = 'replace'`.
+- Index on `(date DESC, created_at DESC, id DESC)` for the list and cursor. At most 1,000 rows.
+- No foreign key to `expense` or `service_record` (owner, T1).
+- Migration `0017` adds the table, with a downgrade. The backup dumps the whole database, so the table is included without a change.
+- Web: a `tyre-events` cache key, queue kinds for create, edit and delete, a pending overlay like `expenseOverlay.ts`, and a pure `currentTyres` function for the "Current tyres" box.
 
 ### Advisory agents data model (APPROVED by the owner, 2026-10-29; ADR-008)
 

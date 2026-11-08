@@ -600,7 +600,7 @@ Online only in the first build. Proposals and decisions are not cached or queued
 
 ## Not yet specified
 
-Tyres and attachments. They are specified when their increment starts. Reminders are specified above and approved. Expenses and Warranty are drafted above and not yet approved.
+Attachments. They are specified when their increment starts. Tyres are specified in "Tyre events" below (approved 2026-11-08). Reminders are specified above and approved. Expenses and Warranty are drafted above and not yet approved.
 
 - **Implemented 2026-10-29 (build step 3, model off):** the six endpoints above, migration `0007`, and the Advisory screen (online only, no cache or queue). With the model off, proposals are stored with `explanation_status` `disabled`; if `ADVISORY_MODEL_ENABLED=true` but no model code exists yet, the run reports `model.status` `unavailable` and proposals get `unavailable`. A run is serialised, all or nothing, and returns `400 validation_error` if it would pass the 2,000-proposal cap; it also deletes model-call rows older than 396 days. Only incomplete service reminders with both a due date and a due odometer are checked. Accepting a suggestion opens the normal "Add reminder" form prefilled from `suggestion`; the proposal is marked accepted by `PATCH` only after the reminder is saved, and Cancel decides nothing. No change to the approved contract. Deployed 2026-10-30 (owner-reported).
 - **Step 4 (built 2026-10-30, not deployed):** with the model on, `explanation_status` can be `model`, `limit_reached`, `unavailable` (switch on but no model, or the call failed) or `invalid_output`; `urgency`, `explanation`, `prompt_version` (1) and `model_id` are filled only for `model`. `model.status` is `used` when a model is configured, `limit_reached` when the monthly limit stopped a call in this run. Every call is listed by `GET /advisory/model-calls`. No endpoint, field or enum value changed.
@@ -991,3 +991,64 @@ ADR-011 is accepted (2026-11-06). The owner approved this data model and contrac
 - **Stored row:** unchanged columns. `gear_codes` is always written as `[0]`. A row saved before this change is narrowed on read: usage modes other than `0` and `1` are dropped, an empty result becomes `[0]`, and saved gears are ignored. The row is rewritten at the next save.
 - **Web:** the Geofence tab drops the gear picks and shows "Sentry is only turned on when the car is in P (Park)." The usage-mode picks become "Vehicle State(s)" with "Deep Sleep" and "Parked".
 - **Compatibility:** an old cached web app that still sends `gear_codes` gets a `400` on save until it reloads. Single owner; accepted.
+
+## Tyre events (APPROVED by the owner, 2026-11-08)
+
+Covers FR-9 (AC-75 to AC-86 in `docs/product/requirements.md`). Reuses all Conventions above (`/api/v1`, `snake_case`, client UUIDs, Bearer token, `no-store`, 64 KiB body limit, error shape and codes, `currency` MYR only, `extra=forbid`, trimmed strings, no NUL). No new status code or error code. No approved part changes.
+
+### Endpoints
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/tyre-events` | Idempotent on `id`: `201` first, `200` with the existing event on an identical replay, `409 conflict` if the same `id` has different content |
+| `GET` | `/api/v1/tyre-events` | Newest first (`date`, `created_at`, `id`, all descending). Query: `limit` (1 to 100, default 50), `cursor` |
+| `GET` | `/api/v1/tyre-events/{id}` | |
+| `PATCH` | `/api/v1/tyre-events/{id}` | Partial update |
+| `DELETE` | `/api/v1/tyre-events/{id}` | `204` |
+
+### Tyre event object
+
+```json
+{
+  "id": "uuid",
+  "date": "YYYY-MM-DD",
+  "kind": "replace | rotate | repair | alignment | balancing",
+  "wheels": ["driver_front", "passenger_front", "driver_rear", "passenger_rear"],
+  "odometer": 0,
+  "brand": "string|null",
+  "model": "string|null",
+  "size": "string|null",
+  "cost_minor": "integer|null",
+  "currency": "MYR",
+  "shop": "string|null",
+  "notes": "string|null",
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
+}
+```
+
+### Create and update
+
+`POST` body: `id`, `date`, `kind`, `wheels`, `odometer`, optional `brand`, `model`, `size`, `cost_minor`, `currency` (default `MYR`), `shop`, `notes`. `PATCH` body: any of those except `id`; omitted fields are unchanged; `date`, `kind`, `wheels`, `odometer` and `currency` may not be null.
+
+Validation (`400 validation_error` with field details):
+
+- `date`: a `YYYY-MM-DD` string (a JSON number is rejected), from 2000-01-01, not after today in Asia/Kuala_Lumpur.
+- `kind`: one of the five values. Adding one later is a contract amendment and a migration.
+- `wheels`: 1 to 4 of `driver_front`, `passenger_front`, `driver_rear`, `passenger_rear` (the live card's names), no repeats. Stored and returned in that fixed order, so `["driver_rear", "driver_front"]` is returned as `["driver_front", "driver_rear"]` and replays compare equal.
+- `odometer`: strict integer, 0 to 10,000,000 km. Required.
+- `brand`, `model` (at most 100 characters each) and `size` (at most 50): only when `kind` is `replace`; otherwise `400` on that field. A `PATCH` that leaves the result breaking this rule is refused. Blank after trimming means null.
+- `cost_minor`: null or a strict integer, 0 to 10^12. `currency`: `MYR`.
+- `shop` at most 200 characters, `notes` at most 5,000; blank means null.
+- At most 1,000 events in total; a create beyond that returns `400` on field `body`. An identical replay of an existing id is still accepted at the cap.
+
+Replay compares `date`, `kind`, `wheels`, `odometer`, `brand`, `model`, `size`, `cost_minor`, `currency`, `shop`, `notes`.
+
+### List
+
+Response: `{ "items": [ ... ], "next_cursor": "string|null", "current_odometer": CurrentOdometer|null }`. `current_odometer` has the same shape and rule as the Reminders list (the larger of the latest service record and the newest stored live reading; live readings ignored when the provider is off). An invalid cursor or limit returns `400`.
+
+### Not included
+
+No link to expenses or service records: a tyre event never creates or changes an expense (owner, T1). No stored "current tyres" or "km since": the web app computes them from the list. No rotation interval: a rotation reminder is an ordinary Service reminder that the web app opens prefilled (owner, T2).
+

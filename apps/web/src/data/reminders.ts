@@ -38,10 +38,11 @@ export interface RemindersSnapshot {
  * The current odometer is the odometer of the newest service record. The device uses its own
  * records (cache plus unsent queue) when it has them, and the server's value otherwise.
  */
-async function deriveBasis(cached: ReminderCache | undefined): Promise<OdometerBasis | null> {
+export async function deriveBasis(
+  co: CurrentOdometer | null | undefined,
+): Promise<OdometerBasis | null> {
   const records = await readRecords();
   const newest = records.views[0];
-  const co = cached?.current_odometer;
   if (co?.source === 'live_reading' && (!newest || co.km > newest.record.odometer)) {
     return { km: co.km, date: co.date, unsent: false, live: true };
   }
@@ -58,7 +59,7 @@ async function deriveBasis(cached: ReminderCache | undefined): Promise<OdometerB
 
 export async function readReminders(): Promise<RemindersSnapshot> {
   const [cached, queue] = await Promise.all([getCache<ReminderCache>(REMINDERS_KEY), listQueue()]);
-  const basis = await deriveBasis(cached?.value);
+  const basis = await deriveBasis(cached?.value.current_odometer);
   const today = klToday();
   return {
     loaded: cached !== undefined,

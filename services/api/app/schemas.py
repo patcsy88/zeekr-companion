@@ -469,6 +469,97 @@ class ExpenseSummary(BaseModel):
     by_month: list[ExpenseMonthTotal]
 
 
+# --- Tyre events (FR-9, approved 2026-11-08) ------------------------------------------------
+
+TyreKind = Literal["replace", "rotate", "repair", "alignment", "balancing"]
+TyreWheel = Literal["driver_front", "passenger_front", "driver_rear", "passenger_rear"]
+WHEEL_ORDER: tuple[str, ...] = ("driver_front", "passenger_front", "driver_rear", "passenger_rear")
+MAX_TYRE_EVENTS = 1000
+TYRE_ONLY_FIELDS = ("brand", "model", "size")
+
+
+def _wheels(value: list[str] | None) -> list[str] | None:
+    """1 to 4 wheels, no repeats, returned in the fixed order so replays compare equal."""
+    if value is None:
+        return None
+    if not 1 <= len(value) <= 4:
+        raise ValueError("must hold 1 to 4 wheels")
+    if len(set(value)) != len(value):
+        raise ValueError("must not repeat a wheel")
+    return sorted(value, key=WHEEL_ORDER.index)
+
+
+Wheels = Annotated[list[TyreWheel], AfterValidator(_wheels)]
+
+
+class TyreEventCreate(_Input):
+    id: uuid.UUID
+    date: StrictDate
+    kind: TyreKind
+    wheels: Wheels
+    odometer: Distance
+    brand: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=100)
+    size: str | None = Field(default=None, max_length=50)
+    cost_minor: Money | None = None
+    currency: Currency = "MYR"
+    shop: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+    _blank = field_validator("brand", "model", "size", "shop", "notes")(_blank_to_none)
+
+
+class TyreEventPatch(_Input):
+    """Partial update. Omitted fields are unchanged. `date`, `kind`, `wheels`, `odometer` and
+    `currency` may not be null."""
+
+    date: StrictDate | None = None
+    kind: TyreKind | None = None
+    wheels: Wheels | None = None
+    odometer: Distance | None = None
+    brand: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=100)
+    size: str | None = Field(default=None, max_length=50)
+    cost_minor: Money | None = None
+    currency: Currency | None = None
+    shop: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=5000)
+
+    _check_date = field_validator("date")(_expense_date)
+    _blank = field_validator("brand", "model", "size", "shop", "notes")(_blank_to_none)
+
+    @field_validator("date", "kind", "wheels", "odometer", "currency", mode="before")
+    @classmethod
+    def _not_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("must not be null")
+        return value
+
+
+class TyreEventOut(_Output):
+    id: uuid.UUID
+    date: dt.date
+    kind: TyreKind
+    wheels: list[TyreWheel]
+    odometer: int
+    brand: str | None
+    model: str | None
+    size: str | None
+    cost_minor: int | None
+    currency: str
+    shop: str | None
+    notes: str | None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+
+
+class TyreEventPage(BaseModel):
+    items: list[TyreEventOut]
+    next_cursor: str | None
+    current_odometer: CurrentOdometer | None
+
+
 # --- Warranty -------------------------------------------------------------------------------
 
 ProviderType = Literal["factory", "extended"]

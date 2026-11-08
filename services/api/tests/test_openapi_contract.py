@@ -130,6 +130,56 @@ def test_expense_input_models_forbid_extra_fields(schema: dict[str, Any]) -> Non
     assert "created_at" not in schema["components"]["schemas"]["ExpenseCreate"]["properties"]
 
 
+TYRE_ROUTES = {
+    ("post", "/api/v1/tyre-events"),
+    ("get", "/api/v1/tyre-events"),
+    ("get", "/api/v1/tyre-events/{event_id}"),
+    ("patch", "/api/v1/tyre-events/{event_id}"),
+    ("delete", "/api/v1/tyre-events/{event_id}"),
+}
+
+
+def test_tyre_routes_exist_need_auth_and_document_errors(schema: dict[str, Any]) -> None:
+    found = {
+        (method, path)
+        for path, item in schema["paths"].items()
+        for method in item
+        if "tyre-events" in path
+    }
+    assert found == TYRE_ROUTES
+    for method, path in TYRE_ROUTES:
+        op = schema["paths"][path][method]
+        assert op["security"] == [{"bearerAuth": []}]
+        assert {"400", "401"} <= set(op["responses"])
+        assert "422" not in op["responses"]
+    post = schema["paths"]["/api/v1/tyre-events"]["post"]["responses"]
+    assert {"200", "201", "400", "409"} <= set(post)
+    assert "204" in schema["paths"]["/api/v1/tyre-events/{event_id}"]["delete"]["responses"]
+    params = {p["name"] for p in schema["paths"]["/api/v1/tyre-events"]["get"]["parameters"]}
+    assert params == {"limit", "cursor"}
+
+
+def test_tyre_models_forbid_extra_fields_and_list_the_enums(schema: dict[str, Any]) -> None:
+    schemas = schema["components"]["schemas"]
+    for name in ("TyreEventCreate", "TyreEventPatch"):
+        assert schemas[name]["additionalProperties"] is False
+    assert "created_at" not in schemas["TyreEventCreate"]["properties"]
+    assert set(schemas["TyreEventOut"]["properties"]["kind"]["enum"]) == {
+        "replace",
+        "rotate",
+        "repair",
+        "alignment",
+        "balancing",
+    }
+    assert set(schemas["TyreEventOut"]["properties"]["wheels"]["items"]["enum"]) == {
+        "driver_front",
+        "passenger_front",
+        "driver_rear",
+        "passenger_rear",
+    }
+    assert "current_odometer" in schemas["TyreEventPage"]["properties"]
+
+
 WARRANTY_ROUTES = {
     ("post", "/api/v1/warranty-coverages"),
     ("get", "/api/v1/warranty-coverages"),

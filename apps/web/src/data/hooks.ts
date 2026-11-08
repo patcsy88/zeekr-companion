@@ -16,6 +16,8 @@ import type { RecordView } from './overlay';
 import type { ReminderView } from './reminderOverlay';
 import type { ExpenseView } from './expenseOverlay';
 import { readExpense, readExpenses, type ExpensesSnapshot } from './expenses';
+import { readTyreEvent, readTyreEvents, type TyreEventsSnapshot } from './tyreEvents';
+import type { TyreEventView } from './tyreEventOverlay';
 import {
   readReminder,
   readReminders,
@@ -76,6 +78,13 @@ export function useExpenses(): ExpensesSnapshot | undefined {
 }
 export function useExpense(id: string): { view: ExpenseView | null } | undefined {
   return useLocal(() => readExpense(id), `expense:${id}`);
+}
+
+export function useTyreEvents(): TyreEventsSnapshot | undefined {
+  return useLocal(readTyreEvents, 'tyre-events');
+}
+export function useTyreEvent(id: string): { view: TyreEventView | null } | undefined {
+  return useLocal(() => readTyreEvent(id), `tyre-event:${id}`);
 }
 
 export function useReminders(): RemindersSnapshot | undefined {

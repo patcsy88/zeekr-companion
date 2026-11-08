@@ -244,6 +244,58 @@ class Expense(Base):
     )
 
 
+TYRE_KINDS = ("replace", "rotate", "repair", "alignment", "balancing")
+TYRE_WHEELS = ("driver_front", "passenger_front", "driver_rear", "passenger_rear")
+
+
+class TyreEvent(Base):
+    """One tyre change, rotation, repair, alignment or balancing (FR-9, approved 2026-11-08)."""
+
+    __tablename__ = "tyre_event"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    wheels: Mapped[list[str]] = mapped_column(ARRAY(String(20)), nullable=False)
+    odometer: Mapped[int] = mapped_column(Integer, nullable=False)
+    brand: Mapped[str | None] = mapped_column(String(100))
+    model: Mapped[str | None] = mapped_column(String(100))
+    size: Mapped[str | None] = mapped_column(String(50))
+    cost_minor: Mapped[int | None] = mapped_column(BigInteger)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="MYR")
+    shop: Mapped[str | None] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN (" + ", ".join(f"'{k}'" for k in TYRE_KINDS) + ")", name="kind_valid"
+        ),
+        CheckConstraint(
+            "cardinality(wheels) BETWEEN 1 AND 4 AND wheels <@ ARRAY["
+            + ", ".join(f"'{w}'" for w in TYRE_WHEELS)
+            + "]::varchar(20)[]",
+            name="wheels_valid",
+        ),
+        CheckConstraint("odometer BETWEEN 0 AND 10000000", name="odometer_range"),
+        CheckConstraint(
+            "cost_minor IS NULL OR cost_minor BETWEEN 0 AND 1000000000000", name="cost_range"
+        ),
+        CheckConstraint("currency = 'MYR'", name="currency_myr"),
+        CheckConstraint("date >= DATE '2000-01-01'", name="date_min"),
+        CheckConstraint(
+            "kind = 'replace' OR (brand IS NULL AND model IS NULL AND size IS NULL)",
+            name="tyre_only_on_replace",
+        ),
+        Index("ix_tyre_event_history", desc("date"), desc("created_at"), desc("id")),
+    )
+
+
 class AdvisoryProposal(Base):
     """A stored finding of an advisory check (ADR-008). Derived numbers and model text only."""
 

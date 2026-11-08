@@ -91,6 +91,15 @@ A failed gate blocks completion. Gates are never skipped to obtain a pass. A gat
 | AC-65 | Playwright `e2e/warranty.spec.ts` (second profile reads from the API). Manual iPhone check: **deferred, not run** |
 | AC-67 | Review checklist and a schema test that no provider, certificate or document field exists |
 | AC-68 | `test_migrations.py` (migration `0004`: apply, re-run, downgrade) and all gates |
+| AC-75, AC-76, AC-77, AC-78 | `test_tyre_events.py` (create, replay 200, conflict 409, every validation case, wheel order, kind rules on patch, Kuala Lumpur future date, delete then 404); `tyres.test.tsx` (form validation, edit with one PATCH, delete confirmation, DELETE 404 treated as done) |
+| AC-79 | `test_tyre_events.py` (newest first, cursor paging, `current_odometer` from a service record, a larger live reading, provider off); `test_openapi_contract.py` (`TYRE_ROUTES`) |
+| AC-80 | `tyre-status.test.ts` (`currentTyres`, tie-break, unknown or lower odometer) and `tyres.test.tsx` (Current tyres, multi-page fetch, partial warning) |
+| AC-81 | `tyre-queue.test.ts` (coalescing, cancel, one DELETE), `tyre-status.test.ts` (overlay), `tyres.test.tsx` (offline create, reload, one POST), Playwright `e2e/tyres.spec.ts` (offline create then reconnect, exactly one event on the server) |
+| AC-82 | `test_tyre_events.py` (no expense created or changed); `tyres.test.tsx` (the not-in-Expenses note, no expense POST) |
+| AC-83 | `tyres.test.tsx` (Add reminder prefilled with Service, "Rotate tyres", odometer + N; nothing saved until Save; offered only on Rotate) |
+| AC-84 | `tyres.test.tsx` (current odometer, all four wheels, size from the tyre specification only when at most 50 characters) |
+| AC-85 | `test_tyre_events.py` (401 on every route, cap 1,000 with replay at the cap, concurrent creates at the cap, text stored verbatim); `tyres.test.tsx` (plain-text rendering) |
+| AC-86 | `test_migrations.py` (migration `0017`: constraints, apply, re-run, downgrade to `0016`) and all gates. Manual iPhone check: **deferred, not run** |
 
 Warranty security review: `docs/security/review-2026-10-23-warranty.md`. SEC-W3 and SEC-W4 fixed (`warranty-sec.test.tsx`); SEC-W1, W2, W5, W6 open.
 

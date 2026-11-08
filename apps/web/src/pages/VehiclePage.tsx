@@ -85,6 +85,9 @@ export function VehiclePage() {
           <dl className="group">
             <Row label="Tyre specification" value={view.vehicle.tyre_spec} />
           </dl>
+          <p>
+            <Link to="/vehicle/tyres">Tyre changes and rotations</Link>
+          </p>
           <Link to="/vehicle/edit" className="button">
             Edit
           </Link>

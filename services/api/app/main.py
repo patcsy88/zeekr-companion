@@ -39,6 +39,7 @@ from app.routers import (
     reminders,
     sentry,
     service_records,
+    tyre_events,
     vehicle,
     warranty,
 )
@@ -201,6 +202,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         service_records.router,
         reminders.router,
         expenses.router,
+        tyre_events.router,
         warranty.router,
         advisory.router,
         live_vehicle.router,

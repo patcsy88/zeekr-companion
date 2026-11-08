@@ -15,6 +15,7 @@ from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
+from app.repositories.tyre_events import TyreEventRepository
 from app.repositories.vehicle import VehicleRepository
 from app.repositories.warranty import WarrantyClaimRepository, WarrantyCoverageRepository
 from app.services.advisory import AdvisoryService
@@ -26,6 +27,7 @@ from app.services.live_vehicle import LiveVehicleService
 from app.services.reminders import ReminderService
 from app.services.sentry_command import SentryCommandService
 from app.services.service_records import ServiceRecordService
+from app.services.tyre_events import TyreEventService
 from app.services.vehicle import VehicleService
 from app.services.warranty import WarrantyClaimService, WarrantyCoverageService
 
@@ -68,6 +70,11 @@ def get_reminder_service(request: Request, session: SessionDep) -> ReminderServi
 
 def get_expense_service(session: SessionDep) -> ExpenseService:
     return ExpenseService(ExpenseRepository(session))
+
+
+def get_tyre_event_service(request: Request, session: SessionDep) -> TyreEventService:
+    live = LiveReadingRepository(session) if request.app.state.live_telemetry else None
+    return TyreEventService(TyreEventRepository(session), ServiceRecordRepository(session), live)
 
 
 def get_warranty_coverage_service(session: SessionDep) -> WarrantyCoverageService:
@@ -127,6 +134,7 @@ VehicleServiceDep = Annotated[VehicleService, Depends(get_vehicle_service)]
 ServiceRecordServiceDep = Annotated[ServiceRecordService, Depends(get_service_record_service)]
 ReminderServiceDep = Annotated[ReminderService, Depends(get_reminder_service)]
 ExpenseServiceDep = Annotated[ExpenseService, Depends(get_expense_service)]
+TyreEventServiceDep = Annotated[TyreEventService, Depends(get_tyre_event_service)]
 WarrantyCoverageServiceDep = Annotated[
     WarrantyCoverageService, Depends(get_warranty_coverage_service)
 ]
