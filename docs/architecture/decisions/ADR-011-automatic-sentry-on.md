@@ -78,3 +78,9 @@ The owner stated in chat that the feature is "good and tested" and asked for it 
 - **Still open risks:** Zeekr's terms on unattended commands and account-lock risk (accepted by the owner), and the position having no timestamp of its own (the reply-level `updateTime` is the rule).
 - **Owner decisions (2026-11-06):** the owner states that Sentry uses the main battery (owner statement, not verified by the agent). The app and docs make no claim about Sentry and battery use. The owner acknowledges Zeekr's terms on unattended commands and accepts the risks. The send ignores night versus day. If the reading has no readable top-level `updateTime`, nothing is sent: the geofence reads `incomplete`, no alert opens and no automatic send happens (already how it works; no code change).
 - **Closed as not an issue (owner, 2026-11-06):** the earlier note about a 16:11 manual send and a 16:12 automatic `sent` against the 60-minute quiet period. It supersedes the "Not resolved" bullet above.
+
+## Amendment 2026-11-08: car state for sending (owner approved)
+
+- Automatic Sentry still sends only after a new geofence alert opens. That alert now needs gear P (`gearAutoStatus '0'`, fixed in code, not a setting) and a vehicle state of Deep Sleep (`usageMode '0'`) and/or Parked (`'1'`), as chosen on the Geofence tab. No other state can open the alert, so no other state can send Sentry, even if an older saved setting listed it.
+- **unverified:** `usageMode '1'` (Parked) has not been read on the owner's car; its label is the public integration's. `'0'` with the car asleep in P is the owner's reading.
+- No change to the toggle, the quiet period, the one-send-per-alert rule or the host switch.

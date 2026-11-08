@@ -903,23 +903,14 @@ class AutoSentryOut(BaseModel):
     limits: AutoSentryLimitsOut
 
 
-# Geofence settings (Piece C, approved 2026-11-05). The codes are the pick lists; nothing else is
-# accepted. Gear labels are the owner's readings. Usage-mode labels are the public integration's.
-GEAR_OPTIONS: tuple[tuple[int, str, bool], ...] = (
-    (0, "P", True),
-    (1, "R", True),
-    (2, "N", True),
-    (3, "D", True),
-)
+# Geofence settings (Piece C, approved 2026-11-05; vehicle states narrowed by the owner 2026-11-08).
+# Gear is not a setting: the check needs P. Only these two usage modes can be picked; their labels
+# are the public integration's and are not confirmed on the car.
 USAGE_MODE_OPTIONS: tuple[tuple[int, str, bool], ...] = (
     (0, "Deep Sleep", False),
     (1, "Parked", False),
-    (2, "Unlocked", False),
-    (3, "System Active", False),
-    (4, "Ready to Go", False),
-    (13, "Active", False),
 )
-GEOFENCE_MAX_CODES = 5
+GEOFENCE_MAX_CODES = len(USAGE_MODE_OPTIONS)
 
 
 def _code_list(allowed: tuple[tuple[int, str, bool], ...]):  # type: ignore[no-untyped-def]
@@ -941,9 +932,6 @@ class GeofenceSettingsIn(_Input):
     radius_km: Annotated[float, Field(strict=True, gt=0, le=100, allow_inf_nan=False)]
     interval_minutes: Annotated[int, Field(strict=True, ge=5, le=1440)]
     stale_minutes: Annotated[int, Field(strict=True, ge=1, le=30)]
-    gear_codes: Annotated[
-        list[Annotated[int, Field(strict=True)]], AfterValidator(_code_list(GEAR_OPTIONS))
-    ]
     usage_mode_codes: Annotated[
         list[Annotated[int, Field(strict=True)]], AfterValidator(_code_list(USAGE_MODE_OPTIONS))
     ]
@@ -961,7 +949,6 @@ class GeofenceValuesOut(BaseModel):
     radius_km: float
     interval_minutes: int
     stale_minutes: int
-    gear_codes: list[int]
     usage_mode_codes: list[int]
 
 
@@ -969,7 +956,6 @@ class GeofenceSourcesOut(BaseModel):
     radius_km: Literal["saved", "env"]
     interval_minutes: Literal["saved", "env"]
     stale_minutes: Literal["saved", "env"]
-    gear_codes: Literal["saved", "env"]
     usage_mode_codes: Literal["saved", "env"]
 
 
@@ -986,7 +972,6 @@ class GeofenceLimitsOut(BaseModel):
     stale_minutes_min: int
     stale_minutes_max: int
     max_codes: int
-    gear_options: list[GeofenceOptionOut]
     usage_mode_options: list[GeofenceOptionOut]
 
 

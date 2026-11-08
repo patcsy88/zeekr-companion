@@ -18,7 +18,6 @@ function settings(
       radius_km: 5,
       interval_minutes: 5,
       stale_minutes: 30,
-      gear_codes: [0],
       usage_mode_codes: [0],
       ...over,
     },
@@ -26,7 +25,6 @@ function settings(
       radius_km: origin,
       interval_minutes: origin,
       stale_minutes: origin,
-      gear_codes: origin,
       usage_mode_codes: origin,
     },
     limits: {
@@ -35,14 +33,10 @@ function settings(
       interval_minutes_max: 1440,
       stale_minutes_min: 1,
       stale_minutes_max: 30,
-      max_codes: 5,
-      gear_options: [
-        { code: 0, label: 'P', verified: true },
-        { code: 3, label: 'D', verified: true },
-      ],
+      max_codes: 2,
       usage_mode_options: [
         { code: 0, label: 'Deep Sleep', verified: false },
-        { code: 13, label: 'Active', verified: false },
+        { code: 1, label: 'Parked', verified: false },
       ],
     },
     enabled: true,
@@ -93,8 +87,18 @@ describe('geofence: the tab', () => {
     expect(screen.getByTestId('geo-status')).toHaveTextContent('Geofence: on');
     expect(screen.getByTestId('geo-status')).toHaveTextContent('Home point: set');
     expect(screen.getByText(/never sends anything to the car/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Active \(13\)/)).toBeInTheDocument();
-    expect(screen.getAllByText(/unverified label/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('group', { name: 'Vehicle State(s)' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Deep Sleep')).toBeChecked();
+    expect(screen.getByLabelText('Parked')).not.toBeChecked();
+    expect(screen.getByText(/not yet confirmed on this car/)).toBeInTheDocument();
+    expect(screen.getByTestId('geo-gear-note')).toHaveTextContent(
+      'Sentry is only turned on when the car is in P (Park).',
+    );
+    expect(screen.queryByText(/Gear counts as parked/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/usage mode/)).not.toBeInTheDocument();
+    for (const gear of ['P', 'R', 'N', 'D', 'P (0)', 'D (3)'])
+      expect(screen.queryByRole('checkbox', { name: gear })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
   });
 
   it('saves what was entered', async () => {
@@ -103,7 +107,7 @@ describe('geofence: the tab', () => {
       http.get('*/api/v1/geofence/settings', () => HttpResponse.json(settings())),
       http.put('*/api/v1/geofence/settings', async ({ request: r }) => {
         puts.push(await r.json());
-        return HttpResponse.json(settings({ radius_km: 8, gear_codes: [0, 3] }, true));
+        return HttpResponse.json(settings({ radius_km: 8, usage_mode_codes: [0, 1] }, true));
       }),
     );
     const user = open();
@@ -111,7 +115,7 @@ describe('geofence: the tab', () => {
     const radius = await screen.findByLabelText(/Radius/);
     await user.clear(radius);
     await user.type(radius, '8');
-    await user.click(screen.getByLabelText(/D \(3\)/));
+    await user.click(screen.getByLabelText('Parked'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
     expect(puts).toEqual([
@@ -119,8 +123,7 @@ describe('geofence: the tab', () => {
         radius_km: 8,
         interval_minutes: 5,
         stale_minutes: 30,
-        gear_codes: [0, 3],
-        usage_mode_codes: [0],
+        usage_mode_codes: [0, 1],
       },
     ]);
   });
@@ -144,13 +147,41 @@ describe('geofence: the tab', () => {
     expect(puts).toHaveLength(0);
   });
 
-  it('refuses an empty code pick', async () => {
-    server.use(http.get('*/api/v1/geofence/settings', () => HttpResponse.json(settings())));
+  it('refuses saving with no vehicle state ticked', async () => {
+    const puts: unknown[] = [];
+    server.use(
+      http.get('*/api/v1/geofence/settings', () => HttpResponse.json(settings())),
+      http.put('*/api/v1/geofence/settings', async ({ request: r }) => {
+        puts.push(await r.json());
+        return HttpResponse.json(settings());
+      }),
+    );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByLabelText(/P \(0\)/));
+    await user.click(await screen.findByLabelText('Deep Sleep'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Pick 1 to 5 gear codes');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Pick Deep Sleep, Parked or both.');
+    expect(puts).toHaveLength(0);
+  });
+
+  it('saves Parked only', async () => {
+    const puts: unknown[] = [];
+    server.use(
+      http.get('*/api/v1/geofence/settings', () => HttpResponse.json(settings())),
+      http.put('*/api/v1/geofence/settings', async ({ request: r }) => {
+        puts.push(await r.json());
+        return HttpResponse.json(settings({ usage_mode_codes: [1] }, true));
+      }),
+    );
+    const user = open();
+    render(<App />);
+    await user.click(await screen.findByLabelText('Parked'));
+    await user.click(screen.getByLabelText('Deep Sleep'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
+    expect(puts).toEqual([
+      { radius_km: 5, interval_minutes: 5, stale_minutes: 30, usage_mode_codes: [1] },
+    ]);
   });
 
   it('resets to the host values', async () => {

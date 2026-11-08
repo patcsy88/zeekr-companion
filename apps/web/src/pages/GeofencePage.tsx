@@ -7,7 +7,6 @@ interface Form {
   radius: string;
   interval: string;
   stale: string;
-  gear: number[];
   usage: number[];
 }
 
@@ -17,7 +16,6 @@ function toForm(g: GeofenceSettings): Form {
     radius: String(s.radius_km),
     interval: String(s.interval_minutes),
     stale: String(s.stale_minutes),
-    gear: s.gear_codes,
     usage: s.usage_mode_codes,
   };
 }
@@ -26,16 +24,14 @@ function whole(text: string): number {
   return /^\d{1,5}$/.test(text.trim()) ? Number(text.trim()) : Number.NaN;
 }
 
-function CodeGroup(props: {
-  legend: string;
+function StateGroup(props: {
   options: GeofenceOption[];
   chosen: number[];
-  max: number;
   onChange: (next: number[]) => void;
 }) {
   return (
     <fieldset>
-      <legend>{props.legend}</legend>
+      <legend>Vehicle State(s)</legend>
       {props.options.map((o) => (
         <label key={o.code} className="check">
           <input
@@ -49,10 +45,13 @@ function CodeGroup(props: {
               );
             }}
           />{' '}
-          {o.label} ({o.code}){o.verified ? '' : ' - unverified label'}
+          {o.label}
         </label>
       ))}
-      <p className="muted small">Pick 1 to {props.max}.</p>
+      <p className="muted small">
+        Pick one or both. No other state counts. The state names come from a public integration and
+        are not yet confirmed on this car.
+      </p>
     </fieldset>
   );
 }
@@ -107,10 +106,8 @@ export function GeofencePage() {
     const stale = whole(f.stale);
     if (!(stale >= limits.stale_minutes_min && stale <= limits.stale_minutes_max))
       return `Stale limit must be ${limits.stale_minutes_min} to ${limits.stale_minutes_max} minutes. Change the value, then save.`;
-    if (f.gear.length < 1 || f.gear.length > limits.max_codes)
-      return `Pick 1 to ${limits.max_codes} gear codes.`;
     if (f.usage.length < 1 || f.usage.length > limits.max_codes)
-      return `Pick 1 to ${limits.max_codes} usage-mode codes.`;
+      return 'Pick Deep Sleep, Parked or both.';
     return null;
   }
 
@@ -132,7 +129,6 @@ export function GeofencePage() {
           radius_km: Number(form.radius),
           interval_minutes: whole(form.interval),
           stale_minutes: whole(form.stale),
-          gear_codes: form.gear,
           usage_mode_codes: form.usage,
         },
       });
@@ -225,20 +221,12 @@ export function GeofencePage() {
               }}
             />
           </label>
-          <CodeGroup
-            legend="Gear counts as parked when it is"
-            options={limits.gear_options}
-            chosen={form.gear}
-            max={limits.max_codes}
-            onChange={(gear) => {
-              setForm({ ...form, gear });
-            }}
-          />
-          <CodeGroup
-            legend="Car counts as asleep when usage mode is"
+          <p className="muted small" data-testid="geo-gear-note">
+            Sentry is only turned on when the car is in P (Park).
+          </p>
+          <StateGroup
             options={limits.usage_mode_options}
             chosen={form.usage}
-            max={limits.max_codes}
             onChange={(usage) => {
               setForm({ ...form, usage });
             }}

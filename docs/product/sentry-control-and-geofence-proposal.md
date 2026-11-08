@@ -303,3 +303,7 @@ Drafted 2026-11-05 from the owner's request and answers. **Data model and contra
 1. **Stale limit maximum is 30 minutes** in the tab (minimum 1). A `.env` value above 30 still starts the API (the host has 1440 today) and applies until a row is saved. The tab will show it as above its limit and refuse to save it until it is changed to 30 or less.
 2. **Pick lists.** Gear codes: P `0`, R `1`, N `2`, D `3` (labels from the owner's readings only). Usage-mode codes: `0` Deep Sleep, `1` Parked, `2` Unlocked, `3` System Active, `4` Ready to Go, `13` Active (`unverified`, the public integration's labels). The API accepts only these codes, 1 to 5 distinct values each.
 3. **Reset: yes.** Contract addition: `DELETE /api/v1/geofence/settings` removes the saved row and returns `200` with the settings as they then stand (`env` values). Safe to repeat.
+
+## Update 2026-11-08: gear fixed at P, vehicle states narrowed (owner approved)
+
+The owner set the car-state condition for the geofence, and so for automatic Sentry: gear must be P (`gearAutoStatus '0'`), which is no longer a setting, and the vehicle state must be Deep Sleep (`usageMode '0'`) and/or Parked (`'1'`), chosen on the Geofence tab under "Vehicle State(s)". The other four states never count. Radius, check interval and stale limit are unchanged. The gear and usage-mode pick lists in the Piece C sections above are superseded. `usageMode '1'` (Parked) is `unverified`: it has not been read on the owner's car. Details: `docs/architecture/api-contracts.md`, the 2026-11-08 geofence amendment.
