@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app import security
 from app.adapters.zeekr_live import build_live_provider
 from app.config import Settings
 from app.db import create_db_engine, create_session_factory
@@ -165,6 +166,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sentry_sleep = time.sleep  # a test replaces it so nothing waits
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    # Before AuthService, which hashes once at startup.
+    security.set_hash_concurrency(settings.password_hash_concurrency)
     app.state.auth_service = AuthService(
         session_factory=app.state.session_factory,
         token_secret=settings.token_secret.get_secret_value(),

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     token_ttl_seconds: int = Field(default=3600, ge=60, le=86_400)
     login_max_failures: int = Field(default=5, ge=1, le=100)
     login_window_seconds: int = Field(default=900, ge=10, le=86_400)
+    # Password checks allowed at once; each holds about 128 MiB. 1 on a 512 MB host.
+    password_hash_concurrency: int = Field(default=2, ge=1, le=4)
     sentry_dsn: SecretStr | None = None
     sentry_environment: str = Field(default="production", max_length=32)
     advisory_model_enabled: bool = False

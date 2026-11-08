@@ -65,6 +65,8 @@ After too many failed attempts within a sliding window, the endpoint returns `42
 
 Defaults (configurable by the operator, so not guaranteed): 5 failed attempts per client within 900 seconds (`LOGIN_MAX_FAILURES`, `LOGIN_WINDOW_SECONDS`). A successful login clears that client's failure count.
 
+Password checks run at most `PASSWORD_HASH_CONCURRENCY` at once (default 2, allowed 1 to 4; owner-approved 2026-11-09 for 512 MB hosts). Requests beyond that wait in line, so a burst of sign-ins is slower but returns the same responses. The request and response shapes do not change.
+
 The account is a single owner account stored in the database. It is created and reset by a server command (`python -m app.cli.set_owner`); there is no signup endpoint. If no account exists, the endpoint returns `401`.
 
 Two-step sign-in is set up, replaced and removed by a server command (`python -m app.cli.set_mfa`, `--off` to remove); there is no endpoint that turns it on, off or resets it.
