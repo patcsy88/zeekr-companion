@@ -982,3 +982,12 @@ ADR-011 is accepted (2026-11-06). The owner approved this data model and contrac
 - `readings.plugged_in` now comes from `electricVehicleStatus.statusOfChargerConnection`: `"0"` is `false`, `"1"` or `"3"` is `true`, anything else `null`. `disChargeConnectStatus` is a cross-check with the same codes: if both answer and differ, `null`. If the cable reads `false` while `charging` is `true`, `null`. With no cable reading, `true` when `charging` is `true`, otherwise `null` (ADR-009 build record "plugged in from the cable field").
 - `readings.charging`: `chargerState` `"0"` (unplugged) is now `false` too.
 - Shape unchanged: both stay `true`, `false` or `null`. Readings stored before this change keep their stored values.
+
+### Amendment: gear fixed at P; vehicle states Deep Sleep and Parked only (owner approved 2026-11-08; no migration)
+
+- **Rule:** an alert (and so automatic Sentry, ADR-011) needs `gearAutoStatus` `"0"` (P) always, and `usageMode` in the chosen vehicle states. Only `0` Deep Sleep and `1` Parked can be chosen (one or both). Any other usage mode (`2`, `3`, `4`, `13` or unknown) never opens an alert, even if an older saved row lists it.
+- **`GET /api/v1/geofence/settings`:** `settings` and `sources` no longer have `gear_codes`; `limits` no longer has `gear_options`. `limits.usage_mode_options` is `[{0, "Deep Sleep"}, {1, "Parked"}]` (both `verified: false`); `limits.max_codes` is `2`.
+- **`PUT`:** `gear_codes` is no longer accepted (unknown fields are `400 validation_error`). `usage_mode_codes` must hold 1 or 2 of `0` and `1`, no repeats; anything else is `400`.
+- **Stored row:** unchanged columns. `gear_codes` is always written as `[0]`. A row saved before this change is narrowed on read: usage modes other than `0` and `1` are dropped, an empty result becomes `[0]`, and saved gears are ignored. The row is rewritten at the next save.
+- **Web:** the Geofence tab drops the gear picks and shows "Sentry is only turned on when the car is in P (Park)." The usage-mode picks become "Vehicle State(s)" with "Deep Sleep" and "Parked".
+- **Compatibility:** an old cached web app that still sends `gear_codes` gets a `400` on save until it reloads. Single owner; accepted.

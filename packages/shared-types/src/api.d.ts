@@ -1009,8 +1009,6 @@ export interface components {
         };
         /** GeofenceLimitsOut */
         GeofenceLimitsOut: {
-            /** Gear Options */
-            gear_options: components["schemas"]["GeofenceOptionOut"][];
             /** Interval Minutes Max */
             interval_minutes_max: number;
             /** Interval Minutes Min */
@@ -1037,8 +1035,6 @@ export interface components {
         };
         /** GeofenceSettingsIn */
         GeofenceSettingsIn: {
-            /** Gear Codes */
-            gear_codes: number[];
             /** Interval Minutes */
             interval_minutes: number;
             /** Radius Km */
@@ -1060,11 +1056,6 @@ export interface components {
         };
         /** GeofenceSourcesOut */
         GeofenceSourcesOut: {
-            /**
-             * Gear Codes
-             * @enum {string}
-             */
-            gear_codes: "saved" | "env";
             /**
              * Interval Minutes
              * @enum {string}
@@ -1088,8 +1079,6 @@ export interface components {
         };
         /** GeofenceValuesOut */
         GeofenceValuesOut: {
-            /** Gear Codes */
-            gear_codes: number[];
             /** Interval Minutes */
             interval_minutes: number;
             /** Radius Km */

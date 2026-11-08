@@ -5,8 +5,9 @@ The one exception is ADR-011: when a new alert opens and the owner has switched 
 
 Every `GEOFENCE_INTERVAL_MINUTES` the app takes one reading through the same provider, spacing,
 lock and login cap as the Vehicle card. An alert is open while all of these hold on a fresh
-reading: the car is farther than the radius from home, `gearAutoStatus` is '0' and `usageMode`
-is '0', and Sentry reads off. It closes by itself when any stops holding. At most one is open.
+reading: the car is farther than the radius from home, `gearAutoStatus` is '0' (P, always), and
+`usageMode` is one of the chosen states (Deep Sleep '0' and/or Parked '1', never any other), and
+Sentry reads off. It closes by itself when any stops holding. At most one is open.
 
 The position is read from the reply in memory, used once, and dropped. It is never written to
 the database, a log line, an error or a response. A stale or incomplete reading changes nothing.
@@ -34,12 +35,14 @@ from app.services import advisory_checks as checks
 from app.services.advisory import MAX_PROPOSALS
 from app.services.auto_sentry import AutoSentrySender
 from app.services.geofence_home import Fetch, HomePoint, HomeResolver
-from app.services.geofence_settings import DEFAULT_CODES_SET as DEFAULT_CODES
-from app.services.geofence_settings import Effective, effective
+from app.services.geofence_settings import ALLOWED_USAGE_CODES, DEFAULT_CODES, Effective, effective
 from app.services.live_vehicle import CLOCK_SKEW, LiveVehicleService
 
 CONDITION = "sentry_off_outside_geofence"
 EARTH_RADIUS_KM = 6371.0
+GEAR_PARK = "0"
+SLEEP_STATES = frozenset(str(c) for c in ALLOWED_USAGE_CODES)
+DEFAULT_STATES = frozenset(str(c) for c in DEFAULT_CODES)
 FIRST_CHECK_S = 60.0
 ENDED_SUFFIX = ":end"
 log = logging.getLogger("app.geofence")
@@ -68,8 +71,7 @@ def evaluate(
     radius_km: float,
     stale_minutes: int,
     now: dt.datetime,
-    gear_codes: frozenset[str] = DEFAULT_CODES,
-    usage_mode_codes: frozenset[str] = DEFAULT_CODES,
+    usage_mode_codes: frozenset[str] = DEFAULT_STATES,
 ) -> Verdict:
     if home is None:
         return Verdict("no_home")
@@ -95,8 +97,9 @@ def evaluate(
     )
     holds = (
         outside
-        and reading.gear in gear_codes
+        and reading.gear == GEAR_PARK
         and reading.usage_mode in usage_mode_codes
+        and reading.usage_mode in SLEEP_STATES
         and reading.sentry_active is False
     )
     return Verdict("alert" if holds else "clear", minutes)
@@ -156,7 +159,6 @@ class GeofenceCheck:
             radius_km=current.radius_km,
             stale_minutes=current.stale_minutes,
             now=moment,
-            gear_codes=current.gear_codes,
             usage_mode_codes=current.usage_mode_codes,
         )
         self.last_age_minutes = verdict.age_minutes

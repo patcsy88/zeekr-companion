@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from sqlalchemy import text
 
 from app.services.geofence import GeofenceCheck, evaluate
 from tests.test_geofence_check import HOME, NOW, geo_input
@@ -18,7 +19,6 @@ GOOD: dict[str, Any] = {
     "radius_km": 8.5,
     "interval_minutes": 10,
     "stale_minutes": 20,
-    "gear_codes": [0, 3],
     "usage_mode_codes": [1, 0],
 }
 
@@ -40,15 +40,19 @@ def test_defaults_come_from_env_and_never_show_the_home(
         "radius_km": 5.0,
         "interval_minutes": 5,
         "stale_minutes": 30,
-        "gear_codes": [0],
         "usage_mode_codes": [0],
     }
     assert set(body["sources"].values()) == {"env"}
     assert body["enabled"] is False
     assert body["home_set"] is False
     assert body["limits"]["stale_minutes_max"] == 30
-    assert body["limits"]["gear_options"][0] == {"code": 0, "label": "P", "verified": True}
-    assert body["limits"]["usage_mode_options"][-1]["code"] == 13
+    # Gear is not a setting, and only the two vehicle states can be picked (owner, 2026-11-08).
+    assert "gear" not in r.text
+    assert body["limits"]["usage_mode_options"] == [
+        {"code": 0, "label": "Deep Sleep", "verified": False},
+        {"code": 1, "label": "Parked", "verified": False},
+    ]
+    assert body["limits"]["max_codes"] == 2
     assert not {"latitude", "longitude", "home", "query"} & set(r.text.lower().split('"'))
 
 
@@ -80,14 +84,17 @@ def test_save_reads_back_and_reset_is_repeatable(
         {"stale_minutes": 0},
         {"stale_minutes": 31},
         {"stale_minutes": 1440},
-        {"gear_codes": []},
-        {"gear_codes": [0, 0]},
-        {"gear_codes": [4]},
-        {"gear_codes": [0, 1, 2, 3, 3]},
+        {"gear_codes": [0]},
+        {"usage_mode_codes": []},
+        {"usage_mode_codes": [0, 0]},
+        {"usage_mode_codes": [2]},
+        {"usage_mode_codes": [3]},
+        {"usage_mode_codes": [4]},
+        {"usage_mode_codes": [13]},
+        {"usage_mode_codes": [0, 13]},
         {"usage_mode_codes": [5]},
-        {"usage_mode_codes": [0, 1, 2, 3, 4, 13]},
         {"usage_mode_codes": ["0"]},
-        {"gear_codes": [True]},
+        {"usage_mode_codes": [True]},
         {"home": "x"},
     ],
 )
@@ -126,16 +133,74 @@ def test_env_stale_above_the_limit_still_starts_and_is_shown(
     app.state.engine.dispose()
 
 
-def test_evaluate_uses_the_code_sets() -> None:
-    kw: dict[str, Any] = {"radius_km": 5.0, "stale_minutes": 30, "now": NOW}
-    awake = geo_input(gear="3", usage_mode="1")
-    assert evaluate(awake, HOME, **kw).result == "clear"
-    both = evaluate(
-        awake, HOME, gear_codes=frozenset({"0", "3"}), usage_mode_codes=frozenset({"1"}), **kw
+KW: dict[str, Any] = {"radius_km": 5.0, "stale_minutes": 30, "now": NOW}
+EVERY_MODE = frozenset({"0", "1", "2", "3", "4", "13"})
+
+
+@pytest.mark.parametrize(
+    ("chosen", "mode", "result"),
+    [
+        (frozenset({"0"}), "0", "alert"),
+        (frozenset({"0"}), "1", "clear"),
+        (frozenset({"1"}), "1", "alert"),
+        (frozenset({"1"}), "0", "clear"),
+        (frozenset({"0", "1"}), "0", "alert"),
+        (frozenset({"0", "1"}), "1", "alert"),
+    ],
+)
+def test_vehicle_states_deep_sleep_parked_or_both(
+    chosen: frozenset[str], mode: str, result: str
+) -> None:
+    assert (
+        evaluate(geo_input(usage_mode=mode), HOME, usage_mode_codes=chosen, **KW).result == result
     )
-    assert both.result == "alert"
-    only_gear = evaluate(awake, HOME, gear_codes=frozenset({"3"}), **kw)
-    assert only_gear.result == "clear"
+
+
+@pytest.mark.parametrize("mode", ["2", "3", "4", "13"])
+def test_other_vehicle_states_never_alert_even_if_passed_in(mode: str) -> None:
+    assert evaluate(geo_input(usage_mode=mode), HOME, usage_mode_codes=EVERY_MODE, **KW).result == (
+        "clear"
+    )
+
+
+@pytest.mark.parametrize("gear", ["1", "2", "3"])
+def test_only_park_counts(gear: str) -> None:
+    for chosen in (frozenset({"0"}), frozenset({"0", "1"}), EVERY_MODE):
+        for mode in ("0", "1"):
+            inp = geo_input(gear=gear, usage_mode=mode)
+            assert evaluate(inp, HOME, usage_mode_codes=chosen, **KW).result == "clear"
+
+
+def _write_row(client: TestClient, gear: list[int], usage: list[int]) -> None:
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        conn.execute(text("DELETE FROM geofence_settings"))
+        conn.execute(
+            text(
+                "INSERT INTO geofence_settings (id, radius_km, interval_minutes, stale_minutes, "
+                "gear_codes, usage_mode_codes, updated_at) VALUES (1, 5, 5, 30, :g, :u, now())"
+            ),
+            {"g": gear, "u": usage},
+        )
+
+
+def _gear_in_row(client: TestClient) -> list[int]:
+    with client.app.state.engine.connect() as conn:  # type: ignore[attr-defined]
+        return list(conn.execute(text("SELECT gear_codes FROM geofence_settings")).scalar_one())
+
+
+def test_an_older_row_with_other_gears_and_states_is_narrowed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _write_row(client, [0, 3], [0, 1, 2, 13])
+    body = client.get(URL, headers=auth_headers).json()
+    assert body["settings"]["usage_mode_codes"] == [0, 1]
+    _write_row(client, [3], [2, 13])
+    assert client.get(URL, headers=auth_headers).json()["settings"]["usage_mode_codes"] == [0]
+    check = _app_with_reading(client)
+    assert check._effective().usage_mode_codes == frozenset({"0"})
+    client.put(URL, json=GOOD, headers=auth_headers)
+    assert _gear_in_row(client) == [0]
+    client.delete(URL, headers=auth_headers)
 
 
 def _app_with_reading(client: TestClient, **over: Any) -> GeofenceCheck:
