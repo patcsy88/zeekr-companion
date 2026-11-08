@@ -10,7 +10,7 @@ docker compose exec api python -m app.cli.set_mfa      # optional: authenticator
 ```
 
 - Only `web` publishes a port: `${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}`. Never default it to `0.0.0.0`. `api` and `db` have no `ports`.
-- **Owner-approved exception (2026-11-03):** on the owner's host `WEB_BIND_ADDRESS=0.0.0.0` is set in `infra/.env`, so the iPhone can reach the app over plain HTTP on the private network. The host has no firewall. The checks below that expect `127.0.0.1:8080` (the `docker port` and `ss` checks) fail by design on that host. The default in this file and in `docker-compose.yml` is unchanged.
+- **Owner-approved exception (2026-11-03), ended 2026-11-08:** the owner's host had `WEB_BIND_ADDRESS=0.0.0.0` so the iPhone could reach the app over plain HTTP on the private network. Since 2026-11-08 (owner-reported) it is `127.0.0.1` again and the phone uses HTTPS through the Tailscale sidecar, so the `docker port` and `ss` checks below should pass on that host too.
 - `web` forwards `/api/*` and `/health` to `api:8000`; everything else is static files from `/srv/web` with fallback to `index.html`.
 - **The web image:** `infra/web.Dockerfile` (build context is the repository root) runs `npm ci` and `npm run build` in `apps/web`, runs `check-dist.sh` on the result, and copies it with the `Caddyfile` and `snippets` into a Caddy image. Nothing is mounted from the host, so there is nothing to build or copy by hand. `VITE_SENTRY_DSN` is read at image build time. `WEB_DIST_DIR` is no longer used. `infra/web-placeholder` is no longer used by the stack or by `smoke.sh` (left in place, not deleted).
 - **Headers** (`Caddyfile`): CSP, `nosniff`, `Referrer-Policy: no-referrer` on every response; `no-cache` on `index.html`, `sw.js` and fallback routes; `no-store` on `/api/*`; request body cap 64 KiB (answered as `400 validation_error`, matching the API).
@@ -72,7 +72,7 @@ Nothing to do. The web image builds the client itself in step 3 (see "The web im
 ```
 cd infra && docker compose up -d --build --wait
 curl -s http://127.0.0.1:8080/health          # {"status":"ok"}
-docker port zeekr-companion-web-1             # must show 127.0.0.1:8080 only, never 0.0.0.0 (owner-approved exception on the owner's host: 0.0.0.0, see above)
+docker port zeekr-companion-web-1             # must show 127.0.0.1:8080 only, never 0.0.0.0
 ./smoke.sh                                    # optional; uses its own throwaway project
 ```
 
@@ -121,8 +121,8 @@ sudo ufw status verbose
 
 ### 5. Verify there is no public port
 
-1. `docker port zeekr-companion-web-1` shows `127.0.0.1:8080` only (owner's host: `0.0.0.0:8080` by approved exception); `docker ps` shows no `0.0.0.0` binding for this stack; `api` and `db` publish nothing.
-2. On the Ubuntu host: `ss -ltnp | grep 8080` shows `127.0.0.1:8080`, not `0.0.0.0` or `[::]` (owner's host: `0.0.0.0` by approved exception).
+1. `docker port zeekr-companion-web-1` shows `127.0.0.1:8080` only; `docker ps` shows no `0.0.0.0` binding for this stack; `api` and `db` publish nothing.
+2. On the Ubuntu host: `ss -ltnp | grep 8080` shows `127.0.0.1:8080`, not `0.0.0.0` or `[::]`.
 3. Router: no port forward to the server.
 4. From the phone on cellular **with Tailscale turned off**: `https://<host>.<tailnet>.ts.net` must not load, and the server's public IP must not answer.
 5. Tailnet policy: phone to server `tcp:443` only (ADR-003).
