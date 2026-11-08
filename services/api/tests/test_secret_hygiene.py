@@ -68,13 +68,17 @@ def test_compose_requires_all_secrets() -> None:
 @pytest.mark.parametrize("name", ["docker-compose.yml", "docker-compose.release.yml"])
 def test_tailscale_sidecar_is_opt_in_and_private(name: str) -> None:
     compose = (REPO / "infra" / name).read_text()
-    block = compose.split("\n  tailscale:\n", 1)[1].split("\nconfigs:\n", 1)[0]
+    block = compose.split("\n  tailscale:\n", 1)[1].split("\nnetworks:\n", 1)[0]
     assert '    profiles: ["tailscale"]' in block
     assert "    image: tailscale/tailscale:v" in block
     assert "TS_AUTHKEY: ${TS_AUTHKEY:-}" in block
+    assert "    read_only: true" in block
+    # A read-only service cannot take an inline compose config (owner's host, 2026-11-08).
+    assert "\nconfigs:\n" not in compose and "    configs:" not in block
     for banned in ("ports:", "cap_add:", "devices:", "network_mode:", "backend", "/dev/net/tun"):
         assert banned not in block
     assert "    networks:\n      - edge\n" in block
-    serve = compose.split("\nconfigs:\n", 1)[1].split("\nnetworks:\n", 1)[0]
-    assert '"Proxy": "http://web:8080"' in serve
-    assert '"AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }' in serve
+    assert "TS_SERVE_CONFIG: /tmp/serve.json" in block
+    assert '"Proxy": "http://web:8080"' in block
+    assert '"AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }' in block
+    assert "exec /usr/local/bin/containerboot" in block

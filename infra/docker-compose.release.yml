@@ -155,12 +155,26 @@ services:
       TS_STATE_DIR: /var/lib/tailscale
       TS_USERSPACE: "true"
       TS_ACCEPT_DNS: "false"
-      TS_SERVE_CONFIG: /etc/tailscale-serve/serve.json
+      TS_SERVE_CONFIG: /tmp/serve.json
       TS_ENABLE_HEALTH_CHECK: "true"
       TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
-    configs:
-      - source: tailscale_serve
-        target: /etc/tailscale-serve/serve.json
+    # Serve: HTTPS on 443 to web:8080, Funnel off. Written to the /tmp tmpfs at start, because a
+    # read-only container cannot take an inline compose config. "$$" keeps ${TS_CERT_DOMAIN}
+    # literal for Tailscale to fill in with the node's name.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cat > /tmp/serve.json <<'JSON'
+        {
+          "TCP": { "443": { "HTTPS": true } },
+          "Web": {
+            "$${TS_CERT_DOMAIN}:443": { "Handlers": { "/": { "Proxy": "http://web:8080" } } }
+          },
+          "AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }
+        }
+        JSON
+        exec /usr/local/bin/containerboot
     volumes:
       - tailscale_state:/var/lib/tailscale
     # No "ports": reached only over the tailnet. edge is the only network with a route out.
@@ -180,18 +194,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-configs:
-  # Serve: HTTPS on 443 to web:8080, Funnel off. "$$" keeps ${TS_CERT_DOMAIN} for Tailscale to fill.
-  tailscale_serve:
-    content: |
-      {
-        "TCP": { "443": { "HTTPS": true } },
-        "Web": {
-          "$${TS_CERT_DOMAIN}:443": { "Handlers": { "/": { "Proxy": "http://web:8080" } } }
-        },
-        "AllowFunnel": { "$${TS_CERT_DOMAIN}:443": false }
-      }
 
 networks:
   # api and db live here only. "internal" removes the default route, so neither can reach (or be
