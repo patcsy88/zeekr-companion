@@ -241,3 +241,24 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **Not used:** `timeToFullyCharged` (it read `2047`, which looks like a "not available" value, during one charging reading and a minute count in another), `chargeSts` (same value in both), and the current and voltage fields.
 - **Code:** `app/adapters/zeekr_live.py` (`_charging`, `_plugged_in`; the unused `_flag` removed). Columns, API shape and the card are unchanged, so there is no migration and no web change. Stored rows keep the values they were stored with.
 - **Open:** one reading with the cable unplugged, to find a real plugged-in field. Until then "Plugged in" shows "no reading" whenever the car is not charging.
+
+## Build record: plugged in from the cable field (owner approved 2026-11-08, not deployed)
+
+- **confirmed (owner `--dump` reading with the cable unplugged, 2026-11-08; codes only, no values copied):** with the earlier charging and stopped readings, three states are now seen:
+
+  | Field | Charging | Stopped, cable in | Unplugged |
+  |---|---|---|---|
+  | `chargerState` | `"2"` | `"3"` | `"0"` |
+  | `statusOfChargerConnection` | `"3"` | `"1"` | `"0"` |
+  | `disChargeConnectStatus` | `"3"` | `"1"` | `"0"` |
+  | `chargeLidAcStatus` | `"2"` | `"2"` | `"2"` |
+  | `chargeLidDcAcStatus` | `"1"` | `"1"` | `"2"` |
+  | `isPluggedIn` | `False` | `False` | `False` |
+
+- **Decision (owner "yes", 2026-11-08):**
+  - Plugged in comes from `electricVehicleStatus.statusOfChargerConnection`: `"0"` false, `"1"` or `"3"` true, anything else no reading.
+  - `disChargeConnectStatus` is a cross-check, read with the same codes. If both give an answer and they differ, plugged in is no reading. If the cable reads "no" while `chargerState` says charging, plugged in is no reading. With no cable reading, charging still means plugged in (the earlier rule).
+  - Charging: `chargerState` `"0"` is now false as well (`"2"` true, `"3"` false, else no reading).
+  - The allow-list gains `statusOfChargerConnection` and `disChargeConnectStatus`.
+- **Limits (unverified):** one reading per state, all AC charging at home. DC fast-charging codes are not seen, so unseen codes show no reading. The lid fields are not used.
+- **Code:** `app/adapters/zeekr_live.py` (`_charging`, `_connection`, `_plugged_in`). Columns, API shape and the card are unchanged: no migration, no web change. Stored rows keep their stored values.

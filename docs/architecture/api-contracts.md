@@ -976,3 +976,9 @@ ADR-011 is accepted (2026-11-06). The owner approved this data model and contrac
 - `readings.charging` now comes from `electricVehicleStatus.chargerState`: `"2"` is `true`, `"3"` is `false`, anything else `null` (owner-observed codes, ADR-009 build record 2026-11-08). `isCharging` is no longer read: it stayed false while the car was charging.
 - `readings.plugged_in` is `true` when `charging` is `true`, otherwise `null`, until a field for the cable is confirmed. `isPluggedIn` is no longer read.
 - Shape unchanged: both stay `true`, `false` or `null`. The card already shows `null` as "no reading". Readings stored before this change keep their stored values.
+
+### Amendment: plugged in from the cable field (owner approved 2026-11-08; no migration)
+
+- `readings.plugged_in` now comes from `electricVehicleStatus.statusOfChargerConnection`: `"0"` is `false`, `"1"` or `"3"` is `true`, anything else `null`. `disChargeConnectStatus` is a cross-check with the same codes: if both answer and differ, `null`. If the cable reads `false` while `charging` is `true`, `null`. With no cable reading, `true` when `charging` is `true`, otherwise `null` (ADR-009 build record "plugged in from the cable field").
+- `readings.charging`: `chargerState` `"0"` (unplugged) is now `false` too.
+- Shape unchanged: both stay `true`, `false` or `null`. Readings stored before this change keep their stored values.
