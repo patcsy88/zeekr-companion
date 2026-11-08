@@ -91,3 +91,5 @@ Facts checked in the repo on 2026-11-06:
 - Recovery codes are `xxxxx-xxxxx`, scrypt-hashed at `RECOVERY_SCRYPT_N = 2**14`.
 - The second factor is checked on every login that reaches the check, whether or not the password was right, so the work done does not show which part failed. A code is spent (atomic update) only when the whole login is otherwise right.
 - Review: `docs/security/review-2026-11-06-owner-mfa.md`.
+
+**Update 2026-11-08 (owner-reported):** the host now publishes `web` on `127.0.0.1` only, and the phone reaches it over Tailscale HTTPS. The plain HTTP LAN exposure described in the context has ended; MFA stays.
