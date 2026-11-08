@@ -2,31 +2,33 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Every value below is made up for the screenshots. Nothing comes from a real car or account.
+// Every value below is synthetic. None of it is taken from the owner's car, account, settings or
+// history: a different variant and tyre size, dates in 2030, round invented readings and a
+// geofence setup the owner does not use.
 const OUT = fileURLToPath(new URL('../../../docs/screenshots/', import.meta.url));
-const NOW = new Date('2026-11-09T10:30:00+08:00');
-const STAMP = '2026-11-01T02:00:00Z';
-const READ_AT = '2026-11-09T02:25:00Z';
+const NOW = new Date('2030-06-15T09:00:00+08:00');
+const STAMP = '2030-06-01T01:00:00Z';
+const READ_AT = '2030-06-15T00:55:00Z';
 
 const vehicle = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   model: '7X',
-  variant: 'AWD Performance (2025)',
-  drive: 'AWD',
+  variant: 'RWD Long Range (2026)',
+  drive: 'RWD',
   steering: 'RHD',
   registration: null,
   vin: null,
-  purchase_date: '2025-03-15',
+  purchase_date: null,
   purchase_price_minor: 0,
   currency: 'MYR',
-  tyre_spec: '265/45 R20',
+  tyre_spec: '255/50 R19',
 };
 
 const record = (n: number, date: string, odometer: number, description: string, cost: number) => ({
   id: `b0000000-0000-4000-8000-00000000000${String(n)}`,
   date,
   odometer,
-  provider: 'Sample service centre',
+  provider: 'Example Motors (sample)',
   description,
   cost_minor: cost,
   currency: 'MYR',
@@ -35,9 +37,9 @@ const record = (n: number, date: string, odometer: number, description: string, 
   updated_at: STAMP,
 });
 const records = [
-  record(3, '2026-09-20', 18450, '20,000 km service: cabin filter, brake fluid check', 48000),
-  record(2, '2026-04-02', 10120, 'Tyre rotation and alignment', 18000),
-  record(1, '2025-09-18', 5030, 'First free service', 0),
+  record(3, '2030-05-10', 40000, 'Sample: 40,000 km service', 65000),
+  record(2, '2029-11-20', 30000, 'Sample: wiper blades and cabin filter', 22000),
+  record(1, '2029-05-02', 20000, 'Sample: 20,000 km service', 40000),
 ];
 
 const reminder = (n: number, over: Record<string, unknown>) => ({
@@ -59,20 +61,20 @@ const reminders = [
   reminder(1, {
     kind: 'road_tax_renewal',
     title: 'Road tax renewal',
-    due_date: '2026-11-05',
+    due_date: '2030-06-01',
     status: 'overdue',
     overdue_by: ['date'],
   }),
-  reminder(2, { title: '30,000 km service', due_date: '2027-03-20', due_odometer: 30000 }),
-  reminder(3, { kind: 'insurance_renewal', title: 'Insurance renewal', due_date: '2027-03-14' }),
-  reminder(4, { title: 'Tyre rotation', due_odometer: 20000 }),
+  reminder(2, { title: 'Sample: 60,000 km service', due_date: '2031-05-10', due_odometer: 60000 }),
+  reminder(3, { kind: 'insurance_renewal', title: 'Insurance renewal', due_date: '2030-09-01' }),
+  reminder(4, { title: 'Sample: tyre rotation', due_odometer: 50000 }),
 ];
 
 const tyres = (kpa: number) => ({
   driver_front: kpa,
-  passenger_front: kpa + 3,
-  driver_rear: kpa - 2,
-  passenger_rear: kpa + 1,
+  passenger_front: kpa,
+  driver_rear: kpa + 10,
+  passenger_rear: kpa + 10,
 });
 const liveCard = {
   status: 'ok',
@@ -81,16 +83,16 @@ const liveCard = {
   observed_at: READ_AT,
   received_at: READ_AT,
   readings: {
-    odometer_km: 18972,
-    battery_percent: 76,
-    range_km: 412,
+    odometer_km: 42000,
+    battery_percent: 60,
+    range_km: 300,
     plugged_in: false,
     charging: false,
-    tyres_kpa: tyres(250),
-    service_distance_km: 11028,
-    service_days: 131,
-    battery_12v_volts: 12.6,
-    tyres_celsius: { driver_front: 31, passenger_front: 32, driver_rear: 30, passenger_rear: 31 },
+    tyres_kpa: tyres(240),
+    service_distance_km: 8000,
+    service_days: 100,
+    battery_12v_volts: 12.5,
+    tyres_celsius: { driver_front: 30, passenger_front: 30, driver_rear: 30, passenger_rear: 30 },
     indicators: {
       pre_climate_active: false,
       fragrance_active: false,
@@ -106,22 +108,22 @@ const geofenceAlert = {
   id: 'c0000000-0000-4000-8000-000000000001',
   condition: 'sentry_off_outside_geofence',
   status: 'proposed',
-  inputs: { reading_age_minutes: 4 },
+  inputs: { reading_age_minutes: 10 },
   source_refs: [],
   explanation: null,
   explanation_status: 'disabled',
   urgency: null,
   suggestion: null,
   provenance: { rule_version: 1, prompt_version: null, model_id: null },
-  created_at: '2026-11-09T02:20:00Z',
-  updated_at: '2026-11-09T02:20:00Z',
+  created_at: '2030-06-15T00:50:00Z',
+  updated_at: '2030-06-15T00:50:00Z',
   decided_at: null,
 };
 
 const autoLog = [
   {
     id: 'd0000000-0000-4000-8000-000000000001',
-    created_at: '2026-11-02T06:40:00Z',
+    created_at: '2030-06-08T04:00:00Z',
     desired: 'on',
     result: 'sent',
     skip_reason: null,
@@ -131,7 +133,7 @@ const autoLog = [
 ];
 
 const geofence = {
-  settings: { radius_km: 5, interval_minutes: 5, stale_minutes: 30, usage_mode_codes: [0] },
+  settings: { radius_km: 8, interval_minutes: 10, stale_minutes: 20, usage_mode_codes: [1] },
   sources: {
     radius_km: 'saved',
     interval_minutes: 'saved',
@@ -155,10 +157,10 @@ const geofence = {
 };
 
 const odometer = {
-  km: 18972,
+  km: 42000,
   source: 'live_reading',
   service_record_id: null,
-  date: '2026-11-09',
+  date: '2030-06-15',
 };
 
 function answer(path: string): unknown {
@@ -180,7 +182,7 @@ function answer(path: string): unknown {
   if (path === '/vehicle/sentry/auto')
     return {
       enabled: true,
-      quiet_minutes: 60,
+      quiet_minutes: 120,
       host_allowed: true,
       can_enable: true,
       limits: { quiet_minutes: { min: 5, max: 1440 } },
