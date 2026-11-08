@@ -83,4 +83,5 @@ The owner stated in chat that the feature is "good and tested" and asked for it 
 
 - Automatic Sentry still sends only after a new geofence alert opens. That alert now needs gear P (`gearAutoStatus '0'`, fixed in code, not a setting) and a vehicle state of Deep Sleep (`usageMode '0'`) and/or Parked (`'1'`), as chosen on the Geofence tab. No other state can open the alert, so no other state can send Sentry, even if an older saved setting listed it.
 - **unverified:** `usageMode '1'` (Parked) has not been read on the owner's car; its label is the public integration's. `'0'` with the car asleep in P is the owner's reading.
+- **Owner-reported 2026-11-08:** a real asleep-and-away stay (Deep Sleep, P, more than 5 km from home) turned Sentry on automatically, and the same state within 5 km of home did not. This meets the "proven on a real asleep-and-away stay" condition above (answer 5), on the owner's word; no log lines were shown. Parked (`'1'`) is still untested. Details in `docs/operations/deploy-plan.md`.
 - No change to the toggle, the quiet period, the one-send-per-alert rule or the host switch.
