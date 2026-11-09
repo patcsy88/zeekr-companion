@@ -175,7 +175,7 @@ Browser error reporting (`VITE_SENTRY_DSN`) is **off** in the published web imag
 
 ### On a 512 MB host (Raspberry Pi Zero 2 W)
 
-Not tested on a real Pi. The figures below come from the `arm64` images on the development Mac, with all containers sharing one memory limit and swap off (ADR-006 amendment 2026-11-09).
+The measured figures below come from the `arm64` images on the development Mac, with all containers sharing one memory limit and swap off (ADR-006 amendment 2026-11-09). What the owner reported from a real Pi is under "Reported on a Pi Zero 2 W" at the end of this section.
 
 - **Release:** the first release **after `v0.1.11`**. Older API images ignore `PASSWORD_HASH_CONCURRENCY`, so a burst of sign-ins can still run them out of memory.
 - **System:** a 64-bit OS. `uname -m` must print `aarch64`; `armv7l` (32-bit) is not supported. A Lite (no desktop) image leaves the most memory.
@@ -202,6 +202,17 @@ What the overlay does (`infra/docker-compose.lowmem.yml`):
 The result: with all containers sharing **288 MB**, 8 sign-ins at once and 1,500 requests all succeeded, with nothing killed. At 256 MB the API was killed. Without the overlay it needs about 400 MB. Sign-ins that arrive together now wait in line, so each one can take a few seconds longer. Nothing else in the app changes.
 
 To turn it off, remove the `COMPOSE_FILE` line and run `docker compose up -d --wait`.
+
+#### Reported on a Pi Zero 2 W
+
+Owner-reported on 2026-11-09 from command output pasted in chat (not run by the agent):
+
+- **System:** Debian 13 (trixie), `aarch64`, Docker Engine 29.9.3, Compose v5.7.0, cgroup version 2. The stack is `v0.1.12` with the overlay, Tailscale sidecar on; all four containers healthy after about an hour.
+- **Only about 415 MiB is visible** (`free -m` and `docker info`), not 512 MB: the kernel and the graphics part keep the rest. About 144 MiB was available at idle.
+- **Swap is zram** (`swapon --show`: `/dev/zram0`, 415 MiB), already set up on that system; about 149 MiB of it was in use at idle. zram is compressed memory, so it does not wear the SD card. Check yours with `swapon --show`; a swap file on the card works but is slower.
+- **The limits took effect:** `docker stats` showed api 288 MiB, db 96 MiB, web 64 MiB and tailscale 96 MiB, and `PASSWORD_HASH_CONCURRENCY` printed `1`.
+- **Idle use:** api about 22 MiB, db about 19 MiB, tailscale about 11 MiB, web about 6 MiB. These are lower than on the Mac because idle memory had moved into zram.
+- **Not yet checked:** a sign-in on the Pi (the moment the API needs about 128 MB more), its time, and that no container was killed for memory afterwards (`RestartCount` and `OOMKilled` from `docker inspect`, and `dmesg`).
 
 ### Publishing a release (owner)
 
