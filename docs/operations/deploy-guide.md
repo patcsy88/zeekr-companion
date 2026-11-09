@@ -212,7 +212,7 @@ Owner-reported on 2026-11-09 from command output pasted in chat (not run by the 
 - **Swap is zram** (`swapon --show`: `/dev/zram0`, 415 MiB), already set up on that system; about 149 MiB of it was in use at idle. zram is compressed memory, so it does not wear the SD card. Check yours with `swapon --show`; a swap file on the card works but is slower.
 - **The limits took effect:** `docker stats` showed api 288 MiB, db 96 MiB, web 64 MiB and tailscale 96 MiB, and `PASSWORD_HASH_CONCURRENCY` printed `1`.
 - **Idle use:** api about 22 MiB, db about 19 MiB, tailscale about 11 MiB, web about 6 MiB. These are lower than on the Mac because idle memory had moved into zram.
-- **Not yet checked:** a sign-in on the Pi (the moment the API needs about 128 MB more), its time, and that no container was killed for memory afterwards (`RestartCount` and `OOMKilled` from `docker inspect`, and `dmesg`).
+- **Sign-in works:** a sign-in from the iPhone (the moment the API needs about 128 MB more) took about 8 to 10 seconds. Expect that wait on this hardware; it is the password check running once, with swap in use. Afterwards no container had been killed for memory: `docker inspect` showed `restarts=0 oom=false` for api, db, web and tailscale, and `sudo dmesg | grep -iE 'out of memory|killed process'` printed nothing.
 
 ### Publishing a release (owner)
 
