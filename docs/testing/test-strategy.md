@@ -36,6 +36,8 @@ Run from the repository root.
 
 A failed gate blocks completion. Gates are never skipped to obtain a pass. A gate that cannot run is reported as not run, with the reason.
 
+Image scan on GitHub (added by the owner 2026-11-09; not a local gate): `.github/workflows/trivy.yml` builds the api and web images from their real Dockerfiles and scans each with Trivy for CRITICAL and HIGH findings, on every push and pull request to `main` and weekly. Findings appear in the repository's Security tab under `trivy-api` and `trivy-web`; they do not fail the run. Every action is pinned to a commit hash; never pin `trivy-action` to a tag (its tags were force-pushed to malicious code in March 2026).
+
 ## Rules
 
 - Tests use disposable data and a disposable database. They never touch real records.
