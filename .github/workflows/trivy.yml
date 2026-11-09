@@ -1,48 +1,66 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Scans the api and web images for known vulnerabilities (CRITICAL and HIGH) with Trivy and shows
+# the findings in the repository's Security tab. Findings do not fail the run.
+# Builds each image from its real Dockerfile, the same paths as release-images.yml. Nothing is pushed.
+#
+# Every action is pinned to a commit hash (the version is in the comment), as in release-images.yml.
+# Never pin trivy-action to a tag: in March 2026, 75 of its version tags were force-pushed to code
+# that stole credentials (github.com/aquasecurity/trivy/discussions/10462). A hash cannot be moved.
 
 name: trivy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "main" ]
+    branches: ["main"]
   schedule:
-    - cron: '44 9 * * 4'
+    - cron: "44 9 * * 4"
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  scan:
     permissions:
       contents: read # for actions/checkout to fetch code
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
-    name: Build
+    name: Scan ${{ matrix.image }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: services/api
+            dockerfile: services/api/Dockerfile
+          - image: web
+            context: .
+            dockerfile: infra/web.Dockerfile
+    env:
+      IMAGE_REF: zeekr-companion-${{ matrix.image }}:scan-${{ github.sha }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
-      - name: Build an image from Dockerfile
-        run: |
-          docker build -t docker.io/my-organization/my-app:${{ github.sha }} .
+      - name: Build the ${{ matrix.image }} image
+        run: docker build -t "$IMAGE_REF" -f "${{ matrix.dockerfile }}" "${{ matrix.context }}"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          image-ref: ${{ env.IMAGE_REF }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.image }}
