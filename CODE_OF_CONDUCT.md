@@ -59,8 +59,12 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-.
+reported to the community leaders responsible for enforcement privately,
+through GitHub's private reporting: open the repository's **Security** tab and
+choose **Report a vulnerability**, and say in the title that it is a Code of
+Conduct report. Only you and the repository owner can see it. If that
+option is not shown, open a public issue that says only "conduct contact
+requested", with no details, and the owner will reply with a private route.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
