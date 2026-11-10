@@ -22,17 +22,21 @@ Run from the repository root.
 | Backend format and lint | `cd services/api && ruff check . && ruff format --check .` |
 | Backend types | `cd services/api && mypy app` |
 | Backend tests | `cd services/api && pytest` |
+| Backend coverage | `cd services/api && pytest --cov` (`pytest-cov`; config in `pyproject.toml`). Line and branch coverage of `app/`, excluding the owner-run scripts in `app/cli/`. Fails below 95% (baseline 96.01% on 2026-11-10). |
 | Migrations on a clean DB | `cd services/api && alembic upgrade head` against a new test database, run twice |
 | Backend dependency audit | `cd services/api && pip-audit` |
 | Web lint | `cd apps/web && npm run lint` (ESLint: typescript-eslint, react-hooks, jsx-a11y) |
 | Web format | `cd apps/web && npm run format:check` |
 | Web types | `cd apps/web && npx tsc --noEmit` (strict) |
 | Web tests | `cd apps/web && npm test` |
+| Web coverage | `cd apps/web && npm run test:coverage` (`@vitest/coverage-v8`; config in `vitest.config.ts`). Coverage of `src/` from the unit tests, excluding `src/main.tsx`; Playwright runs are not counted. Fails below statements 87%, branches 82%, functions 84%, lines 90% (baseline 87.57 / 82.56 / 84.7 / 90.71 on 2026-11-10). |
 | Web build | `cd apps/web && npm run build` |
 | Web end to end | `cd apps/web && npm run e2e` |
 | Web dependency audit | `cd apps/web && npm audit --audit-level=high` |
 | Shared types drift | Regenerate from the OpenAPI schema and fail on any diff |
 | Secret scan | `gitleaks detect --no-git --source . --redact` from the repo root (approved by the owner 2026-10-11; `brew install gitleaks`). Config: `.gitleaks.toml`, which allowlists only named test-only fixtures. Never scan `zeekr-private-docs`. Run with git history too once the first commit exists. |
+
+Coverage floors (owner decision 2026-11-10, option B): each floor sits just below the measured baseline, so a drop fails the gate. Raise a floor when coverage rises; never lower one to get a pass. Coverage shows which code ran, not that it was checked well.
 
 A failed gate blocks completion. Gates are never skipped to obtain a pass. A gate that cannot run is reported as not run, with the reason.
 
