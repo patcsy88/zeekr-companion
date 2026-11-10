@@ -32,6 +32,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "pip-audit>=2.7",
+    "pytest-cov>=7.1",
     "certifi>=2026.10.19",  # PYSEC-2026-4320; transitive via httpx and pip-audit
     "filelock>=4.2.1",  # 17 advisories fixed in 4.2.1; transitive dev-tool dependency
 ]
@@ -64,3 +65,15 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# Owner-run terminal scripts, not served by the API (see docs/testing/test-strategy.md).
+omit = ["app/cli/*"]
+
+[tool.coverage.report]
+# Floor just below the 2026-11-10 baseline (96.01% lines and branches). Raise it, never lower it.
+fail_under = 95
+show_missing = true
+skip_covered = true

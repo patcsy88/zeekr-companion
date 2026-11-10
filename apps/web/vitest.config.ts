@@ -17,5 +17,14 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      // main.tsx only mounts <App />; it runs in the browser, not under jsdom.
+      exclude: ['src/main.tsx'],
+      reporter: ['text-summary', 'text'],
+      // Floors just below the 2026-11-10 baseline (87.57 / 82.56 / 84.7 / 90.71). Raise them, never lower them.
+      thresholds: { statements: 87, branches: 82, functions: 84, lines: 90 },
+    },
   },
 });
