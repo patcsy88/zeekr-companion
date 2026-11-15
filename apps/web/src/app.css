@@ -39,6 +39,14 @@
 @source './pages/TyreEventDetailPage.tsx';
 @source './pages/ReminderTemplatePage.tsx';
 @source './pages/WarrantyTemplatePage.tsx';
+@source './pages/SentryPage.tsx';
+@source './pages/GeofencePage.tsx';
+@source './pages/AdvisoryPage.tsx';
+@source './pages/LiveHistoryPage.tsx';
+@source './components/SentryControl.tsx';
+@source './components/SentryPanel.tsx';
+@source './components/AutoSentryPanel.tsx';
+@source './components/LiveTrend.tsx';
 @source './components/SignIn.tsx';
 @source './components/LiveVehicleCard.tsx';
 @source './pages/VehiclePage.tsx';

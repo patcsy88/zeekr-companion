@@ -9,6 +9,11 @@ import type {
 } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
 import { Skeleton } from '../components/Skeleton';
+import { ACTIONS, ERROR } from '../components/Field';
+import { HEAD, LIST, MUTED, NOTICE, PREWRAP, SMALL } from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { cn } from '../lib/cn';
 
 const CONDITION_LABELS: Record<AdvisoryProposal['condition'], string> = {
   date_vs_km_warranty: 'Warranty km limit may be reached before its end date',
@@ -115,35 +120,35 @@ export function AdvisoryPage() {
     return (
       <section aria-labelledby="adv-title">
         <h1 id="adv-title">Advisory</h1>
-        <p className="muted">Advisory needs a sign-in and a connection to the server.</p>
+        <p className={MUTED}>Advisory needs a sign-in and a connection to the server.</p>
       </section>
     );
   }
 
   return (
     <section aria-labelledby="adv-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="adv-title">Advisory</h1>
-        <button type="button" className="primary" disabled={busy} onClick={() => void runChecks()}>
+        <Button size="lg" disabled={busy} onClick={() => void runChecks()}>
           Run checks now
-        </button>
+        </Button>
       </div>
-      <p className="muted small">
+      <p className={SMALL}>
         Suggestions only. Nothing changes until you accept one, and nothing is sent to the car.
       </p>
       {status ? (
-        <p className="muted small" data-testid="advisory-status">
+        <p className={SMALL} data-testid="advisory-status">
           Model: {status.model_enabled ? `on (${status.model_id ?? 'not set'})` : 'off'}. Calls this
           month: {status.calls_this_month} of {status.monthly_limit}.
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {error}
         </p>
       ) : null}
       {lastRun ? (
-        <div className="notice info" role="status" data-testid="advisory-run">
+        <div className={NOTICE.info} role="status" data-testid="advisory-run">
           <p>
             Checked: {lastRun.created.length} new, {lastRun.unchanged} already known.
           </p>
@@ -155,13 +160,18 @@ export function AdvisoryPage() {
       {items === null ? (
         <Skeleton />
       ) : items.length === 0 ? (
-        <p className="muted">No open suggestions.</p>
+        <p className={MUTED}>No open suggestions.</p>
       ) : (
-        <ul className="list" aria-label="Suggestions">
+        <ul className={LIST} aria-label="Suggestions">
           {items.map((p) => (
-            <li key={p.id} data-testid="proposal">
-              <h2>{CONDITION_LABELS[p.condition]}</h2>
-              <dl className="small">
+            <Card
+              render={<li />}
+              key={p.id}
+              data-testid="proposal"
+              className="gap-2 p-4 [&_p]:my-0"
+            >
+              <h2 className="m-0 text-base">{CONDITION_LABELS[p.condition]}</h2>
+              <dl className="m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm [&_dd]:m-0 [&_dd]:[overflow-wrap:anywhere] [&_div]:contents [&_dt]:text-muted-foreground">
                 {Object.entries(p.inputs).map(([k, v]) => (
                   <div key={k}>
                     <dt>{INPUT_LABELS[k] ?? k}</dt>
@@ -169,32 +179,30 @@ export function AdvisoryPage() {
                   </div>
                 ))}
               </dl>
-              {p.explanation ? <p>{p.explanation}</p> : null}
+              {p.explanation ? <p className={PREWRAP}>{p.explanation}</p> : null}
               {p.condition === 'sentry_off_outside_geofence' ? null : (
-                <p className="muted small">{EXPLANATION_NOTES[p.explanation_status]}</p>
+                <p className={SMALL}>{EXPLANATION_NOTES[p.explanation_status]}</p>
               )}
-              <p className="muted small">
+              <p className={SMALL}>
                 Rule version {p.provenance.rule_version}
                 {p.provenance.model_id ? `, model ${p.provenance.model_id}` : ''}.
               </p>
-              <div className="actions">
+              <div className={cn(ACTIONS, 'mt-1')}>
                 {p.suggestion ? (
-                  <button
-                    type="button"
-                    className="primary"
+                  <Button
                     disabled={busy}
                     onClick={() => {
                       accept(p);
                     }}
                   >
                     Accept: add reminder
-                  </button>
+                  </Button>
                 ) : null}
-                <button type="button" disabled={busy} onClick={() => void dismiss(p)}>
+                <Button variant="outline" disabled={busy} onClick={() => void dismiss(p)}>
                   Dismiss
-                </button>
+                </Button>
               </div>
-            </li>
+            </Card>
           ))}
         </ul>
       )}

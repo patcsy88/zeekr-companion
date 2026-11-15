@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { ApiError, request } from '../api/client';
 import type { SentryCommandResult } from '../api/types';
+import { ACTIONS } from './Field';
+import { NOTICE, SMALL } from './ListParts';
+import { Button } from './ui/button';
 
 // The server waits SENTRY_CONFIRM_WAIT_SECONDS (5 to 30, default 15) for the car to report, so the
 // request may take longer than the default timeout.
@@ -32,7 +35,7 @@ export function SentryControl({
 
   if (current === null) {
     return (
-      <p className="muted small" data-testid="sentry-unknown">
+      <p className={SMALL} data-testid="sentry-unknown">
         Sentry: no reading. It can be switched here once the car reports its state.
       </p>
     );
@@ -98,23 +101,22 @@ export function SentryControl({
         <span aria-hidden="true">{current ? 'On' : 'Off'}</span>
       </button>
       {phase === 'confirm' ? (
-        <div role="group" aria-label="Confirm Sentry command" className="notice info">
-          <p>
+        <div role="group" aria-label="Confirm Sentry command" className={NOTICE.info}>
+          <p className="mb-3">
             This sends a real command to the car: Sentry {desired}. It is sent once, and the switch
             then moves to what the car reports.
           </p>
-          <button type="button" className="primary" onClick={() => void send()}>
-            Send Sentry {desired}
-          </button>{' '}
-          <button
-            type="button"
-            className="link"
-            onClick={() => {
-              setPhase('idle');
-            }}
-          >
-            Cancel
-          </button>
+          <div className={ACTIONS}>
+            <Button onClick={() => void send()}>Send Sentry {desired}</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPhase('idle');
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       ) : null}
       {phase === 'sending' ? (

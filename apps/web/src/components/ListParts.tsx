@@ -30,6 +30,7 @@ const NOTICE_BASE =
 export const NOTICE = {
   info: cn(NOTICE_BASE, 'border-info/32 bg-info/4'),
   bad: cn(NOTICE_BASE, 'border-destructive/32 bg-destructive/4'),
+  warn: cn(NOTICE_BASE, 'border-warning/32 bg-warning/4'),
 };
 
 /** One card in a LIST. */

@@ -2,6 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { request } from '../api/client';
 import type { GeofenceOption, GeofenceSettings } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
+import { ACTIONS, ERROR, FORM, HINT, TextField } from '../components/Field';
+import { MUTED, NOTICE } from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { cn } from '../lib/cn';
 
 interface Form {
   radius: string;
@@ -30,12 +34,18 @@ function StateGroup(props: {
   onChange: (next: number[]) => void;
 }) {
   return (
-    <fieldset>
-      <legend>Vehicle State(s)</legend>
+    <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+      <legend className="mb-2 p-0 font-medium text-base/4.5 text-foreground sm:text-sm/4">
+        Vehicle State(s)
+      </legend>
       {props.options.map((o) => (
-        <label key={o.code} className="check">
+        <label
+          key={o.code}
+          className="m-0 flex min-h-11 items-center gap-3 font-normal text-foreground"
+        >
           <input
             type="checkbox"
+            className="m-0 size-5 shrink-0 accent-primary"
             checked={props.chosen.includes(o.code)}
             onChange={(e) => {
               props.onChange(
@@ -48,7 +58,7 @@ function StateGroup(props: {
           {o.label}
         </label>
       ))}
-      <p className="muted small">
+      <p className={HINT}>
         Pick one or both. No other state counts. The state names come from a public integration and
         are not yet confirmed on this car.
       </p>
@@ -88,7 +98,7 @@ export function GeofencePage() {
     return (
       <section aria-labelledby="geo-title">
         <h1 id="geo-title">Geofence</h1>
-        <p className="muted">Geofence settings need a sign-in and a connection to the server.</p>
+        <p className={MUTED}>Geofence settings need a sign-in and a connection to the server.</p>
       </section>
     );
   }
@@ -164,64 +174,67 @@ export function GeofencePage() {
     data && limits ? data.settings.stale_minutes > limits.stale_minutes_max : false;
 
   return (
-    <section aria-labelledby="geo-title">
-      <h1 id="geo-title">Geofence</h1>
-      <p className="muted small">
+    <section aria-labelledby="geo-title" className={FORM}>
+      <h1 id="geo-title" className="m-0">
+        Geofence
+      </h1>
+      <p className={HINT}>
         These settings decide when the app shows a notice. It never sends anything to the car. Your
         home address stays on the host and is not shown here.
       </p>
       {data ? (
-        <p className="muted small" data-testid="geo-status">
+        <p className={HINT} data-testid="geo-status">
           Geofence: {data.enabled ? 'on' : 'off'} (set on the host). Home point:{' '}
           {data.home_set ? 'set' : 'not set'}. Values from:{' '}
           {data.sources.radius_km === 'saved' ? 'saved settings' : 'the host'}.
         </p>
       ) : null}
       {aboveLimit && limits ? (
-        <p role="status" className="muted small" data-testid="geo-above-limit">
+        <p role="status" className={HINT} data-testid="geo-above-limit">
           The host stale limit is {data?.settings.stale_minutes} minutes, above the tab&apos;s
           maximum of {limits.stale_minutes_max}. It applies until you save.
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {error}
         </p>
       ) : null}
-      {notice ? <p role="status">{notice}</p> : null}
+      {notice ? (
+        <p role="status" className={cn(NOTICE.info, 'my-0')}>
+          {notice}
+        </p>
+      ) : null}
       {form && limits ? (
-        <form onSubmit={(e) => void save(e)} noValidate>
-          <label>
-            Radius (km)
-            <input
-              inputMode="decimal"
-              value={form.radius}
-              onChange={(e) => {
-                setForm({ ...form, radius: e.target.value });
-              }}
-            />
-          </label>
-          <label>
-            Check every (minutes)
-            <input
-              inputMode="numeric"
-              value={form.interval}
-              onChange={(e) => {
-                setForm({ ...form, interval: e.target.value });
-              }}
-            />
-          </label>
-          <label>
-            Stale limit (minutes, at most {limits.stale_minutes_max})
-            <input
-              inputMode="numeric"
-              value={form.stale}
-              onChange={(e) => {
-                setForm({ ...form, stale: e.target.value });
-              }}
-            />
-          </label>
-          <p className="muted small" data-testid="geo-gear-note">
+        <form className={FORM} onSubmit={(e) => void save(e)} noValidate>
+          <TextField
+            id="geo-radius"
+            label="Radius (km)"
+            inputMode="decimal"
+            value={form.radius}
+            onChange={(e) => {
+              setForm({ ...form, radius: e.target.value });
+            }}
+          />
+          <TextField
+            id="geo-interval"
+            label="Check every (minutes)"
+            inputMode="numeric"
+            value={form.interval}
+            onChange={(e) => {
+              setForm({ ...form, interval: e.target.value });
+            }}
+          />
+          <TextField
+            id="geo-stale"
+            label={`Stale limit (minutes, at most ${limits.stale_minutes_max})`}
+            inputMode="numeric"
+            value={form.stale}
+            onChange={(e) => {
+              setForm({ ...form, stale: e.target.value });
+            }}
+          />
+          <p className={HINT} data-testid="geo-gear-note">
             Sentry is only turned on when the car is in P (Park).
           </p>
           <StateGroup
@@ -231,17 +244,18 @@ export function GeofencePage() {
               setForm({ ...form, usage });
             }}
           />
-          <div className="actions">
-            <button type="submit" className="primary" disabled={busy}>
+          <div className={ACTIONS}>
+            <Button type="submit" size="lg" disabled={busy}>
               Save
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               disabled={busy || data?.sources.radius_km !== 'saved'}
               onClick={() => void reset()}
             >
               Use the host values
-            </button>
+            </Button>
           </div>
         </form>
       ) : null}

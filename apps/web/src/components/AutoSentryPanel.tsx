@@ -4,6 +4,11 @@ import type { AutoSentry, CommandLog, CommandLogItem } from '../api/types';
 import { useConnectivity, useSession } from '../data/hooks';
 import { formatKl } from '../lib/liveVehicle';
 import { Skeleton } from './Skeleton';
+import { TextField } from './Field';
+import { NOTICE, SMALL } from './ListParts';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { cn } from '../lib/cn';
 
 const LOG_PATH = '/vehicle/sentry/log?limit=20';
 const SHOWN = 3;
@@ -74,7 +79,7 @@ export function AutoSentryPanel() {
   if (!active) return null;
   if (auto === null) {
     return failed ? (
-      <p role="status" className="muted small">
+      <p role="status" className={SMALL}>
         Could not load the automatic Sentry setting.
       </p>
     ) : (
@@ -120,9 +125,9 @@ export function AutoSentryPanel() {
   }
 
   return (
-    <div data-testid="auto-sentry" className="auto-sentry">
-      <h2 className="small">Automatic Sentry on</h2>
-      <p className="muted small">
+    <Card data-testid="auto-sentry" className="my-4 items-start gap-3 p-4 [&_p]:my-0">
+      <h2 className="m-0 text-base">Automatic Sentry on</h2>
+      <p className={SMALL}>
         When a new alert opens, the app sends Sentry on once, without asking. It never sends Sentry
         off, and it does not retry.
       </p>
@@ -145,60 +150,57 @@ export function AutoSentryPanel() {
         <span aria-hidden="true">{auto.enabled ? 'On' : 'Off'}</span>
       </button>
       {blocked ? (
-        <p className="muted small" data-testid="auto-sentry-blocked">
+        <p className={SMALL} data-testid="auto-sentry-blocked">
           It cannot be turned on yet. The host switch, live readings and the geofence must all be
           on.
         </p>
       ) : null}
-      <label className="field">
-        Quiet period (minutes)
-        <input
+      <div className="w-full">
+        <TextField
+          id="auto-sentry-quiet"
+          label="Quiet period (minutes)"
+          hint={`If any Sentry command was logged within this time, the automatic send is skipped. ${min} to ${max} minutes.`}
+          error={valid ? null : `Enter a whole number from ${min} to ${max}.`}
           type="text"
           inputMode="numeric"
           value={quiet}
           disabled={busy}
-          aria-invalid={!valid}
           data-testid="auto-sentry-quiet"
           onChange={(e) => {
             setQuiet(e.target.value);
           }}
         />
-      </label>
-      <p className="muted small">
-        If any Sentry command was logged within this time, the automatic send is skipped. {min} to{' '}
-        {max} minutes.
-      </p>
-      {!valid ? (
-        <p role="alert" className="error small">
-          Enter a whole number from {min} to {max}.
-        </p>
-      ) : null}
-      <button
-        type="button"
+      </div>
+      <Button
+        variant="outline"
         disabled={busy || !dirty}
         data-testid="auto-sentry-save"
         onClick={() => void save(auto.enabled, minutes)}
       >
         Save quiet period
-      </button>
+      </Button>
       {note ? (
-        <p role="status" className="notice info" data-testid="auto-sentry-note">
+        <p role="status" className={cn(NOTICE.info, 'w-full')} data-testid="auto-sentry-note">
           {note}
         </p>
       ) : null}
       {rows === null ? null : rows.length === 0 ? (
-        <p className="muted small" data-testid="auto-sentry-none">
+        <p className={SMALL} data-testid="auto-sentry-none">
           No automatic send yet.
         </p>
       ) : (
-        <ul className="list" aria-label="Recent automatic sends" data-testid="auto-sentry-log">
+        <ul
+          className="m-0 grid list-none gap-1 p-0"
+          aria-label="Recent automatic sends"
+          data-testid="auto-sentry-log"
+        >
           {rows.map((r) => (
-            <li key={r.id} className="small">
+            <li key={r.id} className="text-sm">
               {describeAuto(r)}
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }

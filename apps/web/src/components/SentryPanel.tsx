@@ -6,6 +6,17 @@ import { formatKl } from '../lib/liveVehicle';
 import { useSentryPush, type PushedSentry } from '../lib/sentryPush';
 import { Skeleton } from './Skeleton';
 import { SentryControl } from './SentryControl';
+import { MUTED, NOTICE, SMALL } from './ListParts';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { cn } from '../lib/cn';
+
+/** The panel edge follows what the car reports: green when on, dashed when unknown. */
+const TONE = {
+  on: 'border-success/48 bg-success/4',
+  off: '',
+  unknown: 'border-dashed',
+} as const;
 
 /** What the car reported right after a send. It holds only while the page still shows the
  * reading it was read against; a newer card reading replaces it. */
@@ -64,12 +75,12 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
     };
   }, [active, load]);
 
-  if (!active) return <p className="muted">The Sentry switch needs a connection.</p>;
+  if (!active) return <p className={MUTED}>The Sentry switch needs a connection.</p>;
   if (card === null)
     return failed ? <p role="status">Could not load the car state.</p> : <Skeleton />;
   if (card.status === 'off') {
     return (
-      <p className="muted" data-testid="live-off">
+      <p className={MUTED} data-testid="live-off">
         Live readings are off, so the Sentry switch is not available.
       </p>
     );
@@ -85,29 +96,37 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
   const tone = shown === null ? 'unknown' : shown ? 'on' : 'off';
 
   return (
-    <div data-testid="sentry-panel" className={`sentry-panel sentry-panel-${tone}`}>
+    <Card
+      data-testid="sentry-panel"
+      className={cn(
+        'my-2 items-start gap-2 p-4 [&_p]:my-0',
+        TONE[tone],
+        // Kept for the tests that read the tone.
+        `sentry-panel-${tone}`,
+      )}
+    >
       {card.status === 'paused' ? (
-        <p role="alert" className="notice bad" data-testid="live-paused">
+        <p role="alert" className={NOTICE.bad} data-testid="live-paused">
           Live readings are paused after repeated failures. They stay paused until the API is
           restarted.
         </p>
       ) : null}
       {card.status === 'unavailable' ? (
-        <p role="alert" className="notice bad" data-testid="live-unavailable">
+        <p role="alert" className={NOTICE.bad} data-testid="live-unavailable">
           Could not get a new reading. Showing the last one stored.
         </p>
       ) : null}
       {failed ? (
-        <p role="alert" className="notice bad">
+        <p role="alert" className={NOTICE.bad}>
           Could not refresh. Showing the last reading received.
         </p>
       ) : null}
       {seen ? (
-        <p role="status" className="notice info" data-testid="sentry-seen">
+        <p role="status" className={NOTICE.info} data-testid="sentry-seen">
           Sentry: {seen.on ? 'on' : 'off'}, read from the car at {formatKl(seen.at)}.
         </p>
       ) : card.observed_at !== null ? (
-        <p className="muted small" data-testid="live-asof">
+        <p className={SMALL} data-testid="live-asof">
           As of {formatKl(card.observed_at)}
           {card.received_at ? `, received ${formatKl(card.received_at)}` : ''}.
         </p>
@@ -119,8 +138,8 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
           setSeenLocal({ on, at: new Date().toISOString(), basis: card.received_at });
         }}
       />
-      <button
-        type="button"
+      <Button
+        variant="outline"
         disabled={busy}
         onClick={() => {
           onNote(null);
@@ -129,7 +148,7 @@ function SentryPanelBody({ onNote }: { onNote: (text: string | null) => void }) 
         }}
       >
         Refresh
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import { splitAtGaps, type Point } from '../lib/liveVehicle';
+import { SMALL } from './ListParts';
 
 const W = 320;
 const H = 90;
@@ -19,7 +20,7 @@ export function LiveTrend({
   unit: string;
 }) {
   if (points.length === 0) {
-    return <p className="muted small">{title}: no readings.</p>;
+    return <p className={SMALL}>{title}: no readings.</p>;
   }
   const runs = splitAtGaps(points, intervalMinutes);
   const ts = points.map((p) => p.t);
@@ -33,9 +34,15 @@ export function LiveTrend({
   const last = points.reduce((a, b) => (b.t > a.t ? b : a));
   const label = `${title}: from ${first.v}${unit} to ${last.v}${unit}, ${points.length} readings in ${runs.length} ${runs.length === 1 ? 'run' : 'runs'} (gaps are not joined).`;
   return (
-    <figure className="trend" data-testid="live-trend">
-      <figcaption className="small">{title}</figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} width="100%">
+    <figure className="mx-0 my-3" data-testid="live-trend">
+      <figcaption className="mb-1 font-medium text-sm">{title}</figcaption>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={label}
+        width="100%"
+        className="block max-h-24 border-current border-b"
+      >
         {runs.map((run, n) =>
           run.length === 1 ? (
             <circle key={n} cx={x(run[0]?.t ?? 0)} cy={y(run[0]?.v ?? 0)} r="2.5" />

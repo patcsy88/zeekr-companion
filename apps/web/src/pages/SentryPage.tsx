@@ -5,6 +5,10 @@ import { AutoSentryPanel } from '../components/AutoSentryPanel';
 import { SentryPanel } from '../components/SentryPanel';
 import { useConnectivity, useSession } from '../data/hooks';
 import { Skeleton } from '../components/Skeleton';
+import { ACTIONS, ERROR } from '../components/Field';
+import { LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { cn } from '../lib/cn';
 
 export const GEOFENCE_CONDITION = 'sentry_off_outside_geofence';
 
@@ -16,7 +20,7 @@ export function SentryPage() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const noteEl = note ? (
-    <p role="status" className="notice info" data-testid="sentry-result">
+    <p role="status" className={NOTICE.info} data-testid="sentry-result">
       {note}
     </p>
   ) : null;
@@ -66,7 +70,7 @@ export function SentryPage() {
     return (
       <section aria-labelledby="sentry-title">
         <h1 id="sentry-title">Sentry</h1>
-        <p className="muted">This page needs a sign-in and a connection to the server.</p>
+        <p className={MUTED}>This page needs a sign-in and a connection to the server.</p>
         {noteEl}
       </section>
     );
@@ -75,42 +79,44 @@ export function SentryPage() {
   return (
     <section aria-labelledby="sentry-title">
       <h1 id="sentry-title">Sentry</h1>
-      <p className="muted small">
+      <p className={SMALL}>
         A notice appears here when the car is parked asleep outside your home area with Sentry off.
         The notice itself sends nothing. The switch below asks before it sends. If Automatic Sentry
         on is switched on, the app sends Sentry on once when a new notice opens, without asking.
       </p>
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {error}
         </p>
       ) : null}
       {items === null ? (
         <Skeleton />
       ) : items.length === 0 ? (
-        <p className="muted" data-testid="sentry-none">
+        <p className={MUTED} data-testid="sentry-none">
           No open geofence alert.
         </p>
       ) : (
-        <ul className="list" aria-label="Geofence alerts">
+        <ul className={LIST} aria-label="Geofence alerts">
           {items.map((p) => (
-            <li key={p.id} data-testid="geofence-alert" className="geofence-alert">
-              <h2>The car is parked outside your home area with Sentry off.</h2>
+            <li key={p.id} data-testid="geofence-alert" className={cn(NOTICE.warn, 'my-0')}>
+              <h2 className="text-base text-warning-foreground">
+                The car is parked outside your home area with Sentry off.
+              </h2>
               <p>
                 Last reported {String(p.inputs.reading_age_minutes ?? '?')} minutes before this
                 check. Opened {new Date(p.created_at).toLocaleString()}.
               </p>
-              <div className="actions">
-                <button type="button" disabled={busy} onClick={() => void dismiss(p)}>
+              <div className={ACTIONS}>
+                <Button variant="outline" disabled={busy} onClick={() => void dismiss(p)}>
                   Dismiss
-                </button>
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
-      <h2 className="small">Sentry command</h2>
-      <p className="muted small">
+      <h2 className="mt-6 text-base">Sentry command</h2>
+      <p className={SMALL}>
         This is the one thing the app can send to the car: Sentry on or off. It asks first and sends
         once.
       </p>
