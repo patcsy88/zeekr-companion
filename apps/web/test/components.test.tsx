@@ -72,7 +72,7 @@ describe('SignIn', () => {
     );
     const user = userEvent.setup();
     render(<SignIn />);
-    expect(screen.getByLabelText('Code')).toBeInTheDocument();
+    expect(firstBox()).toBeInTheDocument();
     await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
@@ -81,21 +81,77 @@ describe('SignIn', () => {
     });
   });
 
-  it('sends the trimmed code, and signs in only with the right one', async () => {
+  it('signs in only with the right app code', async () => {
     fake.mfaCode = '123456';
     const user = userEvent.setup();
     render(<SignIn />);
     await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
-    await user.type(screen.getByLabelText('Code'), '000000');
+    await user.click(firstBox());
+    await user.keyboard('000000');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username, password or code.');
     expect(fake.tokenIssued).toBeNull();
-    await user.clear(screen.getByLabelText('Code'));
-    await user.type(screen.getByLabelText('Code'), ' 123456 ');
+    await user.click(firstBox());
+    await user.keyboard('{Backspace>6/}123456');
+    expect(digits()).toBe('123456');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => {
       expect(fake.tokenIssued).toBe('tok-test');
+    });
+  });
+
+  it('shows the app code as six digit boxes that move along and take only digits', async () => {
+    const user = userEvent.setup();
+    render(<SignIn />);
+    const group = screen.getByRole('group', { name: 'Code' });
+    const boxes = within(group).getAllByRole('textbox');
+    expect(boxes).toHaveLength(6);
+    expect(boxes[0]).toHaveAttribute('autocomplete', 'one-time-code');
+    expect(boxes[0]).toHaveAttribute('inputmode', 'numeric');
+    expect(boxes[5]).toHaveAccessibleName('Digit 6 of 6');
+    await user.click(firstBox());
+    await user.keyboard('1a2 3');
+    expect(digits()).toBe('123');
+    expect(boxes[3]).toHaveFocus();
+    await user.keyboard('{Backspace}');
+    expect(digits()).toBe('12');
+  });
+
+  it('fills every box from a pasted code', async () => {
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.click(firstBox());
+    await user.paste('654321');
+    expect(digits()).toBe('654321');
+  });
+
+  it('sends a recovery code from the plain field, and switching back starts empty', async () => {
+    let body: Record<string, unknown> = {};
+    server.use(
+      http.post('*/api/v1/auth/token', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ access_token: 'tok-test', expires_in: 3600 });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<SignIn />);
+    await user.click(firstBox());
+    await user.keyboard('12');
+    await user.click(screen.getByRole('button', { name: 'Use a recovery code' }));
+    const field = screen.getByLabelText('Recovery code');
+    expect(field).toHaveValue('');
+    expect(screen.queryByRole('group', { name: 'Code' })).toBeNull();
+    await user.type(field, ' abcde-fghjk ');
+    await user.click(screen.getByRole('button', { name: 'Use an app code' }));
+    expect(digits()).toBe('');
+    await user.click(screen.getByRole('button', { name: 'Use a recovery code' }));
+    await user.type(screen.getByLabelText('Recovery code'), ' abcde-fghjk ');
+    await user.type(screen.getByLabelText('Username'), 'owner');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => {
+      expect(body).toEqual({ username: 'owner', password: 'correct-horse', code: 'abcde-fghjk' });
     });
   });
 
@@ -104,13 +160,23 @@ describe('SignIn', () => {
     render(<SignIn />);
     await user.type(screen.getByLabelText('Username'), 'owner');
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
-    await user.type(screen.getByLabelText('Code'), '123456');
+    await user.click(firstBox());
+    await user.keyboard('123456');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => {
-      expect(screen.getByLabelText('Code')).toHaveValue('');
+      expect(digits()).toBe('');
     });
   });
 });
+
+/** The six app-code boxes read left to right. */
+function digits(): string {
+  const group = screen.getByRole('group', { name: 'Code' });
+  return within(group)
+    .getAllByRole('textbox')
+    .map((b) => (b as HTMLInputElement).value)
+    .join('');
+}
 
 describe('RecordForm', () => {
   it('sends cost as integer sen and odometer as an integer', async () => {
@@ -316,3 +382,8 @@ describe('SignIn username', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Wrong username, password or code.');
   });
 });
+
+/** The first app-code box, which carries the "Code" label. */
+function firstBox(): HTMLElement {
+  return screen.getByRole('textbox', { name: 'Code' });
+}

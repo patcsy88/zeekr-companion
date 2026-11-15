@@ -105,7 +105,7 @@ docker compose exec api python -m app.cli.set_mfa
 
 It draws a QR code in the terminal, prints the same key as text, and asks for the 6-digit code now shown in the app (Google Authenticator or any app that reads time-based codes). It saves nothing until that code is right. It then prints 8 recovery codes once. Write them down and keep them off the phone. The QR code, the key and the recovery codes are secrets: do not paste them into chat, a ticket or a saved log.
 
-Once it is on, every sign-in needs the password and a code, with no trusted devices. A recovery code works once, in place of the app code. To replace the setup (new key, new recovery codes), run the command again. To turn it off, for example if the phone is lost and the recovery codes are gone:
+Once it is on, every sign-in needs the password and a code, with no trusted devices. A recovery code works once, in place of the app code. On the sign-in screen the app code goes into six digit boxes; tap "Use a recovery code" to type a recovery code instead. To replace the setup (new key, new recovery codes), run the command again. To turn it off, for example if the phone is lost and the recovery codes are gone:
 
 ```
 docker compose exec api python -m app.cli.set_mfa --off
