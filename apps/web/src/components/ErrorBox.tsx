@@ -1,11 +1,12 @@
 import type { QueueError } from '../storage/db';
+import { NOTICE } from './ListParts';
 
 /** Shows why a queued change was refused by the server, in words. */
 export function FailedNotice({ error }: { error: QueueError }) {
   return (
-    <div role="alert" className="notice bad">
+    <div role="alert" className={NOTICE.bad}>
       <p>
-        <strong>This change was not accepted by the server.</strong>{' '}
+        <strong className="font-semibold">This change was not accepted by the server.</strong>{' '}
         {error.status === 409
           ? 'A record with this ID already exists with different content.'
           : error.message}

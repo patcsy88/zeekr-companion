@@ -1,6 +1,20 @@
 import { Link } from 'react-router-dom';
 import { BasisNote } from '../components/ReminderParts';
 import { Skeleton } from '../components/Skeleton';
+import {
+  EmptyState,
+  HEAD,
+  ITEM_BODY,
+  ItemCard,
+  LIST,
+  META,
+  MUTED,
+  NOTICE,
+  SMALL,
+  TITLE,
+} from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import { SyncBadge } from '../components/SyncBadge';
 import { useConnectivity, useSession, useTyreEvents } from '../data/hooks';
 import { formatDate } from '../lib/dates';
@@ -16,9 +30,12 @@ function WheelRow({ s }: { s: WheelStatus }) {
   const r = s.replaced;
   const tyre = r ? [r.brand, r.model, r.size].filter(Boolean).join(' ') : '';
   return (
-    <div data-testid={`wheel-${s.wheel}`}>
-      <dt>{WHEEL_LABELS[s.wheel]}</dt>
-      <dd>
+    <div
+      data-testid={`wheel-${s.wheel}`}
+      className="flex flex-col gap-0.5 px-4 py-2.5 not-first:border-border not-first:border-t"
+    >
+      <dt className="font-medium">{WHEEL_LABELS[s.wheel]}</dt>
+      <dd className="m-0 text-muted-foreground text-sm [overflow-wrap:anywhere]">
         {r ? (
           <>
             {tyre || 'Tyre details not recorded'}. Replaced{' '}
@@ -54,18 +71,18 @@ export function TyresPage() {
       <p>
         <Link to="/vehicle">Back to vehicle</Link>
       </p>
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="tyres-title">Tyres</h1>
-        <Link to="/vehicle/tyres/new" className="button primary">
+        <Button size="lg" render={<Link to="/vehicle/tyres/new" />}>
           Add tyre event
-        </Link>
+        </Button>
       </div>
-      <p className="muted small" data-testid="not-in-expenses">
+      <p className={SMALL} data-testid="not-in-expenses">
         {NOT_IN_EXPENSES}
       </p>
 
       {!snap.loaded && empty ? (
-        <p className="muted">
+        <p className={MUTED}>
           {session.signedIn
             ? online
               ? 'Loading tyre events…'
@@ -74,44 +91,44 @@ export function TyresPage() {
         </p>
       ) : (
         <>
-          <section aria-labelledby="current-tyres-title" className="card">
+          <Card render={<section />} aria-labelledby="current-tyres-title" className="mb-4 p-4">
             <h2 id="current-tyres-title">Current tyres</h2>
             {snap.partial ? (
-              <p role="status" className="notice bad" data-testid="partial-warning">
+              <p role="status" className={NOTICE.bad} data-testid="partial-warning">
                 Partial: not all tyre events are saved on this device, so this may be out of date.
               </p>
             ) : null}
             <BasisNote basis={snap.basis} />
-            <dl className="group">
+            <dl className="m-0 my-3 overflow-hidden rounded-xl border border-border">
               {status.map((s) => (
                 <WheelRow key={s.wheel} s={s} />
               ))}
             </dl>
-            <p className="muted small">Worked out on this device from the events below.</p>
-          </section>
+            <p className={SMALL}>Worked out on this device from the events below.</p>
+          </Card>
 
           {empty ? (
-            <div className="empty">
-              <p className="muted">No tyre events yet.</p>
-              <p className="muted small">Use Add tyre event at the top to record the first one.</p>
-            </div>
+            <EmptyState
+              title="No tyre events yet."
+              hint="Use Add tyre event at the top to record the first one."
+            />
           ) : (
-            <ul className="list" aria-label="Tyre events, newest first">
+            <ul className={LIST} aria-label="Tyre events, newest first">
               {snap.views.map(({ event: e, sync }) => (
-                <li key={e.id} className="item">
-                  <Link to={`/vehicle/tyres/${e.id}`}>
-                    <span className="title">
+                <ItemCard key={e.id}>
+                  <Link to={`/vehicle/tyres/${e.id}`} className={ITEM_BODY}>
+                    <span className={TITLE}>
                       {KIND_LABELS[e.kind]} · {wheelsText(e.wheels)}
                     </span>
-                    <span className="meta">
+                    <span className={META}>
                       <time dateTime={e.date}>{formatDate(e.date)}</time> ·{' '}
                       {e.odometer.toLocaleString()} km
                       {e.cost_minor !== null ? ` · ${formatMyr(e.cost_minor)}` : ''}
                     </span>
-                    {e.notes ? <span className="meta">{e.notes}</span> : null}
+                    {e.notes ? <span className={META}>{e.notes}</span> : null}
                   </Link>
                   <SyncBadge sync={sync} />
-                </li>
+                </ItemCard>
               ))}
             </ul>
           )}

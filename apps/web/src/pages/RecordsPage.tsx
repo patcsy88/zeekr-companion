@@ -7,6 +7,19 @@ import { loadMoreRecords } from '../data/repository';
 import { formatDate } from '../lib/dates';
 import { formatMyr } from '../lib/money';
 import { Skeleton } from '../components/Skeleton';
+import {
+  EmptyState,
+  HEAD,
+  ITEM_BODY,
+  ItemCard,
+  LIST,
+  META,
+  MUTED,
+  SMALL,
+  TITLE,
+} from '../components/ListParts';
+import { ERROR } from '../components/Field';
+import { Button } from '../components/ui/button';
 
 export function RecordsPage() {
   const snap = useRecords();
@@ -29,17 +42,17 @@ export function RecordsPage() {
 
   return (
     <section aria-labelledby="records-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="records-title">Service history</h1>
-        <Link to="/records/new" className="button primary">
+        <Button size="lg" render={<Link to="/records/new" />}>
           Add service
-        </Link>
+        </Button>
       </div>
 
       {snap === undefined ? (
         <Skeleton />
       ) : !snap.loaded && snap.views.length === 0 ? (
-        <p className="muted">
+        <p className={MUTED}>
           {session.signedIn
             ? online
               ? 'Loading service records…'
@@ -47,47 +60,46 @@ export function RecordsPage() {
             : 'Sign in to load your service records.'}
         </p>
       ) : snap.views.length === 0 ? (
-        <div className="empty">
-          <p className="muted">No service records yet.</p>
-          <p className="muted small">Use Add service at the top to record the first one.</p>
-        </div>
+        <EmptyState
+          title="No service records yet."
+          hint="Use Add service at the top to record the first one."
+        />
       ) : (
-        <ul className="list" aria-label="Service records, newest first">
+        <ul className={LIST} aria-label="Service records, newest first">
           {snap.views.map(({ record, sync }) => (
-            <li key={record.id} className="item">
-              <Link to={`/records/${record.id}`}>
-                <span className="title">{record.description}</span>
-                <span className="meta">
+            <ItemCard key={record.id}>
+              <Link to={`/records/${record.id}`} className={ITEM_BODY}>
+                <span className={TITLE}>{record.description}</span>
+                <span className={META}>
                   <time dateTime={record.date}>{formatDate(record.date)}</time> ·{' '}
                   {record.odometer.toLocaleString()} km · {formatMyr(record.cost_minor)}
                 </span>
               </Link>
               <SyncBadge sync={sync} />
-            </li>
+            </ItemCard>
           ))}
         </ul>
       )}
 
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {error}
         </p>
       ) : null}
       {snap?.nextCursor ? (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="lg"
           onClick={() => {
             void more();
           }}
           disabled={loading || !online || !session.signedIn}
         >
           {loading ? 'Loading…' : 'Load older records'}
-        </button>
+        </Button>
       ) : null}
       {snap?.nextCursor && !online ? (
-        <p className="muted small">
-          Older records are not saved on this device. Go online to load them.
-        </p>
+        <p className={SMALL}>Older records are not saved on this device. Go online to load them.</p>
       ) : null}
     </section>
   );

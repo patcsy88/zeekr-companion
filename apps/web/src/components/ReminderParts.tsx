@@ -4,17 +4,19 @@ import type { ReminderView } from '../data/reminderOverlay';
 import { formatDate } from '../lib/dates';
 import { isDueSoon } from '../lib/reminderStatus';
 import { dateText, KIND_CONTEXT, KIND_LABELS, kmText } from '../lib/reminderText';
+import { ITEM_BODY, ItemCard, META, SMALL, TITLE } from './ListParts';
 import { SyncBadge } from './SyncBadge';
+import { Badge } from './ui/badge';
 
 export function BasisNote({ basis }: { basis: OdometerBasis | null }) {
   if (basis === null)
     return (
-      <p className="muted small" data-testid="odometer-basis">
+      <p className={SMALL} data-testid="odometer-basis">
         Current odometer: unknown. Add a service record to set it.
       </p>
     );
   return (
-    <p className="muted small" data-testid="odometer-basis">
+    <p className={SMALL} data-testid="odometer-basis">
       Current odometer: {basis.km.toLocaleString()} km
       {basis.live
         ? basis.date
@@ -38,15 +40,28 @@ export function StatusBadge({
   today: string;
 }) {
   const r = view.reminder;
-  if (r.status === 'completed') return <span className="badge ok">Completed</span>;
+  if (r.status === 'completed')
+    return (
+      <Badge variant="success" size="lg">
+        Completed
+      </Badge>
+    );
   if (r.status === 'overdue') {
     const by = r.overdue_by.map((b) => (b === 'date' ? 'date' : 'km')).join(' and ');
-    return <span className="badge bad">Overdue ({by})</span>;
+    return (
+      <Badge variant="error" size="lg">
+        Overdue ({by})
+      </Badge>
+    );
   }
   return isDueSoon(r, basis?.km ?? null, today) ? (
-    <span className="badge warn">Due soon</span>
+    <Badge variant="warning" size="lg">
+      Due soon
+    </Badge>
   ) : (
-    <span className="badge info">Upcoming</span>
+    <Badge variant="info" size="lg">
+      Upcoming
+    </Badge>
   );
 }
 
@@ -63,17 +78,17 @@ export function ReminderItem({
   const when = dateText(r, today);
   const km = kmText(r, basis?.km ?? null);
   return (
-    <li className="item">
-      <Link to={`/reminders/${r.id}`}>
-        <span className="title">{r.title}</span>
-        <span className="meta">
+    <ItemCard>
+      <Link to={`/reminders/${r.id}`} className={ITEM_BODY}>
+        <span className={TITLE}>{r.title}</span>
+        <span className={META}>
           {KIND_LABELS[r.kind]}
           {KIND_CONTEXT[r.kind] ? ` · ${KIND_CONTEXT[r.kind] ?? ''}` : ''}
         </span>
-        {when ? <span className="meta">{when}</span> : null}
-        {km ? <span className="meta">{km}</span> : null}
+        {when ? <span className={META}>{when}</span> : null}
+        {km ? <span className={META}>{km}</span> : null}
         {r.due_odometer !== null && r.completed_on === null ? (
-          <span className="meta">
+          <span className={META}>
             {basis
               ? `Based on current odometer ${basis.km.toLocaleString()} km`
               : 'Current odometer unknown'}
@@ -82,6 +97,6 @@ export function ReminderItem({
       </Link>
       <StatusBadge view={view} basis={basis} today={today} />
       <SyncBadge sync={view.sync} />
-    </li>
+    </ItemCard>
   );
 }

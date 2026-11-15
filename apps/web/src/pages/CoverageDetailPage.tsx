@@ -13,6 +13,21 @@ import { CLAIM_STATUS_LABELS, TERMS_LINE } from '../lib/warrantyText';
 import { discardFailedCoverage, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import {
+  Details,
+  HEAD,
+  ItemCard,
+  LIST,
+  META,
+  MUTED,
+  NOTICE,
+  PREWRAP,
+  ROW_ACTIONS,
+  SMALL,
+  TITLE,
+} from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { cn } from '../lib/cn';
 
 export function CoverageDetailPage() {
   const { id } = useParams();
@@ -25,32 +40,32 @@ function ClaimRow({ v, coverageName }: { v: ClaimView; coverageName: string }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
-    <li className="item">
-      <div>
-        <span className="title prewrap">{c.description}</span>
-        <span className="meta">
+    <ItemCard className="items-start">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-3">
+        <span className={cn(TITLE, PREWRAP)}>{c.description}</span>
+        <span className={META}>
           {formatDate(c.date)} · {c.odometer.toLocaleString()} km · {CLAIM_STATUS_LABELS[c.status]}
         </span>
         {c.cost_covered_minor !== null ? (
-          <span className="meta">
+          <span className={META}>
             Cost covered (record only): {formatMyr(c.cost_covered_minor)}
           </span>
         ) : null}
-        {c.notes ? <span className="meta prewrap">{c.notes}</span> : null}
+        {c.notes ? <span className={cn(META, PREWRAP)}>{c.notes}</span> : null}
         {v.sync === 'blocked' ? (
-          <p className="notice bad" role="alert" data-testid="claim-blocked">
+          <p className={NOTICE.bad} role="alert" data-testid="claim-blocked">
             Blocked: this claim is waiting for the coverage &quot;{coverageName}&quot;, which the
             server did not accept. It has not been sent. Retry or discard the coverage above.
           </p>
         ) : null}
         {v.sync === 'failed' && v.error ? <FailedNotice error={v.error} /> : null}
         {confirming ? (
-          <div role="alertdialog" aria-label="Delete claim" className="notice bad">
+          <div role="alertdialog" aria-label="Delete claim" className={NOTICE.bad}>
             <p>Delete this claim? This cannot be undone.</p>
-            <div className="actions">
-              <button
-                type="button"
-                className="danger"
+            <div className={ROW_ACTIONS}>
+              <Button
+                variant="destructive"
+                size="lg"
                 disabled={busy}
                 onClick={() => {
                   setBusy(true);
@@ -61,36 +76,41 @@ function ClaimRow({ v, coverageName }: { v: ClaimView; coverageName: string }) {
                 }}
               >
                 Delete claim
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => {
                   setConfirming(false);
                 }}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="actions">
-            <Link to={`/warranty/claims/${c.id}/edit`} className="button">
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
+              render={<Link to={`/warranty/claims/${c.id}/edit`} />}
+            >
               Edit claim
-            </Link>
-            <button
-              type="button"
-              className="danger"
+            </Button>
+            <Button
+              variant="destructive"
+              size="lg"
               onClick={() => {
                 setConfirming(true);
               }}
             >
               Delete claim
-            </button>
+            </Button>
           </div>
         )}
       </div>
       <SyncBadge sync={v.sync} />
-    </li>
+    </ItemCard>
   );
 }
 
@@ -111,7 +131,7 @@ function CoverageDetail({ id }: { id: string }) {
     return (
       <section>
         <h1>Coverage not found</h1>
-        <p className="muted">It may have been deleted, or it is not saved on this device.</p>
+        <p className={MUTED}>It may have been deleted, or it is not saved on this device.</p>
         <Link to="/warranty">Back to warranty</Link>
       </section>
     );
@@ -138,32 +158,34 @@ function CoverageDetail({ id }: { id: string }) {
 
   return (
     <article aria-labelledby="cov-title">
-      <div className="row">
-        <h1 id="cov-title" className="prewrap">
+      <div className={HEAD}>
+        <h1 id="cov-title" className={PREWRAP}>
           {c.name}
         </h1>
         <StatusBadge coverage={c} />
         <SyncBadge sync={sync} />
       </div>
       {sync === 'pending' || sync === 'sending' ? (
-        <p className="notice info">
+        <p className={NOTICE.info}>
           This change is saved on this device and has not reached the server yet.
         </p>
       ) : null}
       {sync === 'failed' && error ? (
         <>
           <FailedNotice error={error} />
-          <div className="actions">
-            <button
-              type="button"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void retryFailed(id).then(() => syncAll(true));
               }}
             >
               Retry
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void discardFailedCoverage(id).then(({ droppedClaimCreates: n }) => {
                   if (n === 0) return;
@@ -173,14 +195,14 @@ function CoverageDetail({ id }: { id: string }) {
               }}
             >
               Discard my change
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
-      <p className="muted small" data-testid="status-computed-offline">
+      <p className={SMALL} data-testid="status-computed-offline">
         Status is computed on this device and may differ from the server until the next sync.
       </p>
-      <dl className="details">
+      <Details>
         <dt>Dates</dt>
         <dd>{datesText(c)}</dd>
         <dt>Km limit</dt>
@@ -188,7 +210,7 @@ function CoverageDetail({ id }: { id: string }) {
           {c.km_limit === null ? '—' : `${c.km_limit.toLocaleString()} km`}
           <KmBasis coverage={c} basis={snap.basis} />
           {c.km_limit !== null && snap.basis === null ? (
-            <span className="meta">Odometer unknown</span>
+            <span className={META}>Odometer unknown</span>
           ) : null}
         </dd>
         <dt>Source</dt>
@@ -196,21 +218,21 @@ function CoverageDetail({ id }: { id: string }) {
           <SourceLines coverage={c} />
         </dd>
         <dt>Notes</dt>
-        <dd className="prewrap">{c.notes ?? '—'}</dd>
+        <dd className={PREWRAP}>{c.notes ?? '—'}</dd>
         <dt>Last updated</dt>
         <dd>
           <time dateTime={c.updated_at}>{formatTimestamp(c.updated_at)}</time>
         </dd>
-      </dl>
-      <p className="muted small" data-testid="terms-fixed">
+      </Details>
+      <p className={SMALL} data-testid="terms-fixed">
         {TERMS_LINE}
       </p>
 
       <h2>Claims ({claims.length})</h2>
       {claims.length === 0 ? (
-        <p className="muted">No claims recorded.</p>
+        <p className={MUTED}>No claims recorded.</p>
       ) : (
-        <ul className="list" aria-label="Claims, newest first">
+        <ul className={LIST} aria-label="Claims, newest first">
           {claims.map((v) => (
             <ClaimRow key={v.claim.id} v={v} coverageName={c.name} />
           ))}
@@ -222,50 +244,51 @@ function CoverageDetail({ id }: { id: string }) {
           role="alertdialog"
           aria-labelledby="del-cov-title"
           aria-describedby="del-cov-desc"
-          className="notice bad"
+          className={NOTICE.bad}
         >
           <h2 id="del-cov-title">Delete this coverage?</h2>
           <p id="del-cov-desc" data-testid="delete-claim-count">
             This also deletes {c.claim_count} {c.claim_count === 1 ? 'claim' : 'claims'}. This
             cannot be undone.
           </p>
-          <div className="actions">
-            <button
-              type="button"
-              className="danger"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="destructive"
+              size="lg"
               disabled={busy}
               onClick={() => void confirmDelete()}
             >
               Delete coverage
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               ref={cancelRef}
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="actions">
-          <Link to={`/warranty/${id}/claims/new`} className="button primary">
+        <div className={ROW_ACTIONS}>
+          <Button size="lg" render={<Link to={`/warranty/${id}/claims/new`} />}>
             Add claim
-          </Link>
-          <Link to={`/warranty/${id}/edit`} className="button">
+          </Button>
+          <Button variant="outline" size="lg" render={<Link to={`/warranty/${id}/edit`} />}>
             Edit
-          </Link>
-          <button
-            type="button"
-            className="danger"
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
             onClick={() => {
               setConfirming(true);
             }}
           >
             Delete
-          </button>
+          </Button>
           <Link to="/warranty">Back</Link>
         </div>
       )}

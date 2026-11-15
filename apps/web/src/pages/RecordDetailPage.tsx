@@ -11,6 +11,8 @@ import { formatMyr } from '../lib/money';
 import { discardFailed, listQueue, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS } from '../components/ListParts';
+import { Button } from '../components/ui/button';
 
 /** The route id must be a UUID before anything is read or fetched: nothing else reaches the API. */
 export function RecordDetailPage() {
@@ -58,7 +60,7 @@ function RecordDetail({ id }: { id: string }) {
     return (
       <section>
         <h1>Record not found</h1>
-        <p className="muted">It may have been deleted, or it is not saved on this device.</p>
+        <p className={MUTED}>It may have been deleted, or it is not saved on this device.</p>
         <Link to="/">Back to service history</Link>
       </section>
     );
@@ -78,39 +80,41 @@ function RecordDetail({ id }: { id: string }) {
 
   return (
     <article aria-labelledby="rec-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="rec-title">{record.description}</h1>
         <SyncBadge sync={sync} />
       </div>
       {sync === 'pending' || sync === 'sending' ? (
-        <p className="notice info">
+        <p className={NOTICE.info}>
           This change is saved on this device and has not reached the server yet.
         </p>
       ) : null}
       {sync === 'failed' && error ? (
         <>
           <FailedNotice error={error} />
-          <div className="actions">
-            <button
-              type="button"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void retryFailed(id).then(() => syncAll(true));
               }}
             >
               Retry
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void discardFailed(id);
               }}
             >
               Discard my change
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
-      <dl className="details">
+      <Details>
         <dt>Date</dt>
         <dd>
           <time dateTime={record.date}>{formatDate(record.date)}</time>
@@ -122,56 +126,57 @@ function RecordDetail({ id }: { id: string }) {
         <dt>Cost</dt>
         <dd>{formatMyr(record.cost_minor)}</dd>
         <dt>Notes</dt>
-        <dd className="prewrap">{record.notes ?? '—'}</dd>
+        <dd className={PREWRAP}>{record.notes ?? '—'}</dd>
         <dt>Last updated</dt>
         <dd>
           <time dateTime={record.updated_at}>{formatTimestamp(record.updated_at)}</time>
         </dd>
-      </dl>
+      </Details>
 
       {confirming ? (
         <div
           role="alertdialog"
           aria-labelledby="del-title"
           aria-describedby="del-desc"
-          className="notice bad"
+          className={NOTICE.bad}
         >
           <h2 id="del-title">Delete this service record?</h2>
           <p id="del-desc">This cannot be undone.</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="danger"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="destructive"
+              size="lg"
               disabled={busy}
               onClick={() => void confirmDelete()}
             >
               Delete
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               ref={cancelRef}
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="actions">
-          <Link to={`/records/${id}/edit`} className="button">
+        <div className={ROW_ACTIONS}>
+          <Button variant="outline" size="lg" render={<Link to={`/records/${id}/edit`} />}>
             Edit
-          </Link>
-          <button
-            type="button"
-            className="danger"
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
             onClick={() => {
               setConfirming(true);
             }}
           >
             Delete
-          </button>
+          </Button>
           <Link to="/">Back</Link>
         </div>
       )}

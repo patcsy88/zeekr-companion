@@ -12,6 +12,8 @@ import { isUuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS } from '../components/ListParts';
+import { Button } from '../components/ui/button';
 
 export function ExpenseDetailPage() {
   const { id } = useParams();
@@ -35,7 +37,7 @@ function ExpenseDetail({ id }: { id: string }) {
     return (
       <section>
         <h1>Expense not found</h1>
-        <p className="muted">It may have been deleted, or it is not saved on this device.</p>
+        <p className={MUTED}>It may have been deleted, or it is not saved on this device.</p>
         <Link to="/expenses">Back to expenses</Link>
       </section>
     );
@@ -54,39 +56,41 @@ function ExpenseDetail({ id }: { id: string }) {
 
   return (
     <article aria-labelledby="exp-detail-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="exp-detail-title">{CATEGORY_LABELS[x.category]}</h1>
         <SyncBadge sync={sync} />
       </div>
       {sync === 'pending' || sync === 'sending' ? (
-        <p className="notice info">
+        <p className={NOTICE.info}>
           This change is saved on this device and has not reached the server yet.
         </p>
       ) : null}
       {sync === 'failed' && error ? (
         <>
           <FailedNotice error={error} />
-          <div className="actions">
-            <button
-              type="button"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void retryFailed(id).then(() => syncAll(true));
               }}
             >
               Retry
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void discardFailed(id);
               }}
             >
               Discard my change
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
-      <dl className="details">
+      <Details>
         <dt>Date</dt>
         <dd>
           <time dateTime={x.date}>{formatDate(x.date)}</time>
@@ -102,56 +106,57 @@ function ExpenseDetail({ id }: { id: string }) {
           </>
         ) : null}
         <dt>Notes</dt>
-        <dd className="prewrap">{x.notes ?? '—'}</dd>
+        <dd className={PREWRAP}>{x.notes ?? '—'}</dd>
         <dt>Last updated</dt>
         <dd>
           <time dateTime={x.updated_at}>{formatTimestamp(x.updated_at)}</time>
         </dd>
-      </dl>
+      </Details>
 
       {confirming ? (
         <div
           role="alertdialog"
           aria-labelledby="del-exp-title"
           aria-describedby="del-exp-desc"
-          className="notice bad"
+          className={NOTICE.bad}
         >
           <h2 id="del-exp-title">Delete this expense?</h2>
           <p id="del-exp-desc">This cannot be undone.</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="danger"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="destructive"
+              size="lg"
               disabled={busy}
               onClick={() => void confirmDelete()}
             >
               Delete
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               ref={cancelRef}
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="actions">
-          <Link to={`/expenses/${id}/edit`} className="button primary">
+        <div className={ROW_ACTIONS}>
+          <Button size="lg" render={<Link to={`/expenses/${id}/edit`} />}>
             Edit
-          </Link>
-          <button
-            type="button"
-            className="danger"
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
             onClick={() => {
               setConfirming(true);
             }}
           >
             Delete
-          </button>
+          </Button>
           <Link to="/expenses">Back</Link>
         </div>
       )}

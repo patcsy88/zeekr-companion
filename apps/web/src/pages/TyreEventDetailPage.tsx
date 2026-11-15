@@ -3,6 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TyreEvent } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
 import { Skeleton } from '../components/Skeleton';
+import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS, SMALL } from '../components/ListParts';
+import { TextField } from '../components/Field';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import { SyncBadge } from '../components/SyncBadge';
 import { useTyreEvent } from '../data/hooks';
 import { removeTyreEvent } from '../data/mutations';
@@ -46,39 +50,34 @@ function RotationReminder({ event }: { event: TyreEvent }) {
   }
 
   return (
-    <section aria-labelledby="rot-rem-title" className="card">
-      <h2 id="rot-rem-title">Rotation reminder</h2>
-      <div className="field">
-        <label htmlFor="rot-interval">Rotate again after (km)</label>
-        <p id="rot-interval-hint" className="hint">
-          The app does not suggest an interval. The reminder is due at this event&apos;s odometer
-          plus the number you type.
-        </p>
-        <input
-          id="rot-interval"
-          inputMode="numeric"
-          autoComplete="off"
-          value={interval}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'rot-interval-hint rot-interval-error' : 'rot-interval-hint'}
-          onChange={(e) => {
-            setIntervalKm(e.target.value);
-            setError(null);
-          }}
-        />
-        {error ? (
-          <p id="rot-interval-error" className="error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-      <button type="button" onClick={open}>
+    <Card
+      render={<section />}
+      aria-labelledby="rot-rem-title"
+      className="my-4 flex flex-col gap-4 p-4"
+    >
+      <h2 id="rot-rem-title" className="m-0">
+        Rotation reminder
+      </h2>
+      <TextField
+        id="rot-interval"
+        label="Rotate again after (km)"
+        hint="The app does not suggest an interval. The reminder is due at this event's odometer plus the number you type."
+        inputMode="numeric"
+        autoComplete="off"
+        value={interval}
+        error={error}
+        onChange={(e) => {
+          setIntervalKm(e.target.value);
+          setError(null);
+        }}
+      />
+      <Button variant="outline" size="lg" className="self-start" onClick={open}>
         Add rotation reminder
-      </button>
-      <p className="muted small">
+      </Button>
+      <p className={SMALL}>
         This opens the Add reminder form filled in. Nothing is saved until you save that form.
       </p>
-    </section>
+    </Card>
   );
 }
 
@@ -98,7 +97,7 @@ function TyreEventDetail({ id }: { id: string }) {
     return (
       <section>
         <h1>Tyre event not found</h1>
-        <p className="muted">It may have been deleted, or it is not saved on this device.</p>
+        <p className={MUTED}>It may have been deleted, or it is not saved on this device.</p>
         <Link to="/vehicle/tyres">Back to tyres</Link>
       </section>
     );
@@ -117,39 +116,41 @@ function TyreEventDetail({ id }: { id: string }) {
 
   return (
     <article aria-labelledby="tyre-detail-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="tyre-detail-title">{KIND_LABELS[x.kind]}</h1>
         <SyncBadge sync={sync} />
       </div>
       {sync === 'pending' || sync === 'sending' ? (
-        <p className="notice info">
+        <p className={NOTICE.info}>
           This change is saved on this device and has not reached the server yet.
         </p>
       ) : null}
       {sync === 'failed' && error ? (
         <>
           <FailedNotice error={error} />
-          <div className="actions">
-            <button
-              type="button"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void retryFailed(id).then(() => syncAll(true));
               }}
             >
               Retry
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void discardFailed(id);
               }}
             >
               Discard my change
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
-      <dl className="details">
+      <Details>
         <dt>Date</dt>
         <dd>
           <time dateTime={x.date}>{formatDate(x.date)}</time>
@@ -173,12 +174,12 @@ function TyreEventDetail({ id }: { id: string }) {
         <dt>Shop</dt>
         <dd>{x.shop ?? '—'}</dd>
         <dt>Notes</dt>
-        <dd className="prewrap">{x.notes ?? '—'}</dd>
+        <dd className={PREWRAP}>{x.notes ?? '—'}</dd>
         <dt>Last updated</dt>
         <dd>
           <time dateTime={x.updated_at}>{formatTimestamp(x.updated_at)}</time>
         </dd>
-      </dl>
+      </Details>
 
       {x.kind === 'rotate' ? <RotationReminder event={x} /> : null}
 
@@ -187,44 +188,45 @@ function TyreEventDetail({ id }: { id: string }) {
           role="alertdialog"
           aria-labelledby="del-tyre-title"
           aria-describedby="del-tyre-desc"
-          className="notice bad"
+          className={NOTICE.bad}
         >
           <h2 id="del-tyre-title">Delete this tyre event?</h2>
           <p id="del-tyre-desc">This cannot be undone.</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="danger"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="destructive"
+              size="lg"
               disabled={busy}
               onClick={() => void confirmDelete()}
             >
               Delete
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               ref={cancelRef}
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="actions">
-          <Link to={`/vehicle/tyres/${id}/edit`} className="button primary">
+        <div className={ROW_ACTIONS}>
+          <Button size="lg" render={<Link to={`/vehicle/tyres/${id}/edit`} />}>
             Edit
-          </Link>
-          <button
-            type="button"
-            className="danger"
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
             onClick={() => {
               setConfirming(true);
             }}
           >
             Delete
-          </button>
+          </Button>
           <Link to="/vehicle/tyres">Back</Link>
         </div>
       )}

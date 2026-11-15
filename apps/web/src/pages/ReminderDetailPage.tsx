@@ -11,6 +11,9 @@ import { isUuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS } from '../components/ListParts';
+import { ERROR, HINT } from '../components/Field';
+import { Button } from '../components/ui/button';
 
 export function ReminderDetailPage() {
   const { id } = useParams();
@@ -36,7 +39,7 @@ function ReminderDetail({ id }: { id: string }) {
     return (
       <section>
         <h1>Reminder not found</h1>
-        <p className="muted">It may have been deleted, or it is not saved on this device.</p>
+        <p className={MUTED}>It may have been deleted, or it is not saved on this device.</p>
         <Link to="/reminders">Back to reminders</Link>
       </section>
     );
@@ -71,45 +74,47 @@ function ReminderDetail({ id }: { id: string }) {
 
   return (
     <article aria-labelledby="rem-detail-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="rem-detail-title">{r.title}</h1>
         <StatusBadge view={view} basis={basis} today={today} />
         <SyncBadge sync={sync} />
       </div>
       {sync === 'pending' || sync === 'sending' ? (
-        <p className="notice info">
+        <p className={NOTICE.info}>
           This change is saved on this device and has not reached the server yet.
         </p>
       ) : null}
       {sync === 'failed' && error ? (
         <>
           <FailedNotice error={error} />
-          <div className="actions">
-            <button
-              type="button"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void retryFailed(id).then(() => syncAll(true));
               }}
             >
               Retry
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => {
                 void discardFailed(id);
               }}
             >
               Discard my change
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
       {actionError ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {actionError}
         </p>
       ) : null}
-      <dl className="details">
+      <Details>
         <dt>Kind</dt>
         <dd>
           {KIND_LABELS[r.kind]}
@@ -128,12 +133,12 @@ function ReminderDetail({ id }: { id: string }) {
           )}
         </dd>
         <dt>Notes</dt>
-        <dd className="prewrap">{r.notes ?? '—'}</dd>
+        <dd className={PREWRAP}>{r.notes ?? '—'}</dd>
         <dt>Last updated</dt>
         <dd>
           <time dateTime={r.updated_at}>{formatTimestamp(r.updated_at)}</time>
         </dd>
-      </dl>
+      </Details>
       {r.due_odometer !== null ? <BasisNote basis={basis} /> : null}
 
       {confirming ? (
@@ -141,69 +146,65 @@ function ReminderDetail({ id }: { id: string }) {
           role="alertdialog"
           aria-labelledby="del-rem-title"
           aria-describedby="del-rem-desc"
-          className="notice bad"
+          className={NOTICE.bad}
         >
           <h2 id="del-rem-title">Delete this reminder?</h2>
           <p id="del-rem-desc">This cannot be undone.</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="danger"
+          <div className={ROW_ACTIONS}>
+            <Button
+              variant="destructive"
+              size="lg"
               disabled={busy}
               onClick={() => void confirmDelete()}
             >
               Delete
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
               ref={cancelRef}
               onClick={() => {
                 setConfirming(false);
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="actions">
+        <div className={ROW_ACTIONS}>
           {r.kind === 'service' && r.completed_on === null ? (
             online ? (
-              <Link to={`/reminders/${id}/complete`} className="button primary">
+              <Button size="lg" render={<Link to={`/reminders/${id}/complete`} />}>
                 Complete service
-              </Link>
+              </Button>
             ) : (
               <>
-                <button type="button" className="primary" disabled aria-describedby="cs-offline">
+                <Button size="lg" disabled aria-describedby="cs-offline">
                   Complete service
-                </button>
-                <p className="hint" id="cs-offline">
+                </Button>
+                <p className={HINT} id="cs-offline">
                   Completing a service needs a connection.
                 </p>
               </>
             )
           ) : (
-            <button
-              type="button"
-              className="primary"
-              disabled={busy}
-              onClick={() => void toggleComplete()}
-            >
+            <Button size="lg" disabled={busy} onClick={() => void toggleComplete()}>
               {r.completed_on === null ? 'Mark complete' : 'Reopen'}
-            </button>
+            </Button>
           )}
-          <Link to={`/reminders/${id}/edit`} className="button">
+          <Button variant="outline" size="lg" render={<Link to={`/reminders/${id}/edit`} />}>
             Edit
-          </Link>
-          <button
-            type="button"
-            className="danger"
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
             onClick={() => {
               setConfirming(true);
             }}
           >
             Delete
-          </button>
+          </Button>
           <Link to="/reminders">Back</Link>
         </div>
       )}

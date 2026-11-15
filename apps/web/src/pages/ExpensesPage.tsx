@@ -16,6 +16,23 @@ import {
 } from '../lib/expenseText';
 import { formatMyr } from '../lib/money';
 import { Skeleton } from '../components/Skeleton';
+import {
+  EmptyState,
+  HEAD,
+  ITEM_BODY,
+  ItemCard,
+  LIST,
+  META,
+  MUTED,
+  NOTICE,
+  PLAIN,
+  ROW_ACTIONS,
+  SMALL,
+  TITLE,
+} from '../components/ListParts';
+import { ERROR } from '../components/Field';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 
 export function ExpensesPage() {
   const snap = useExpenses();
@@ -64,15 +81,15 @@ export function ExpensesPage() {
   const empty = snap.views.length === 0;
   return (
     <section aria-labelledby="exp-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="exp-title">Expenses</h1>
-        <Link to="/expenses/new" className="button primary">
+        <Button size="lg" render={<Link to="/expenses/new" />}>
           Add expense
-        </Link>
+        </Button>
       </div>
 
       {!snap.loaded && empty ? (
-        <p className="muted">
+        <p className={MUTED}>
           {session.signedIn
             ? online
               ? 'Loading expenses…'
@@ -128,29 +145,32 @@ export function ExpensesPage() {
               />
             </div>
             {badRange ? (
-              <p className="error" role="alert">
+              <p className={ERROR} role="alert">
                 &quot;From&quot; is later than &quot;To&quot;, so nothing matches.
               </p>
             ) : null}
-            <div className="actions">
-              <button
-                type="button"
+            <div className={ROW_ACTIONS}>
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => {
                   setRange(`${klToday().slice(0, 7)}-01`);
                 }}
               >
                 This month
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => {
                   setRange(`${klToday().slice(0, 4)}-01-01`);
                 }}
               >
                 This year
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => {
                   setCategory('');
                   setFrom('');
@@ -158,17 +178,22 @@ export function ExpensesPage() {
                 }}
               >
                 Clear filters
-              </button>
+              </Button>
             </div>
           </form>
-          <p className="muted small" data-testid="active-filters">
+          <p className={SMALL} data-testid="active-filters">
             {active.length > 0 ? `Active filters: ${active.join(', ')}` : 'No filters active.'}
           </p>
 
-          <section aria-labelledby="exp-totals-title" className="card" data-testid="totals">
+          <Card
+            render={<section />}
+            aria-labelledby="exp-totals-title"
+            className="mb-4 p-4"
+            data-testid="totals"
+          >
             <h2 id="exp-totals-title">Totals</h2>
             {snap.partial ? (
-              <p role="status" className="notice bad" data-testid="partial-warning">
+              <p role="status" className={NOTICE.bad} data-testid="partial-warning">
                 Partial: {snap.views.length.toLocaleString()}{' '}
                 {snap.views.length === 1 ? 'expense' : 'expenses'} loaded. Older expenses are not
                 saved on this device, so these totals are not complete.
@@ -179,22 +204,22 @@ export function ExpensesPage() {
               <span data-testid="total-count">{totals.count.toLocaleString()}</span>{' '}
               {totals.count === 1 ? 'expense' : 'expenses'}
             </p>
-            <p className="muted small">{NOT_INCLUDED}</p>
-            <p className="muted small" data-testid="totals-offline-note">
+            <p className={SMALL}>{NOT_INCLUDED}</p>
+            <p className={SMALL} data-testid="totals-offline-note">
               {COMPUTED_ON_DEVICE}
             </p>
             {totals.count > 0 ? (
               <>
-                <h3>By category</h3>
-                <ul aria-label="Totals by category" className="plain">
+                <h3 className="mt-3 mb-1 font-semibold text-base">By category</h3>
+                <ul aria-label="Totals by category" className={PLAIN}>
                   {totals.by_category.map((c) => (
                     <li key={c.category}>
                       {CATEGORY_LABELS[c.category]}: {formatMyr(c.total_minor)} ({c.count})
                     </li>
                   ))}
                 </ul>
-                <h3>By month</h3>
-                <ul aria-label="Totals by month" className="plain">
+                <h3 className="mt-3 mb-1 font-semibold text-base">By month</h3>
+                <ul aria-label="Totals by month" className={PLAIN}>
                   {totals.by_month.map((m) => (
                     <li key={m.month}>
                       {m.month}: {formatMyr(m.total_minor)} ({m.count})
@@ -203,30 +228,30 @@ export function ExpensesPage() {
                 </ul>
               </>
             ) : null}
-          </section>
+          </Card>
 
           {empty ? (
-            <div className="empty">
-              <p className="muted">No expenses yet.</p>
-              <p className="muted small">Use Add expense at the top to record the first one.</p>
-            </div>
+            <EmptyState
+              title="No expenses yet."
+              hint="Use Add expense at the top to record the first one."
+            />
           ) : shown.length === 0 ? (
-            <p className="muted">No expenses match these filters.</p>
+            <p className={MUTED}>No expenses match these filters.</p>
           ) : (
-            <ul className="list" aria-label="Expenses, newest first">
+            <ul className={LIST} aria-label="Expenses, newest first">
               {shown.map(({ view, id, date, category: cat, amount_minor, notes }) => (
-                <li key={id} className="item">
-                  <Link to={`/expenses/${id}`}>
-                    <span className="title">
+                <ItemCard key={id}>
+                  <Link to={`/expenses/${id}`} className={ITEM_BODY}>
+                    <span className={TITLE}>
                       {CATEGORY_LABELS[cat]} · {formatMyr(amount_minor)}
                     </span>
-                    <span className="meta">
+                    <span className={META}>
                       <time dateTime={date}>{formatDate(date)}</time>
                     </span>
-                    {notes ? <span className="meta">{notes}</span> : null}
+                    {notes ? <span className={META}>{notes}</span> : null}
                   </Link>
                   <SyncBadge sync={view.sync} />
-                </li>
+                </ItemCard>
               ))}
             </ul>
           )}
@@ -234,20 +259,21 @@ export function ExpensesPage() {
       )}
 
       {error ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {error}
         </p>
       ) : null}
       {snap.nextCursor ? (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="lg"
           onClick={() => {
             void more();
           }}
           disabled={loading || !online || !session.signedIn}
         >
           {loading ? 'Loading…' : 'Load older expenses'}
-        </button>
+        </Button>
       ) : null}
     </section>
   );

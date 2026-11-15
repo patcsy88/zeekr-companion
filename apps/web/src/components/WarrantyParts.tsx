@@ -9,17 +9,19 @@ import {
   TYPE_LABELS,
   VERIFICATION_LABELS,
 } from '../lib/warrantyText';
+import { ITEM_BODY, ItemCard, META, SMALL, TITLE } from './ListParts';
 import { SyncBadge } from './SyncBadge';
+import { Badge } from './ui/badge';
 
 export function BasisNote({ basis }: { basis: OdometerBasis | null }) {
   if (basis === null)
     return (
-      <p className="muted small" data-testid="odometer-basis">
+      <p className={SMALL} data-testid="odometer-basis">
         Current odometer: unknown. Add a service record to set it.
       </p>
     );
   return (
-    <p className="muted small" data-testid="odometer-basis">
+    <p className={SMALL} data-testid="odometer-basis">
       Current odometer: {basis.km.toLocaleString()} km
       {basis.date ? `, from the service record dated ${formatDate(basis.date)}` : ''}
       {basis.unsent ? ' (saved on this device, not yet on the server)' : ''}.
@@ -32,13 +34,13 @@ export function StatusBadge({
 }: {
   coverage: Pick<WarrantyCoverage, 'status' | 'expired_by'>;
 }) {
-  const cls = { active: 'ok', expiring_soon: 'warn', not_started: 'info', expired: 'bad' }[
-    coverage.status
-  ];
+  const variant = (
+    { active: 'success', expiring_soon: 'warning', not_started: 'info', expired: 'error' } as const
+  )[coverage.status];
   return (
-    <span className={`badge ${cls}`} data-testid="warranty-status">
+    <Badge variant={variant} size="lg" data-testid="warranty-status">
       {statusLabel(coverage)}
-    </span>
+    </Badge>
   );
 }
 
@@ -52,7 +54,7 @@ export function KmBasis({
 }) {
   if (coverage.km_limit === null) return null;
   return (
-    <span className="meta" data-testid="km-basis">
+    <span className={META} data-testid="km-basis">
       {basis
         ? `Km limit ${coverage.km_limit.toLocaleString()} km, compared with current odometer ${basis.km.toLocaleString()} km`
         : `Km limit ${coverage.km_limit.toLocaleString()} km, odometer unknown`}
@@ -67,11 +69,11 @@ export function datesText(c: Pick<WarrantyCoverage, 'start_date' | 'end_date'>):
 export function SourceLines({ coverage }: { coverage: WarrantyCoverage }) {
   return (
     <>
-      <span className="meta">
+      <span className={META}>
         {TYPE_LABELS[coverage.provider_type]} · {SOURCE_KIND_LABELS[coverage.source_kind]} ·{' '}
         {VERIFICATION_LABELS[coverage.verification_status]}
       </span>
-      {coverage.source_note ? <span className="meta">Source: {coverage.source_note}</span> : null}
+      {coverage.source_note ? <span className={META}>Source: {coverage.source_note}</span> : null}
     </>
   );
 }
@@ -79,18 +81,18 @@ export function SourceLines({ coverage }: { coverage: WarrantyCoverage }) {
 export function CoverageItem({ view, basis }: { view: CoverageView; basis: OdometerBasis | null }) {
   const c = view.coverage;
   return (
-    <li className="item">
-      <Link to={`/warranty/${c.id}`}>
-        <span className="title">{c.name}</span>
-        <span className="meta">{datesText(c)}</span>
+    <ItemCard>
+      <Link to={`/warranty/${c.id}`} className={ITEM_BODY}>
+        <span className={TITLE}>{c.name}</span>
+        <span className={META}>{datesText(c)}</span>
         <KmBasis coverage={c} basis={basis} />
         <SourceLines coverage={c} />
-        <span className="meta">
+        <span className={META}>
           {c.claim_count} {c.claim_count === 1 ? 'claim' : 'claims'}
         </span>
       </Link>
       <StatusBadge coverage={c} />
       <SyncBadge sync={view.sync} />
-    </li>
+    </ItemCard>
   );
 }

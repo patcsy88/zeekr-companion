@@ -1,4 +1,5 @@
 import type { WarrantySync } from '../data/warrantyOverlay';
+import { Badge } from './ui/badge';
 
 export function SyncBadge({ sync }: { sync: WarrantySync }) {
   if (sync === 'synced') return null;
@@ -8,10 +9,10 @@ export function SyncBadge({ sync }: { sync: WarrantySync }) {
     failed: 'Failed',
     blocked: 'Blocked',
   }[sync];
-  const cls = sync === 'failed' || sync === 'blocked' ? 'bad' : 'info';
+  const variant = sync === 'failed' || sync === 'blocked' ? 'error' : 'info';
   return (
-    <span className={`badge ${cls}`} data-testid={`sync-${sync}`}>
+    <Badge variant={variant} size="lg" data-testid={`sync-${sync}`}>
       {text}
-    </span>
+    </Badge>
   );
 }

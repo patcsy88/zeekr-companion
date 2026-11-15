@@ -4,6 +4,8 @@ import { useConnectivity, useSession, useWarranty } from '../data/hooks';
 import type { WarrantyStatusValue } from '../api/types';
 import { COMPUTED_OFFLINE, TERMS_LINE } from '../lib/warrantyText';
 import { Skeleton } from '../components/Skeleton';
+import { EmptyState, HEAD, LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
+import { Button } from '../components/ui/button';
 
 const GROUPS: { status: WarrantyStatusValue; title: string }[] = [
   { status: 'expiring_soon', title: 'Expiring soon' },
@@ -23,21 +25,21 @@ export function WarrantyPage() {
 
   return (
     <section aria-labelledby="war-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="war-title">Warranty</h1>
-        <Link to="/warranty/new" className="button primary">
+        <Button size="lg" render={<Link to="/warranty/new" />}>
           Add coverage
-        </Link>
+        </Button>
       </div>
       {notice ? (
-        <p className="notice info" role="status" data-testid="dropped-notice">
+        <p className={NOTICE.info} role="status" data-testid="dropped-notice">
           {notice}
         </p>
       ) : null}
-      <p className="muted small" data-testid="terms-line">
+      <p className={SMALL} data-testid="terms-line">
         {TERMS_LINE}
       </p>
-      <p className="muted small" data-testid="status-computed-offline">
+      <p className={SMALL} data-testid="status-computed-offline">
         {COMPUTED_OFFLINE}
       </p>
       <BasisNote basis={snap.basis} />
@@ -46,7 +48,7 @@ export function WarrantyPage() {
       </p>
 
       {!snap.loaded && empty ? (
-        <p className="muted">
+        <p className={MUTED}>
           {session.signedIn
             ? online
               ? 'Loading warranty entries…'
@@ -54,10 +56,10 @@ export function WarrantyPage() {
             : 'Sign in to load your warranty entries.'}
         </p>
       ) : empty ? (
-        <div className="empty">
-          <p className="muted">No warranty coverages yet.</p>
-          <p className="muted small">Use Add coverage at the top to record the first one.</p>
-        </div>
+        <EmptyState
+          title="No warranty coverages yet."
+          hint="Use Add coverage at the top to record the first one."
+        />
       ) : (
         GROUPS.map((g) => {
           const items = snap.coverages.filter((v) => v.coverage.status === g.status);
@@ -65,7 +67,7 @@ export function WarrantyPage() {
           return (
             <div key={g.status}>
               <h2>{g.title}</h2>
-              <ul className="list" aria-label={`${g.title} coverages`}>
+              <ul className={LIST} aria-label={`${g.title} coverages`}>
                 {items.map((v) => (
                   <CoverageItem key={v.coverage.id} view={v} basis={snap.basis} />
                 ))}
