@@ -16,6 +16,7 @@ import {
 } from '../lib/expenseText';
 import { formatMyr } from '../lib/money';
 import { Skeleton } from '../components/Skeleton';
+import { cn } from '../lib/cn';
 import {
   EmptyState,
   HEAD,
@@ -26,11 +27,10 @@ import {
   MUTED,
   NOTICE,
   PLAIN,
-  ROW_ACTIONS,
   SMALL,
   TITLE,
 } from '../components/ListParts';
-import { ERROR } from '../components/Field';
+import { ACTIONS, ERROR, FORM, SelectField, TextField } from '../components/Field';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 
@@ -98,61 +98,55 @@ export function ExpensesPage() {
         </p>
       ) : (
         <>
-          <form
-            className="card"
+          <Card
+            render={<form />}
+            className={cn(FORM, 'mb-2 gap-4 p-4')}
             aria-label="Filters"
             onSubmit={(e) => {
               e.preventDefault();
             }}
           >
-            <div className="field">
-              <label htmlFor="f-category">Category</label>
-              <select
-                id="f-category"
-                value={category}
-                onChange={(e) => {
-                  setCategory(isCategory(e.target.value) ? e.target.value : '');
-                }}
-              >
-                <option value="">All categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="f-from">From</label>
-              <input
-                id="f-from"
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                }}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="f-to">To</label>
-              <input
-                id="f-to"
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                }}
-              />
-            </div>
+            <SelectField
+              id="f-category"
+              label="Category"
+              value={category}
+              onChange={(e) => {
+                setCategory(isCategory(e.target.value) ? e.target.value : '');
+              }}
+            >
+              <option value="">All categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </SelectField>
+            <TextField
+              id="f-from"
+              label="From"
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+              }}
+            />
+            <TextField
+              id="f-to"
+              label="To"
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+              }}
+            />
             {badRange ? (
               <p className={ERROR} role="alert">
                 &quot;From&quot; is later than &quot;To&quot;, so nothing matches.
               </p>
             ) : null}
-            <div className={ROW_ACTIONS}>
+            <div className={ACTIONS}>
               <Button
                 variant="outline"
-                size="lg"
                 onClick={() => {
                   setRange(`${klToday().slice(0, 7)}-01`);
                 }}
@@ -161,7 +155,6 @@ export function ExpensesPage() {
               </Button>
               <Button
                 variant="outline"
-                size="lg"
                 onClick={() => {
                   setRange(`${klToday().slice(0, 4)}-01-01`);
                 }}
@@ -170,7 +163,6 @@ export function ExpensesPage() {
               </Button>
               <Button
                 variant="outline"
-                size="lg"
                 onClick={() => {
                   setCategory('');
                   setFrom('');
@@ -180,7 +172,7 @@ export function ExpensesPage() {
                 Clear filters
               </Button>
             </div>
-          </form>
+          </Card>
           <p className={SMALL} data-testid="active-filters">
             {active.length > 0 ? `Active filters: ${active.join(', ')}` : 'No filters active.'}
           </p>

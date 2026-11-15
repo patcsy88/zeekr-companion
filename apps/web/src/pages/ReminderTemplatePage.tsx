@@ -8,6 +8,10 @@ import { addMonths, isIsoDate } from '../lib/dates';
 import { KIND_LABELS, KINDS } from '../lib/reminderText';
 import { uuid } from '../lib/uuid';
 import { Skeleton } from '../components/Skeleton';
+import { ACTIONS, ERROR, FORM, SelectField, TextArea, TextField } from '../components/Field';
+import { LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 
 interface RowEdit {
   selected?: boolean;
@@ -35,7 +39,7 @@ export function ReminderTemplatePage() {
     return (
       <section>
         <h1>Suggested service schedule</h1>
-        <p className="muted">
+        <p className={MUTED}>
           {templates.loaded
             ? 'No suggested schedule is available.'
             : 'The suggested schedule has not been loaded on this device yet. It needs one online visit: open the app while connected, then come back here.'}
@@ -138,59 +142,53 @@ function TemplateReview({
 
   const src = template.source;
   return (
-    <section aria-labelledby="tpl-title">
-      <h1 id="tpl-title">Suggested service schedule</h1>
-      <p className="notice info" data-testid="template-suggestion-only">
+    <section aria-labelledby="tpl-title" className={FORM}>
+      <h1 id="tpl-title" className="m-0">
+        Suggested service schedule
+      </h1>
+      <p className={NOTICE.info} data-testid="template-suggestion-only">
         This is a suggestion. Nothing is created until you press &quot;Create selected
         reminders&quot;. Leaving this page creates nothing.
       </p>
-      <h2>{template.name}</h2>
-      <p>
+      <h2 className="m-0">{template.name}</h2>
+      <p className="m-0">
         Every {template.interval.km.toLocaleString()} km or {template.interval.months} months,{' '}
         {template.interval.rule}.
       </p>
-      <p className="small" data-testid="template-source">
+      <p className={`m-0 ${SMALL}`} data-testid="template-source">
         Source: {src.title} ({src.url}). Research entry {src.research_ref}, status {src.status},
         retrieved {src.retrieved}.
       </p>
-      <p className="small" data-testid="template-caveat">
+      <p className={`m-0 ${SMALL}`} data-testid="template-caveat">
         {template.caveat}
       </p>
 
-      <div className="field">
-        <label htmlFor="baseline">Baseline date (required)</label>
-        <p id="baseline-hint" className="hint">
-          {purchaseDate !== null && baseline === purchaseDate
+      <TextField
+        id="baseline"
+        label="Baseline date (required)"
+        hint={
+          purchaseDate !== null && baseline === purchaseDate
             ? 'Prefilled from the vehicle purchase date. This is a guess: change it to the date your service interval really starts from, for example your last service.'
-            : 'The date your service interval starts from, for example your last service.'}
-        </p>
-        <input
-          id="baseline"
-          name="baseline"
-          type="date"
-          value={baseline}
-          aria-describedby="baseline-hint"
-          aria-invalid={baselineError ? true : undefined}
-          onChange={(e) => {
-            setBaseline(e.target.value);
-          }}
-        />
-        {baselineError ? (
-          <p className="error" role="alert">
-            {baselineError}
-          </p>
-        ) : null}
-      </div>
+            : 'The date your service interval starts from, for example your last service.'
+        }
+        type="date"
+        value={baseline}
+        error={baselineError}
+        onChange={(e) => {
+          setBaseline(e.target.value);
+        }}
+      />
 
-      <ul className="list" aria-label="Suggested reminders">
+      <ul className={LIST} aria-label="Suggested reminders">
         {template.checkpoints.map((c) => {
           const v = row(c);
           const id = `cp${c.number}`;
           return (
-            <li key={c.number} className="card">
-              <label className="check">
+            <Card render={<li />} key={c.number} className="flex flex-col gap-4 p-4">
+              <label className="m-0 flex min-h-11 items-center gap-3 font-semibold text-foreground">
                 <input
                   type="checkbox"
+                  className="m-0 size-5 shrink-0 accent-primary"
                   checked={v.selected}
                   onChange={(e) => {
                     set(c.number, { selected: e.target.checked });
@@ -198,97 +196,88 @@ function TemplateReview({
                 />
                 Checkpoint {c.number}: {c.km.toLocaleString()} km / {c.months} months
               </label>
-              <p className="muted small">
+              <p className={`m-0 ${SMALL}`}>
                 {c.work_items_stated
                   ? `Work items: ${c.work_items.join('; ')}.`
                   : 'Work items: not stated by the source.'}
               </p>
-              <div className="field">
-                <label htmlFor={`${id}-kind`}>Kind</label>
-                <select
-                  id={`${id}-kind`}
-                  value={v.kind}
-                  onChange={(e) => {
-                    set(c.number, { kind: e.target.value as ReminderKind });
-                  }}
-                >
-                  {KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {KIND_LABELS[k]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-title`}>Title</label>
-                <input
-                  id={`${id}-title`}
-                  value={v.title}
-                  onChange={(e) => {
-                    set(c.number, { title: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-date`}>Due date</label>
-                <input
-                  id={`${id}-date`}
-                  type="date"
-                  value={v.due_date}
-                  onChange={(e) => {
-                    set(c.number, { due_date: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-km`}>Due odometer (km)</label>
-                <input
-                  id={`${id}-km`}
-                  inputMode="numeric"
-                  value={v.due_odometer}
-                  onChange={(e) => {
-                    set(c.number, { due_odometer: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-notes`}>Notes</label>
-                <textarea
-                  id={`${id}-notes`}
-                  rows={2}
-                  value={v.notes}
-                  onChange={(e) => {
-                    set(c.number, { notes: e.target.value });
-                  }}
-                />
-              </div>
+              <SelectField
+                id={`${id}-kind`}
+                label="Kind"
+                value={v.kind}
+                onChange={(e) => {
+                  set(c.number, { kind: e.target.value as ReminderKind });
+                }}
+              >
+                {KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {KIND_LABELS[k]}
+                  </option>
+                ))}
+              </SelectField>
+              <TextField
+                id={`${id}-title`}
+                label="Title"
+                value={v.title}
+                onChange={(e) => {
+                  set(c.number, { title: e.target.value });
+                }}
+              />
+              <TextField
+                id={`${id}-date`}
+                label="Due date"
+                type="date"
+                value={v.due_date}
+                onChange={(e) => {
+                  set(c.number, { due_date: e.target.value });
+                }}
+              />
+              <TextField
+                id={`${id}-km`}
+                label="Due odometer (km)"
+                inputMode="numeric"
+                value={v.due_odometer}
+                onChange={(e) => {
+                  set(c.number, { due_odometer: e.target.value });
+                }}
+              />
+              <TextArea
+                id={`${id}-notes`}
+                label="Notes"
+                rows={2}
+                value={v.notes}
+                onChange={(e) => {
+                  set(c.number, { notes: e.target.value });
+                }}
+              />
               {errors[c.number] ? (
-                <p className="error" role="alert">
+                <p className={ERROR} role="alert">
                   Checkpoint {c.number}: {errors[c.number]}
                 </p>
               ) : null}
-            </li>
+            </Card>
           );
         })}
       </ul>
 
       {formError ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {formError}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="button" className="primary" disabled={busy} onClick={accept}>
+      <div className={ACTIONS}>
+        <Button size="lg" disabled={busy} onClick={accept}>
           Create selected reminders
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="outline"
+          size="lg"
           onClick={() => {
             void nav('/reminders');
           }}
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </section>
   );

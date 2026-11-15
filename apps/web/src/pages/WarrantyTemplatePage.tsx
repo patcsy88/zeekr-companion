@@ -7,6 +7,10 @@ import { saveCoverageBatch } from '../data/mutations';
 import { addMonths, isIsoDate } from '../lib/dates';
 import { uuid } from '../lib/uuid';
 import { Skeleton } from '../components/Skeleton';
+import { ACTIONS, ERROR, FORM, TextArea, TextField } from '../components/Field';
+import { LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 
 interface RowEdit {
   selected?: boolean;
@@ -26,7 +30,7 @@ export function WarrantyTemplatePage() {
     return (
       <section>
         <h1>Suggested factory warranty terms</h1>
-        <p className="muted">
+        <p className={MUTED}>
           {templates.loaded
             ? 'No suggested terms are available.'
             : 'The suggested terms have not been loaded on this device yet. They need one online visit: open the app while connected, then come back here.'}
@@ -125,69 +129,73 @@ function TemplateReview({
 
   const src = template.source;
   return (
-    <section aria-labelledby="wtpl-title">
-      <h1 id="wtpl-title">Suggested factory warranty terms</h1>
-      <p className="notice info" data-testid="template-suggestion-only">
+    <section aria-labelledby="wtpl-title" className={FORM}>
+      <h1 id="wtpl-title" className="m-0">
+        Suggested factory warranty terms
+      </h1>
+      <p className={NOTICE.info} data-testid="template-suggestion-only">
         This is a suggestion. Nothing is created until you press &quot;Create selected
         coverages&quot;. Leaving this page creates nothing.
       </p>
-      <h2>{template.name}</h2>
-      <p className="small" data-testid="template-source">
+      <h2 className="m-0">{template.name}</h2>
+      <p className={`m-0 ${SMALL}`} data-testid="template-source">
         Source: {src.title} ({src.url}). Research entry {src.research_ref}, status {src.status},
         retrieved {src.retrieved}.
       </p>
-      <p className="small" data-testid="template-caveat">
+      <p className={`m-0 ${SMALL}`} data-testid="template-caveat">
         {template.caveat}
       </p>
 
-      <div className="field">
-        <label htmlFor="baseline">Baseline start date (required)</label>
-        <p id="baseline-hint" className="hint">
-          {purchaseDate !== null && baseline === purchaseDate
+      <TextField
+        id="baseline"
+        label="Baseline start date (required)"
+        hint={
+          purchaseDate !== null && baseline === purchaseDate
             ? 'Prefilled from the vehicle purchase date. This is a guess: change it to the date your warranty really starts, as shown in your own documents.'
-            : 'The date your warranty starts, as shown in your own documents.'}
-        </p>
-        <input
-          id="baseline"
-          name="baseline"
-          type="date"
-          value={baseline}
-          aria-describedby="baseline-hint"
-          aria-invalid={baselineError ? true : undefined}
-          onChange={(e) => {
-            setBaseline(e.target.value);
-          }}
-        />
-        {baselineError ? (
-          <p className="error" role="alert">
-            {baselineError}
-          </p>
-        ) : null}
-      </div>
+            : 'The date your warranty starts, as shown in your own documents.'
+        }
+        type="date"
+        value={baseline}
+        error={baselineError}
+        onChange={(e) => {
+          setBaseline(e.target.value);
+        }}
+      />
 
-      <ul className="list" aria-label="Suggested coverages">
+      <ul className={LIST} aria-label="Suggested coverages">
         {template.items.map((it) => {
           if (it.enter_manually === true) {
             return (
-              <li key={it.key} className="card" data-testid={`tpl-manual-${it.key}`}>
-                <p className="title">{it.name}</p>
-                <p className="muted small">
+              <Card
+                render={<li />}
+                key={it.key}
+                className="flex flex-col gap-4 p-4"
+                data-testid={`tpl-manual-${it.key}`}
+              >
+                <p className="m-0 font-semibold">{it.name}</p>
+                <p className={`m-0 ${SMALL}`}>
                   Enter manually. The source says this varies by part type, so no dates or km are
                   suggested.
                 </p>
-                <Link to="/warranty/new" className="button">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="self-start"
+                  render={<Link to="/warranty/new" />}
+                >
                   Add it yourself
-                </Link>
-              </li>
+                </Button>
+              </Card>
             );
           }
           const v = row(it);
           const id = `tpl-${it.key}`;
           return (
-            <li key={it.key} className="card">
-              <label className="check">
+            <Card render={<li />} key={it.key} className="flex flex-col gap-4 p-4">
+              <label className="m-0 flex min-h-11 items-center gap-3 font-semibold text-foreground">
                 <input
                   type="checkbox"
+                  className="m-0 size-5 shrink-0 accent-primary"
                   checked={v.selected}
                   onChange={(e) => {
                     set(it.key, { selected: e.target.checked });
@@ -195,87 +203,78 @@ function TemplateReview({
                 />
                 {it.name}: {it.months} months / {it.km?.toLocaleString()} km
               </label>
-              <div className="field">
-                <label htmlFor={`${id}-name`}>Name</label>
-                <input
-                  id={`${id}-name`}
-                  value={v.name}
-                  onChange={(e) => {
-                    set(it.key, { name: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-start`}>Start date</label>
-                <input
-                  id={`${id}-start`}
-                  type="date"
-                  value={v.start_date}
-                  onChange={(e) => {
-                    set(it.key, { start_date: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-end`}>End date</label>
-                <input
-                  id={`${id}-end`}
-                  type="date"
-                  value={v.end_date}
-                  onChange={(e) => {
-                    set(it.key, { end_date: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-km`}>Km limit</label>
-                <input
-                  id={`${id}-km`}
-                  inputMode="numeric"
-                  value={v.km_limit}
-                  onChange={(e) => {
-                    set(it.key, { km_limit: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${id}-notes`}>Notes</label>
-                <textarea
-                  id={`${id}-notes`}
-                  rows={2}
-                  value={v.notes}
-                  onChange={(e) => {
-                    set(it.key, { notes: e.target.value });
-                  }}
-                />
-              </div>
+              <TextField
+                id={`${id}-name`}
+                label="Name"
+                value={v.name}
+                onChange={(e) => {
+                  set(it.key, { name: e.target.value });
+                }}
+              />
+              <TextField
+                id={`${id}-start`}
+                label="Start date"
+                type="date"
+                value={v.start_date}
+                onChange={(e) => {
+                  set(it.key, { start_date: e.target.value });
+                }}
+              />
+              <TextField
+                id={`${id}-end`}
+                label="End date"
+                type="date"
+                value={v.end_date}
+                onChange={(e) => {
+                  set(it.key, { end_date: e.target.value });
+                }}
+              />
+              <TextField
+                id={`${id}-km`}
+                label="Km limit"
+                inputMode="numeric"
+                value={v.km_limit}
+                onChange={(e) => {
+                  set(it.key, { km_limit: e.target.value });
+                }}
+              />
+              <TextArea
+                id={`${id}-notes`}
+                label="Notes"
+                rows={2}
+                value={v.notes}
+                onChange={(e) => {
+                  set(it.key, { notes: e.target.value });
+                }}
+              />
               {errors[it.key] ? (
-                <p className="error" role="alert">
+                <p className={ERROR} role="alert">
                   {it.name}: {errors[it.key]}
                 </p>
               ) : null}
-            </li>
+            </Card>
           );
         })}
       </ul>
 
       {formError ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {formError}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="button" className="primary" disabled={busy} onClick={accept}>
+      <div className={ACTIONS}>
+        <Button size="lg" disabled={busy} onClick={accept}>
           Create selected coverages
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="outline"
+          size="lg"
           onClick={() => {
             void nav('/warranty');
           }}
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </section>
   );

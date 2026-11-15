@@ -37,6 +37,8 @@
 @source './pages/ExpenseDetailPage.tsx';
 @source './pages/CoverageDetailPage.tsx';
 @source './pages/TyreEventDetailPage.tsx';
+@source './pages/ReminderTemplatePage.tsx';
+@source './pages/WarrantyTemplatePage.tsx';
 @source './components/SignIn.tsx';
 @source './components/LiveVehicleCard.tsx';
 @source './pages/VehiclePage.tsx';
