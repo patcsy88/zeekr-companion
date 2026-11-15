@@ -162,7 +162,7 @@ The old `web` container mounted `infra/Caddyfile`, `infra/snippets` and a `WEB_D
 
 Images are published for every release from `v0.1.0`; the newest is `v0.1.10`. Use a released tag; there is no `latest`. What has and has not been checked is at the end of this section.
 
-Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory. For a 512 MB host, see "On a 512 MB host" below.
+Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch64** (the images are `linux/amd64` and `linux/arm64` from the first release after 2026-11-07; releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`. A 32-bit ARM system (`armv7l`) is not supported. On a Raspberry Pi 3 (1 GB of memory, not tested), use these published images; building there with `--build` is very slow and may run out of memory. A Raspberry Pi 3 Model B or newer does not need the low-memory overlay (owner decision 2026-11-15). Only a Raspberry Pi Zero 2 W does: see "On a 512 MB host" below.
 
 1. Make a folder and download three files into it from the repository: `infra/docker-compose.release.yml` (save it as `docker-compose.yml`), `infra/.env.example` and `infra/install.sh` (then `chmod +x install.sh`).
 2. Run `./install.sh --version v0.1.0` (use the released tag you want). It writes `.env` with random secrets and the version. Never paste `.env` anywhere, and keep a private copy.
@@ -174,6 +174,8 @@ Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch
 Browser error reporting (`VITE_SENTRY_DSN`) is **off** in the published web image. To have it, install from a clone.
 
 ### On a 512 MB host (Raspberry Pi Zero 2 W)
+
+This section and `infra/docker-compose.lowmem.yml` are only for a Raspberry Pi Zero 2 W. A Raspberry Pi 3 Model B or newer does not need them: install from images as above, without the overlay (owner decision 2026-11-15).
 
 The measured figures below come from the `arm64` images on the development Mac, with all containers sharing one memory limit and swap off (ADR-006 amendment 2026-11-09). What the owner reported from a real Pi is under "Reported on a Pi Zero 2 W" at the end of this section.
 

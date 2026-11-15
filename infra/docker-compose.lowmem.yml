@@ -1,4 +1,5 @@
-# Low-memory overlay for a 512 MB host (for example a Raspberry Pi Zero 2 W). It adds to
+# Low-memory overlay, only for a Raspberry Pi Zero 2 W (512 MB). A Raspberry Pi 3 Model B or newer
+# does not need it (owner decision 2026-11-15). It adds to
 # docker-compose.yml (from a clone, or the release file saved under that name); it changes nothing
 # else. Turn it on with one line in infra/.env:
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.lowmem.yml
