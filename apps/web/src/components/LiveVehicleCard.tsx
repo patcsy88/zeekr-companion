@@ -17,6 +17,10 @@ import {
 import { Skeleton } from './Skeleton';
 import { ReadOnlyToggle } from './ReadOnlyToggle';
 import { usePullToRefresh } from '../lib/pullToRefresh';
+import { Alert, AlertDescription } from './ui/alert';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 /**
  * Read-only live readings from the car (ADR-009). Online only: nothing here is stored on the
@@ -89,13 +93,19 @@ export function LiveVehicleCard() {
   });
 
   return (
-    <section aria-labelledby="live-title" className="live-card" data-testid="live-card">
+    <Card
+      render={<section aria-labelledby="live-title" />}
+      className="my-3 block px-4 py-3"
+      data-testid="live-card"
+    >
       <div className="row">
-        <h2 id="live-title">Live from the car</h2>
+        <h2 id="live-title" className="m-0">
+          Live from the car
+        </h2>
         {active && status !== 'off' && status !== 'paused' ? (
-          <button type="button" disabled={busy} onClick={refresh}>
+          <Button variant="outline" disabled={busy} onClick={refresh}>
             Refresh
-          </button>
+          </Button>
         ) : null}
       </div>
       <p className="muted small">
@@ -114,7 +124,7 @@ export function LiveVehicleCard() {
       ) : (
         <CardBody card={card} failed={failed} note={note} />
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -133,9 +143,9 @@ function CardBody({
         <p className="muted" data-testid="live-off">
           Live readings are off.
         </p>
-        <Link to="/vehicle/live" className="button">
+        <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
           History
-        </Link>
+        </Button>
       </>
     );
   }
@@ -146,25 +156,31 @@ function CardBody({
   return (
     <>
       {card.status === 'paused' ? (
-        <p role="alert" className="notice bad" data-testid="live-paused">
-          Live readings are paused after repeated failures. They stay paused until the API is
-          restarted.
-        </p>
+        <Alert variant="error" className="my-2" data-testid="live-paused">
+          <AlertDescription className="text-destructive-foreground">
+            Live readings are paused after repeated failures. They stay paused until the API is
+            restarted.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {card.status === 'unavailable' ? (
-        <p role="alert" className="notice bad" data-testid="live-unavailable">
-          Could not get a new reading. Showing the last one stored.
-        </p>
+        <Alert variant="error" className="my-2" data-testid="live-unavailable">
+          <AlertDescription className="text-destructive-foreground">
+            Could not get a new reading. Showing the last one stored.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {failed ? (
-        <p role="alert" className="notice bad">
-          Could not refresh. Showing the last reading received.
-        </p>
+        <Alert variant="error" className="my-2">
+          <AlertDescription className="text-destructive-foreground">
+            Could not refresh. Showing the last reading received.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {note ? (
-        <p role="status" className="notice info" data-testid="live-note">
-          {note}
-        </p>
+        <Alert variant="info" role="status" className="my-2" data-testid="live-note">
+          <AlertDescription className="text-info-foreground">{note}</AlertDescription>
+        </Alert>
       ) : null}
       {card.observed_at === null ? (
         <p className="muted" data-testid="live-none">
@@ -196,8 +212,8 @@ function CardBody({
             </div>
           ) : null}
           <p className="badges">
-            <span className={badgeClass(r.plugged_in)}>Plugged in: {yesNo(r.plugged_in)}</span>
-            <span className={badgeClass(r.charging)}>Charging: {yesNo(r.charging)}</span>
+            <Flagged label="Plugged in" value={r.plugged_in} />
+            <Flagged label="Charging" value={r.charging} />
           </p>
         </div>
         <dl className="stats">
@@ -233,9 +249,9 @@ function CardBody({
       <p className="muted small">
         Updates about every {card.interval_minutes} minutes while this page is open.
       </p>
-      <Link to="/vehicle/live" className="button">
+      <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
         History
-      </Link>
+      </Button>
     </>
   );
 }
@@ -279,8 +295,23 @@ function CarOutline() {
   );
 }
 
-function badgeClass(value: boolean | null): string {
-  return value === null ? 'badge badge-unknown' : value ? 'badge badge-on' : 'badge';
+/** A yes / no badge: green when on, plain when off, dashed when the car did not say. */
+function Flagged({ label, value }: { label: string; value: boolean | null }) {
+  return (
+    <Badge
+      variant={value ? 'success' : 'outline'}
+      size="lg"
+      className={
+        value === null
+          ? 'border-dashed text-muted-foreground'
+          : value
+            ? ''
+            : 'text-muted-foreground'
+      }
+    >
+      {label}: {yesNo(value)}
+    </Badge>
+  );
 }
 
 /** One tyre. The grid puts the driver side on the right, because the car is right hand drive. */

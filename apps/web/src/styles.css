@@ -31,8 +31,16 @@
   --radius-sm: 0.75rem;
   --shadow: 0 1px 2px rgb(16 32 30 / 0.05), 0 4px 14px rgb(16 32 30 / 0.06);
   --glass: rgb(255 255 255 / 0.82);
+  /* Bundled Inter (COSS UI pilot), served from the app itself; system fonts as the fallback. */
   font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+    'Inter Variable',
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Text',
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   color-scheme: light dark;
 }
@@ -270,7 +278,7 @@ h2 {
 .field {
   margin-bottom: var(--space-4);
 }
-label {
+label:where(:not([data-slot])) {
   display: block;
   font-weight: 600;
   margin-bottom: var(--space-1);
@@ -280,7 +288,7 @@ label {
   color: var(--muted);
   font-size: 0.85rem;
 }
-input,
+input:where(:not([data-slot])),
 textarea {
   width: 100%;
   font: inherit;
@@ -291,7 +299,7 @@ textarea {
   background: var(--control-bg);
   color: inherit;
 }
-input[aria-invalid='true'],
+input[aria-invalid='true']:where(:not([data-slot])),
 textarea[aria-invalid='true'] {
   border-color: var(--bad);
   border-width: 2px;
@@ -308,7 +316,7 @@ textarea[aria-invalid='true'] {
   border-radius: var(--radius-sm);
   margin: var(--space-2) 0 0;
 }
-button,
+button:where(:not([data-slot])),
 .button {
   font: inherit;
   min-height: 2.75rem;
@@ -324,18 +332,18 @@ button,
   align-items: center;
   justify-content: center;
 }
-button:disabled {
+button:disabled:where(:not([data-slot])) {
   opacity: 0.55;
   cursor: not-allowed;
 }
-button.primary,
+button.primary:where(:not([data-slot])),
 .button.primary {
   background: var(--brand);
   border-color: var(--brand);
   color: var(--brand-fg);
   box-shadow: 0 1px 2px rgb(15 94 87 / 0.25);
 }
-button:active:not(:disabled),
+button:active:not(:disabled):where(:not([data-slot])),
 .button:active {
   transform: scale(0.98);
 }
@@ -476,7 +484,7 @@ button.link {
 .check input {
   width: auto;
 }
-select {
+select:where(:not([data-slot])) {
   width: 100%;
   min-height: 2.75rem;
   font: inherit;
@@ -699,7 +707,7 @@ select {
     left 0.2s ease,
     width 0.4s ease;
 }
-button,
+button:where(:not([data-slot])),
 .button {
   transition: background-color 0.15s ease;
 }

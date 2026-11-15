@@ -1,0 +1,91 @@
+/*
+ * Stylesheet entry (COSS UI pilot, docs/product/coss-ui-pilot-proposal.md).
+ *
+ * Layer order: theme, base, legacy, components, utilities. The app's own stylesheet sits in the
+ * "legacy" layer, so every existing rule keeps its order and specificity against the others, and
+ * Tailwind utilities (the COSS components) win over it. Tailwind's preflight reset is left out on
+ * purpose, so the pages that are not converted do not shift.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@import './styles.css' layer(legacy);
+
+/* Only the converted files are scanned; add each page here as it moves to COSS. */
+@source './components/ui';
+@source './components/SignIn.tsx';
+@source './components/LiveVehicleCard.tsx';
+@source './pages/VehiclePage.tsx';
+
+/* Dark mode follows the same data-theme choice as styles.css: "dark", or "system" on a dark phone. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+}
+
+/* COSS colour names, mapped to the app's own (teal) palette in styles.css. */
+@theme inline {
+  --font-sans:
+    'Inter Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-heading: var(--font-sans);
+  --color-background: var(--control-bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--control-bg);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-fg);
+  --color-secondary: color-mix(in srgb, var(--fg) 5%, transparent);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: color-mix(in srgb, var(--fg) 4%, transparent);
+  --color-muted-foreground: var(--muted);
+  --color-accent: color-mix(in srgb, var(--fg) 5%, transparent);
+  --color-accent-foreground: var(--fg);
+  --color-border: var(--line);
+  /* Control borders keep the app's 3:1 contrast colour rather than COSS's faint 10% black. */
+  --color-input: var(--control-border);
+  --color-ring: var(--focus);
+  --color-destructive: var(--bad);
+  --color-destructive-foreground: var(--bad);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info);
+  --color-success: var(--ok);
+  --color-success-foreground: var(--ok);
+  --color-warning: var(--warn);
+  --color-warning-foreground: var(--warn);
+}
+
+/* The part of preflight the COSS components rely on, limited to the components themselves. */
+@layer base {
+  [data-slot],
+  [data-slot]::before,
+  [data-slot]::after {
+    box-sizing: border-box;
+    border: 0 solid var(--color-border);
+  }
+  :is(button, input, select, textarea)[data-slot] {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+  }
+  input[data-slot] {
+    background: transparent;
+  }
+}
+
+/* Base UI's inline <style> for hidden scrollbars, moved here (CSPProvider disableStyleElements). */
+.base-ui-disable-scrollbar {
+  scrollbar-width: none;
+}
+.base-ui-disable-scrollbar::-webkit-scrollbar {
+  display: none;
+}

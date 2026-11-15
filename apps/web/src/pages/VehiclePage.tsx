@@ -1,8 +1,7 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Vehicle } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
-import { TextField } from '../components/Field';
 import { LiveVehicleCard } from '../components/LiveVehicleCard';
 import { SyncBadge } from '../components/SyncBadge';
 import { useVehicle } from '../data/hooks';
@@ -14,6 +13,12 @@ import { uuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { cn } from '../lib/cn';
 import {
   ALL_TYRES,
   DRIVES,
@@ -23,7 +28,79 @@ import {
   variantText,
 } from '../lib/vehicleCatalogue';
 
-/** A labelled native select, with the same hint and error wiring as TextField. */
+/** The input wrapper from the COSS Input, reused around a native select (keeps the iOS picker). */
+const CONTROL =
+  'relative inline-flex w-full rounded-lg border border-input bg-background not-dark:bg-clip-padding text-base shadow-xs/5 ring-ring/24 transition-shadow has-focus-visible:border-ring has-focus-visible:ring-[3px] has-aria-invalid:border-destructive/64 dark:bg-input/32';
+
+function describedBy(id: string, hint?: string, error?: string) {
+  return (
+    [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined
+  );
+}
+
+/** Label, hint, control and error, with the same ids and wiring as the shared TextField. */
+function FieldShell({
+  id,
+  label,
+  hint,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      {hint ? (
+        <p id={`${id}-hint`} className="m-0 text-muted-foreground text-sm">
+          {hint}
+        </p>
+      ) : null}
+      {children}
+      {error ? (
+        <p
+          id={`${id}-error`}
+          className="m-0 font-medium text-destructive-foreground text-sm"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A labelled COSS text input. */
+function TextField({
+  id,
+  label,
+  hint,
+  error,
+  ...rest
+}: { id: string; label: string; hint?: string; error?: string | undefined } & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'size'
+>) {
+  return (
+    <FieldShell id={id} label={label} hint={hint} error={error}>
+      <Input
+        nativeInput
+        size="lg"
+        id={id}
+        name={id}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy(id, hint, error)}
+        {...rest}
+      />
+    </FieldShell>
+  );
+}
+
+/** A labelled native select, with COSS input styling. */
 function SelectField({
   id,
   label,
@@ -41,37 +118,43 @@ function SelectField({
   onChange: (value: string) => void;
   children: ReactNode;
 }) {
-  const described = [hint ? `${id}-hint` : '', error ? `${id}-error` : '']
-    .filter(Boolean)
-    .join(' ');
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      {hint ? (
-        <p id={`${id}-hint`} className="hint">
-          {hint}
-        </p>
-      ) : null}
-      <select
-        id={id}
-        name={id}
-        value={value}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={described || undefined}
-        onChange={(e) => {
-          onChange(e.target.value);
-        }}
-      >
-        {children}
-      </select>
-      {error ? (
-        <p id={`${id}-error`} className="error" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    <FieldShell id={id} label={label} hint={hint} error={error}>
+      <span className={CONTROL}>
+        <select
+          id={id}
+          name={id}
+          value={value}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy(id, hint, error)}
+          className="h-9.5 w-full min-w-0 appearance-none rounded-[inherit] border-0 bg-transparent ps-[calc(--spacing(3)-1px)] pe-9 text-foreground outline-none [font:inherit]"
+          onChange={(e) => {
+            onChange(e.target.value);
+          }}
+        >
+          {children}
+        </select>
+        <svg
+          className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
+        </svg>
+      </span>
+    </FieldShell>
   );
 }
+
+/** Group heading and card list, iOS grouped-list style. */
+const GROUP_TITLE =
+  'mx-1 mt-5 mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider';
 
 export function VehiclePage() {
   const snap = useVehicle();
@@ -89,78 +172,97 @@ export function VehiclePage() {
           <p className="muted">
             {snap.loaded ? 'No vehicle profile yet.' : 'Vehicle details have not been loaded yet.'}
           </p>
-          <Link to="/vehicle/edit" className="button primary">
+          <Button size="lg" render={<Link to="/vehicle/edit" />}>
             {snap.loaded ? 'Create vehicle profile' : 'Create or edit anyway'}
-          </Link>
+          </Button>
         </>
       ) : (
         <>
           {view.sync === 'failed' && view.error ? (
             <>
               <FailedNotice error={view.error} />
-              <div className="actions">
-                <button
-                  type="button"
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     void retryFailed(view.vehicle.id).then(() => syncAll(true));
                   }}
                 >
                   Retry
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     void discardFailed(view.vehicle.id);
                   }}
                 >
                   Discard my change
-                </button>
+                </Button>
               </div>
             </>
           ) : null}
-          <div className="vehicle-hero" data-testid="vehicle-hero">
-            <p className="vehicle-model">{view.vehicle.model}</p>
-            {view.vehicle.variant ? <p className="muted">{view.vehicle.variant}</p> : null}
-            <p className="badges">
-              <span className="badge info">{view.vehicle.drive}</span>
-              <span className="badge info">{view.vehicle.steering}</span>
+          <Card className="my-3 gap-1 p-5" data-testid="vehicle-hero">
+            <p className="m-0 font-bold text-2xl tracking-tight">{view.vehicle.model}</p>
+            {view.vehicle.variant ? (
+              <p className="m-0 text-muted-foreground">{view.vehicle.variant}</p>
+            ) : null}
+            <p className="m-0 mt-2 flex flex-wrap gap-1.5">
+              <Badge variant="info" size="lg">
+                {view.vehicle.drive}
+              </Badge>
+              <Badge variant="info" size="lg">
+                {view.vehicle.steering}
+              </Badge>
             </p>
-          </div>
-          <h2 className="group-title">Identity</h2>
-          <dl className="group">
+          </Card>
+          <h2 className={GROUP_TITLE}>Identity</h2>
+          <Group>
             <Row label="Registration" value={view.vehicle.registration} />
             <Row label="VIN" value={view.vehicle.vin} />
-          </dl>
-          <h2 className="group-title">Ownership</h2>
-          <dl className="group">
+          </Group>
+          <h2 className={GROUP_TITLE}>Ownership</h2>
+          <Group>
             <Row
               label="Purchase date"
               value={view.vehicle.purchase_date ? formatDate(view.vehicle.purchase_date) : null}
             />
             <Row label="Purchase price" value={formatMyr(view.vehicle.purchase_price_minor)} />
-          </dl>
-          <h2 className="group-title">Tyres</h2>
-          <dl className="group">
+          </Group>
+          <h2 className={GROUP_TITLE}>Tyres</h2>
+          <Group>
             <Row label="Tyre specification" value={view.vehicle.tyre_spec} />
-          </dl>
+          </Group>
           <p>
             <Link to="/vehicle/tyres">Tyre changes and rotations</Link>
           </p>
-          <Link to="/vehicle/edit" className="button">
+          <Button variant="outline" size="lg" render={<Link to="/vehicle/edit" />}>
             Edit
-          </Link>
+          </Button>
         </>
       )}
     </section>
   );
 }
 
+/** A grouped list of label / value lines in a COSS card. */
+function Group({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Card render={<dl />} className={cn('m-0 mb-3 overflow-hidden', className)}>
+      {children}
+    </Card>
+  );
+}
+
 /** One label / value line in a grouped list. */
 function Row({ label, value }: { label: string; value: string | null }) {
   return (
-    <div>
+    <div className="flex min-h-11 items-center justify-between gap-3 px-4 py-2 not-first:border-border not-first:border-t">
       <dt>{label}</dt>
-      <dd>{value ?? '—'}</dd>
+      <dd className="m-0 text-right text-muted-foreground tabular-nums [overflow-wrap:anywhere]">
+        {value ?? '—'}
+      </dd>
     </div>
   );
 }
@@ -265,7 +367,7 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
   return (
     <section aria-labelledby="vedit-title">
       <h1 id="vedit-title">{initial ? 'Edit vehicle' : 'Create vehicle profile'}</h1>
-      <form onSubmit={(e) => void submit(e)} noValidate>
+      <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-5">
         <TextField
           id="model"
           label="Model"
@@ -388,21 +490,21 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
             </option>
           ))}
         </SelectField>
-        <p className="muted small">
+        <p className="m-0 text-muted-foreground text-sm">
           Steering {initial?.steering ?? 'RHD'} is fixed for this vehicle.
         </p>
         {errors.form ? (
-          <p role="alert" className="error">
+          <p role="alert" className="m-0 font-medium text-destructive-foreground">
             {errors.form}
           </p>
         ) : null}
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" size="lg" disabled={busy}>
             {busy ? 'Saving…' : 'Save'}
-          </button>
-          <button type="button" onClick={onDone}>
+          </Button>
+          <Button variant="outline" size="lg" onClick={onDone}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </section>

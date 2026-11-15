@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -8,6 +9,7 @@ const API_TARGET = process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8000';
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'prompt', // user-confirmed updates: "New version available, reload"
       injectRegister: false,
@@ -28,7 +30,10 @@ export default defineConfig({
       },
       workbox: {
         // App shell only. No runtimeCaching, so nothing under /api is ever put in Cache Storage.
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: [
+          '**/*.{js,css,html,svg,png,webmanifest}',
+          '**/inter-latin-wght-normal-*.woff2',
+        ],
         // The iPhone launch images are read by iOS when the app is added, not by the app.
         globIgnores: ['splash/**'],
         navigateFallback: '/index.html',
