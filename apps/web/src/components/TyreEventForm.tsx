@@ -5,7 +5,8 @@ import { DEFAULT_DATE_HINT, isIsoDate, klToday } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
 import { KIND_LABELS, MAX_SIZE, TYRE_KINDS, WHEEL_LABELS, WHEELS } from '../lib/tyreText';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface TyreEventFormValues {
   date: string;
@@ -196,7 +197,7 @@ export function TyreEventForm({
   const si = serverIssues ?? {};
   const wheelError = errors.wheels ?? si.wheels;
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
       <TextField
         id="date"
         label="Date"
@@ -209,40 +210,41 @@ export function TyreEventForm({
         error={errors.date ?? (si.date ? `The server rejected this date: ${si.date}.` : null)}
         extraId="date-hint-default"
         extra={
-          <p className="hint" id="date-hint-default">
+          <p className={HINT} id="date-hint-default">
             {DEFAULT_DATE_HINT}
           </p>
         }
       />
-      <div className="field">
-        <label htmlFor="kind">Type</label>
-        <select
-          id="kind"
-          name="kind"
-          value={kind}
-          aria-invalid={(errors.kind ?? si.kind) ? true : undefined}
-          onChange={(e) => {
-            setKind(e.target.value as TyreKind);
-          }}
-        >
-          {TYRE_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {KIND_LABELS[k]}
-            </option>
-          ))}
-        </select>
-        {(errors.kind ?? si.kind) ? (
-          <p className="error" role="alert">
-            {errors.kind ?? si.kind}
-          </p>
-        ) : null}
-      </div>
-      <fieldset aria-describedby={wheelError ? 'wheels-error' : undefined}>
-        <legend>Wheels</legend>
+      <SelectField
+        id="kind"
+        label="Type"
+        value={kind}
+        onChange={(e) => {
+          setKind(e.target.value as TyreKind);
+        }}
+        error={errors.kind ?? si.kind}
+      >
+        {TYRE_KINDS.map((k) => (
+          <option key={k} value={k}>
+            {KIND_LABELS[k]}
+          </option>
+        ))}
+      </SelectField>
+      <fieldset
+        aria-describedby={wheelError ? 'wheels-error' : undefined}
+        className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"
+      >
+        <legend className="mb-2 p-0 font-medium text-base/4.5 text-foreground sm:text-sm/4">
+          Wheels
+        </legend>
         {WHEELS.map((w) => (
-          <label key={w} className="check">
+          <label
+            key={w}
+            className="m-0 flex min-h-11 items-center gap-3 font-normal text-foreground"
+          >
             <input
               type="checkbox"
+              className="m-0 size-5 shrink-0 accent-primary"
               name="wheels"
               value={w}
               checked={wheels.includes(w)}
@@ -254,13 +256,13 @@ export function TyreEventForm({
           </label>
         ))}
         {kind === 'rotate' ? (
-          <p className="muted small">
+          <p className={HINT}>
             Tick the wheels that were moved. Write the swap pattern in the notes if you want to keep
             it.
           </p>
         ) : null}
         {wheelError ? (
-          <p id="wheels-error" className="error" role="alert">
+          <p id="wheels-error" className={ERROR} role="alert">
             {wheelError}
           </p>
         ) : null}
@@ -352,17 +354,17 @@ export function TyreEventForm({
         error={errors.notes ?? si.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

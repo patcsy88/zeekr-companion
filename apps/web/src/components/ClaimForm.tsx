@@ -5,7 +5,8 @@ import { DEFAULT_DATE_HINT, isIsoDate, klToday } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
 import { CLAIM_STATUS_LABELS, CLAIM_STATUSES } from '../lib/warrantyText';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface ClaimFormValues {
   date: string;
@@ -120,7 +121,7 @@ export function ClaimForm({
 
   const si = serverIssues ?? {};
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
       <TextField
         id="date"
         label="Claim date"
@@ -134,9 +135,9 @@ export function ClaimForm({
         extraId="date-hints"
         extra={
           <div id="date-hints">
-            <p className="hint">{DEFAULT_DATE_HINT}</p>
+            <p className={HINT}>{DEFAULT_DATE_HINT}</p>
             {outsideCoverageDates(date, coverage) ? (
-              <p className="hint" data-testid="claim-date-hint">
+              <p className={HINT} data-testid="claim-date-hint">
                 This date is outside the dates you entered for this coverage. You can still save it.
               </p>
             ) : null}
@@ -167,23 +168,20 @@ export function ClaimForm({
         }}
         error={errors.description ?? si.description}
       />
-      <div className="field">
-        <label htmlFor="claim_status">Claim status</label>
-        <select
-          id="claim_status"
-          name="claim_status"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as ClaimStatus);
-          }}
-        >
-          {CLAIM_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {CLAIM_STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        id="claim_status"
+        label="Claim status"
+        value={status}
+        onChange={(e) => {
+          setStatus(e.target.value as ClaimStatus);
+        }}
+      >
+        {CLAIM_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {CLAIM_STATUS_LABELS[s]}
+          </option>
+        ))}
+      </SelectField>
       <TextField
         id="cost"
         label="Cost covered (MYR)"
@@ -207,17 +205,17 @@ export function ClaimForm({
         error={errors.notes ?? si.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

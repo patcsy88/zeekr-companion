@@ -1,7 +1,8 @@
-import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Vehicle } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
+import { ACTIONS, ERROR, FORM, HINT, SelectField, TextField } from '../components/Field';
 import { LiveVehicleCard } from '../components/LiveVehicleCard';
 import { SyncBadge } from '../components/SyncBadge';
 import { useVehicle } from '../data/hooks';
@@ -16,8 +17,6 @@ import { Skeleton } from '../components/Skeleton';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { cn } from '../lib/cn';
 import {
   ALL_TYRES,
@@ -27,130 +26,6 @@ import {
   parseVariant,
   variantText,
 } from '../lib/vehicleCatalogue';
-
-/** The input wrapper from the COSS Input, reused around a native select (keeps the iOS picker). */
-const CONTROL =
-  'relative inline-flex w-full rounded-lg border border-input bg-background not-dark:bg-clip-padding text-base shadow-xs/5 ring-ring/24 transition-shadow has-focus-visible:border-ring has-focus-visible:ring-[3px] has-aria-invalid:border-destructive/64 dark:bg-input/32';
-
-function describedBy(id: string, hint?: string, error?: string) {
-  return (
-    [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined
-  );
-}
-
-/** Label, hint, control and error, with the same ids and wiring as the shared TextField. */
-function FieldShell({
-  id,
-  label,
-  hint,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string | undefined;
-  error?: string | undefined;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      {hint ? (
-        <p id={`${id}-hint`} className="m-0 text-muted-foreground text-sm">
-          {hint}
-        </p>
-      ) : null}
-      {children}
-      {error ? (
-        <p
-          id={`${id}-error`}
-          className="m-0 font-medium text-destructive-foreground text-sm"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/** A labelled COSS text input. */
-function TextField({
-  id,
-  label,
-  hint,
-  error,
-  ...rest
-}: { id: string; label: string; hint?: string; error?: string | undefined } & Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  'size'
->) {
-  return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
-      <Input
-        nativeInput
-        size="lg"
-        id={id}
-        name={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, hint, error)}
-        {...rest}
-      />
-    </FieldShell>
-  );
-}
-
-/** A labelled native select, with COSS input styling. */
-function SelectField({
-  id,
-  label,
-  hint,
-  error,
-  value,
-  onChange,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
-      <span className={CONTROL}>
-        <select
-          id={id}
-          name={id}
-          value={value}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy(id, hint, error)}
-          className="h-9.5 w-full min-w-0 appearance-none rounded-[inherit] border-0 bg-transparent ps-[calc(--spacing(3)-1px)] pe-9 text-foreground outline-none [font:inherit]"
-          onChange={(e) => {
-            onChange(e.target.value);
-          }}
-        >
-          {children}
-        </select>
-        <svg
-          className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
-        </svg>
-      </span>
-    </FieldShell>
-  );
-}
 
 /** Group heading and card list, iOS grouped-list style. */
 const GROUP_TITLE =
@@ -367,7 +242,7 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
   return (
     <section aria-labelledby="vedit-title">
       <h1 id="vedit-title">{initial ? 'Edit vehicle' : 'Create vehicle profile'}</h1>
-      <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-5">
+      <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
         <TextField
           id="model"
           label="Model"
@@ -383,7 +258,9 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
           label="Variant"
           hint="Malaysian 7X variants (press listings, unverified)."
           value={variant}
-          onChange={chooseVariant}
+          onChange={(e) => {
+            chooseVariant(e.target.value);
+          }}
           error={errors.variant}
         >
           <option value="">Choose a variant</option>
@@ -399,7 +276,9 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
             id="model-year"
             label="Model year"
             value={year}
-            onChange={setYear}
+            onChange={(e) => {
+              setYear(e.target.value);
+            }}
             error={errors.year}
           >
             <option value="">Choose a year</option>
@@ -415,8 +294,8 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
           label="Drive"
           hint="Filled in from the variant. You can change it."
           value={drive}
-          onChange={(value) => {
-            setDrive(value);
+          onChange={(e) => {
+            setDrive(e.target.value);
             setDriveTouched(true);
           }}
         >
@@ -476,8 +355,8 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
           label="Tyre specification"
           hint="The first size is the variant's usual fit. Check the door-jamb placard."
           value={tyre}
-          onChange={(value) => {
-            setTyre(value);
+          onChange={(e) => {
+            setTyre(e.target.value);
             setTyreTouched(true);
           }}
           error={errors.tyre_spec}
@@ -490,15 +369,13 @@ function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () 
             </option>
           ))}
         </SelectField>
-        <p className="m-0 text-muted-foreground text-sm">
-          Steering {initial?.steering ?? 'RHD'} is fixed for this vehicle.
-        </p>
+        <p className={HINT}>Steering {initial?.steering ?? 'RHD'} is fixed for this vehicle.</p>
         {errors.form ? (
-          <p role="alert" className="m-0 font-medium text-destructive-foreground">
+          <p role="alert" className={ERROR}>
             {errors.form}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={ACTIONS}>
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? 'Saving…' : 'Save'}
           </Button>

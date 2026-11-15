@@ -6,7 +6,8 @@ import { CATEGORIES, CATEGORY_LABELS } from '../lib/expenseText';
 import { parseKwhToWh, whToInput } from '../lib/energy';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface ExpenseFormValues {
   date: string;
@@ -93,7 +94,7 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
 
   const si = serverIssues ?? {};
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
       <TextField
         id="date"
         label="Date"
@@ -106,40 +107,34 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
         error={errors.date ?? (si.date ? `The server rejected this date: ${si.date}.` : null)}
         extraId="date-hint-default"
         extra={
-          <p className="hint" id="date-hint-default" data-testid="date-default-hint">
+          <p className={HINT} id="date-hint-default" data-testid="date-default-hint">
             {DEFAULT_DATE_HINT}
           </p>
         }
       />
-      <div className="field">
-        <label htmlFor="category">Category</label>
-        <select
-          id="category"
-          name="category"
-          value={category}
-          aria-invalid={(errors.category ?? si.category) ? true : undefined}
-          onChange={(e) => {
-            setCategory(e.target.value as ExpenseCategory);
-          }}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
-        {(errors.category ?? si.category) ? (
-          <p className="error" role="alert">
-            {errors.category ?? si.category}
-          </p>
-        ) : null}
-        {category === 'road_tax' ? (
-          <p className="hint">
-            Road tax (JPJ) is a label only. This app does not contact JPJ and does not know any fees
-            or renewal periods.
-          </p>
-        ) : null}
-      </div>
+      <SelectField
+        id="category"
+        label="Category"
+        value={category}
+        onChange={(e) => {
+          setCategory(e.target.value as ExpenseCategory);
+        }}
+        error={errors.category ?? si.category}
+        extra={
+          category === 'road_tax' ? (
+            <p className={HINT}>
+              Road tax (JPJ) is a label only. This app does not contact JPJ and does not know any
+              fees or renewal periods.
+            </p>
+          ) : null
+        }
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {CATEGORY_LABELS[c]}
+          </option>
+        ))}
+      </SelectField>
       <TextField
         id="amount"
         label="Amount (MYR)"
@@ -178,17 +173,17 @@ export function ExpenseForm({ initial, submitLabel, onSubmit, onCancel, serverIs
         error={errors.notes ?? si.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

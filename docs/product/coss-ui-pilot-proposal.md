@@ -57,3 +57,11 @@ Published images are built only from release tags on `main`, so this branch cann
 ## If approved
 
 Convert the remaining pages in stages (shared form parts first, then each section), with the full gates after each stage. Once every page is converted, add Tailwind's preflight and delete the replaced parts of `styles.css`.
+
+Merged to `main` and released as `v0.9.3` (owner, 2026-11-15). Stages after the pilot:
+
+1. **Shared form parts (done, 2026-11-15).** `components/Field.tsx` now builds `TextField`, `TextArea` and a new `SelectField` (native `<select>` in the COSS frame, moved out of `VehiclePage.tsx`) on COSS parts, with the same ids, `name`s and `aria-describedby` wiring. It also exports `HINT`, `ERROR`, `FORM` and `ACTIONS` class strings. A trimmed COSS `ui/textarea.tsx` (native textarea, no Base UI Field) is added. The service, reminder, expense, claim, coverage and tyre forms and the Complete service page use them, with COSS buttons. The tyre Wheels checkboxes stay native (`accent-primary`). The legacy `textarea` rules skip `[data-slot]`. No test changed. CSS gzip 10,013 to 10,499 bytes; JS gzip 174,650 to 175,008 bytes.
+2. **Lists and detail pages:** Service history, Reminders, Expenses, Warranty and Tyres lists, then their detail pages (cards, badges, notices, action rows).
+3. **Templates and filters:** the reminder and warranty template pages and the Expenses filter.
+4. **Sentry, Geofence, Advisory and live history.** The switches stay as they are unless the owner asks.
+5. **App shell:** header, sync bar, account menu, theme picker, tab bar, update banner. Then add preflight and delete the replaced `styles.css` rules.

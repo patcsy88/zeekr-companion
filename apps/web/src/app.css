@@ -14,6 +14,14 @@
 
 /* Only the converted files are scanned; add each page here as it moves to COSS. */
 @source './components/ui';
+@source './components/Field.tsx';
+@source './components/RecordForm.tsx';
+@source './components/ReminderForm.tsx';
+@source './components/ExpenseForm.tsx';
+@source './components/ClaimForm.tsx';
+@source './components/CoverageForm.tsx';
+@source './components/TyreEventForm.tsx';
+@source './pages/CompleteServicePage.tsx';
 @source './components/SignIn.tsx';
 @source './components/LiveVehicleCard.tsx';
 @source './pages/VehiclePage.tsx';
@@ -129,7 +137,7 @@
     letter-spacing: inherit;
     color: inherit;
   }
-  input[data-slot] {
+  :is(input, textarea)[data-slot] {
     background: transparent;
   }
 }

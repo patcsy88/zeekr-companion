@@ -4,7 +4,8 @@ import type { ServiceRecord } from '../api/types';
 import { DEFAULT_DATE_HINT, isIsoDate, klToday } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
 import { parseMyrToSen, senToInput } from '../lib/money';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, HINT, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface RecordFormValues {
   date: string;
@@ -93,7 +94,7 @@ export function RecordForm({ initial, submitLabel, onSubmit, onCancel, serverIss
   const dateError = errors.date ?? (sd ? `The server rejected this date: ${sd}.` : null);
 
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
       <TextField
         id="date"
         label="Date"
@@ -107,7 +108,7 @@ export function RecordForm({ initial, submitLabel, onSubmit, onCancel, serverIss
         extraId="date-hint-default"
         extra={
           <>
-            <p className="hint" id="date-hint-default" data-testid="date-default-hint">
+            <p className={HINT} id="date-hint-default" data-testid="date-default-hint">
               {DEFAULT_DATE_HINT}
             </p>
           </>
@@ -170,17 +171,17 @@ export function RecordForm({ initial, submitLabel, onSubmit, onCancel, serverIss
         error={errors.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

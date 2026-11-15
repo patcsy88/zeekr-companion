@@ -4,7 +4,8 @@ import type { Reminder, ReminderKind } from '../api/types';
 import { isIsoDate } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
 import { KIND_CONTEXT, KIND_LABELS, KINDS } from '../lib/reminderText';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface ReminderFormValues {
   kind: ReminderKind;
@@ -102,31 +103,30 @@ export function ReminderForm({
 
   const si = serverIssues ?? {};
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
-      <div className="field">
-        <label htmlFor="kind">Kind</label>
-        <select
-          id="kind"
-          name="kind"
-          value={kind}
-          onChange={(e) => {
-            setKind(e.target.value as ReminderKind);
-          }}
-        >
-          {KINDS.map((k) => (
-            <option key={k} value={k}>
-              {KIND_LABELS[k]}
-              {KIND_CONTEXT[k] ? ` (${KIND_CONTEXT[k] ?? ''})` : ''}
-            </option>
-          ))}
-        </select>
-        {kind === 'road_tax_renewal' ? (
-          <p className="hint">
-            Road tax (JPJ) is a label only. This app does not contact JPJ and does not know any fees
-            or renewal periods. Enter the date you want to be reminded.
-          </p>
-        ) : null}
-      </div>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
+      <SelectField
+        id="kind"
+        label="Kind"
+        value={kind}
+        onChange={(e) => {
+          setKind(e.target.value as ReminderKind);
+        }}
+        extra={
+          kind === 'road_tax_renewal' ? (
+            <p className={HINT}>
+              Road tax (JPJ) is a label only. This app does not contact JPJ and does not know any
+              fees or renewal periods. Enter the date you want to be reminded.
+            </p>
+          ) : null
+        }
+      >
+        {KINDS.map((k) => (
+          <option key={k} value={k}>
+            {KIND_LABELS[k]}
+            {KIND_CONTEXT[k] ? ` (${KIND_CONTEXT[k] ?? ''})` : ''}
+          </option>
+        ))}
+      </SelectField>
       <TextField
         id="title"
         label="Title"
@@ -139,7 +139,7 @@ export function ReminderForm({
         error={errors.title ?? si.title}
       />
       {errors.due ? (
-        <p className="error" role="alert">
+        <p className={ERROR} role="alert">
           {errors.due}
         </p>
       ) : null}
@@ -177,17 +177,17 @@ export function ReminderForm({
         error={errors.notes ?? si.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

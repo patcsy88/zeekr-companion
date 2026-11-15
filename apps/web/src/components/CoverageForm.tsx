@@ -10,7 +10,8 @@ import {
   VERIFICATION_LABELS,
   VERIFICATIONS,
 } from '../lib/warrantyText';
-import { TextArea, TextField } from './Field';
+import { ACTIONS, ERROR, FORM, SelectField, TextArea, TextField } from './Field';
+import { Button } from './ui/button';
 
 export interface CoverageFormValues {
   name: string;
@@ -122,7 +123,7 @@ export function CoverageForm({ initial, submitLabel, onSubmit, onCancel, serverI
 
   const si = serverIssues ?? {};
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
+    <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
       <TextField
         id="name"
         label="Name"
@@ -134,23 +135,20 @@ export function CoverageForm({ initial, submitLabel, onSubmit, onCancel, serverI
         }}
         error={errors.name ?? si.name}
       />
-      <div className="field">
-        <label htmlFor="provider_type">Type</label>
-        <select
-          id="provider_type"
-          name="provider_type"
-          value={type}
-          onChange={(e) => {
-            setType(e.target.value as ProviderType);
-          }}
-        >
-          {TYPES.map((t) => (
-            <option key={t} value={t}>
-              {TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        id="provider_type"
+        label="Type"
+        value={type}
+        onChange={(e) => {
+          setType(e.target.value as ProviderType);
+        }}
+      >
+        {TYPES.map((t) => (
+          <option key={t} value={t}>
+            {TYPE_LABELS[t]}
+          </option>
+        ))}
+      </SelectField>
       <TextField
         id="start_date"
         label="Start date"
@@ -163,7 +161,7 @@ export function CoverageForm({ initial, submitLabel, onSubmit, onCancel, serverI
         error={errors.start_date ?? si.start_date}
       />
       {(errors.limit ?? si.body) ? (
-        <p className="error" role="alert">
+        <p className={ERROR} role="alert">
           {errors.limit ?? si.body}
         </p>
       ) : null}
@@ -189,23 +187,20 @@ export function CoverageForm({ initial, submitLabel, onSubmit, onCancel, serverI
         }}
         error={errors.km_limit ?? si.km_limit}
       />
-      <div className="field">
-        <label htmlFor="verification_status">Verification status</label>
-        <select
-          id="verification_status"
-          name="verification_status"
-          value={ver}
-          onChange={(e) => {
-            setVer(e.target.value as VerificationStatus);
-          }}
-        >
-          {VERIFICATIONS.map((v) => (
-            <option key={v} value={v}>
-              {VERIFICATION_LABELS[v]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SelectField
+        id="verification_status"
+        label="Verification status"
+        value={ver}
+        onChange={(e) => {
+          setVer(e.target.value as VerificationStatus);
+        }}
+      >
+        {VERIFICATIONS.map((v) => (
+          <option key={v} value={v}>
+            {VERIFICATION_LABELS[v]}
+          </option>
+        ))}
+      </SelectField>
       <TextField
         id="source_note"
         label="Source note"
@@ -228,17 +223,17 @@ export function CoverageForm({ initial, submitLabel, onSubmit, onCancel, serverI
         error={errors.notes ?? si.notes}
       />
       {errors.form ? (
-        <p role="alert" className="error">
+        <p role="alert" className={ERROR}>
           {errors.form}
         </p>
       ) : null}
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
+      <div className={ACTIONS}>
+        <Button type="submit" size="lg" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="lg" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

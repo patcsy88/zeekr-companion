@@ -289,7 +289,7 @@ label:where(:not([data-slot])) {
   font-size: 0.85rem;
 }
 input:where(:not([data-slot])),
-textarea {
+textarea:where(:not([data-slot])) {
   width: 100%;
   font: inherit;
   font-size: 1rem;
@@ -300,7 +300,7 @@ textarea {
   color: inherit;
 }
 input[aria-invalid='true']:where(:not([data-slot])),
-textarea[aria-invalid='true'] {
+textarea[aria-invalid='true']:where(:not([data-slot])) {
   border-color: var(--bad);
   border-width: 2px;
 }

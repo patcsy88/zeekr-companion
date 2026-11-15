@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { TextArea, TextField } from '../components/Field';
+import { ACTIONS, ERROR, FORM, HINT, TextArea, TextField } from '../components/Field';
+import { Button } from '../components/ui/button';
 import { BasisNote } from '../components/ReminderParts';
 import { useConnectivity, useReminder } from '../data/hooks';
 import { completeServiceNow } from '../data/mutations';
@@ -101,17 +102,17 @@ function CompleteService({ id }: { id: string }) {
   return (
     <section aria-labelledby="cs-title">
       <h1 id="cs-title">Complete service</h1>
-      <p className="muted">
+      <p className={HINT}>
         This records the service, marks “{r.title}” done and, for a suggested-schedule service,
         creates the next reminder (40,000 km or 24 months, whichever comes first).
       </p>
       <BasisNote basis={data.basis} />
       {online ? null : (
-        <p role="status" className="error">
+        <p role="status" className={ERROR}>
           Completing a service needs a connection.
         </p>
       )}
-      <form onSubmit={(e) => void submit(e)} noValidate>
+      <form onSubmit={(e) => void submit(e)} noValidate className={FORM}>
         <TextField
           id="date"
           label="Service date"
@@ -180,22 +181,23 @@ function CompleteService({ id }: { id: string }) {
           error={errors.notes}
         />
         {errors.form ? (
-          <p role="alert" className="error">
+          <p role="alert" className={ERROR}>
             {errors.form}
           </p>
         ) : null}
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy || !online}>
+        <div className={ACTIONS}>
+          <Button type="submit" size="lg" disabled={busy || !online}>
             {busy ? 'Saving…' : 'Complete service'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
             onClick={() => {
               void nav(`/reminders/${id}`);
             }}
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </section>
