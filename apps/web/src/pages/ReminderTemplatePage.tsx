@@ -12,6 +12,7 @@ import { ACTIONS, ERROR, FORM, SelectField, TextArea, TextField } from '../compo
 import { LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
 
 interface RowEdit {
   selected?: boolean;
@@ -186,12 +187,10 @@ function TemplateReview({
           return (
             <Card render={<li />} key={c.number} className="flex flex-col gap-4 p-4">
               <label className="m-0 flex min-h-11 items-center gap-3 font-semibold text-foreground">
-                <input
-                  type="checkbox"
-                  className="m-0 size-5 shrink-0 accent-primary"
+                <Checkbox
                   checked={v.selected}
-                  onChange={(e) => {
-                    set(c.number, { selected: e.target.checked });
+                  onCheckedChange={(checked) => {
+                    set(c.number, { selected: checked });
                   }}
                 />
                 Checkpoint {c.number}: {c.km.toLocaleString()} km / {c.months} months

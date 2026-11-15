@@ -107,7 +107,7 @@ describe('AC-18 / AC-16 / AC-15: the reminders page', () => {
     expect(screen.getByTestId('odometer-basis')).toHaveTextContent(/21,000 km/);
     expect(screen.getByTestId('odometer-basis')).toHaveTextContent(/service record dated/);
     expect(screen.getByText(/no push, email or other notification/i)).toBeInTheDocument();
-    await user.click(screen.getByLabelText(/Completed \(1\)/));
+    await user.click(screen.getByRole('checkbox', { name: /Completed \(1\)/ }));
     expect(await screen.findByText('Done one')).toBeInTheDocument();
   });
 
@@ -360,7 +360,12 @@ describe('AC-20 / AC-21 / AC-22 / AC-23: the template review', () => {
     render(<App />);
     await screen.findByTestId('template-source');
     const boxes = screen.getAllByRole('checkbox');
-    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, false, false, false]);
+    expect(boxes.map((b) => b.getAttribute('aria-checked') === 'true')).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
     // No baseline yet (no vehicle purchase date): accepting is refused and nothing is sent.
     await user.click(screen.getByRole('button', { name: 'Create selected reminders' }));
     expect(

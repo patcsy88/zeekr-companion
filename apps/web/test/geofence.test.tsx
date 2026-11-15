@@ -88,8 +88,8 @@ describe('geofence: the tab', () => {
     expect(screen.getByTestId('geo-status')).toHaveTextContent('Home point: set');
     expect(screen.getByText(/never sends anything to the car/)).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Vehicle State(s)' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Deep Sleep')).toBeChecked();
-    expect(screen.getByLabelText('Parked')).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Deep Sleep' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Parked' })).not.toBeChecked();
     expect(screen.getByText(/not yet confirmed on this car/)).toBeInTheDocument();
     expect(screen.getByTestId('geo-gear-note')).toHaveTextContent(
       'Sentry is only turned on when the car is in P (Park).',
@@ -115,7 +115,7 @@ describe('geofence: the tab', () => {
     const radius = await screen.findByLabelText(/Radius/);
     await user.clear(radius);
     await user.type(radius, '8');
-    await user.click(screen.getByLabelText('Parked'));
+    await user.click(screen.getByRole('checkbox', { name: 'Parked' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
     expect(puts).toEqual([
@@ -158,7 +158,7 @@ describe('geofence: the tab', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByLabelText('Deep Sleep'));
+    await user.click(await screen.findByRole('checkbox', { name: 'Deep Sleep' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Pick Deep Sleep, Parked or both.');
     expect(puts).toHaveLength(0);
@@ -175,8 +175,8 @@ describe('geofence: the tab', () => {
     );
     const user = open();
     render(<App />);
-    await user.click(await screen.findByLabelText('Parked'));
-    await user.click(screen.getByLabelText('Deep Sleep'));
+    await user.click(await screen.findByRole('checkbox', { name: 'Parked' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Deep Sleep' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
     expect(puts).toEqual([

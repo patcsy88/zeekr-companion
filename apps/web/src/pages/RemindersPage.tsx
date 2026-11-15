@@ -6,6 +6,7 @@ import { IN_APP_ONLY } from '../lib/reminderText';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState, HEAD, LIST, MUTED, SMALL } from '../components/ListParts';
 import { Button } from '../components/ui/button';
+import { Checkbox } from '../components/ui/checkbox';
 
 export function RemindersPage() {
   const snap = useReminders();
@@ -73,12 +74,10 @@ export function RemindersPage() {
             </ul>
           )}
           <label className="m-0 flex min-h-11 items-center gap-3 font-medium text-foreground">
-            <input
-              type="checkbox"
-              className="m-0 size-5 shrink-0 accent-primary"
+            <Checkbox
               checked={showCompleted}
-              onChange={(e) => {
-                setShowCompleted(e.target.checked);
+              onCheckedChange={(checked) => {
+                setShowCompleted(checked);
               }}
             />
             Completed ({completed.length})

@@ -197,7 +197,7 @@ describe('AC-75 / AC-76: create', () => {
     });
     expect(screen.getByLabelText('Size, optional')).toHaveValue('255/45 R20');
     for (const w of ['Driver front', 'Passenger front', 'Driver rear', 'Passenger rear'])
-      expect(screen.getByLabelText(w)).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: w })).toBeChecked();
     await user.type(screen.getByLabelText('Cost (MYR), optional'), '1200');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
@@ -235,7 +235,7 @@ describe('AC-75 / AC-76: create', () => {
     await user.selectOptions(screen.getByLabelText('Type'), 'rotate');
     expect(screen.queryByLabelText('Brand, optional')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Size, optional')).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText('Passenger rear'));
+    await user.click(screen.getByRole('checkbox', { name: 'Passenger rear' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
       expect(fake.tyrePosts).toHaveLength(1);
@@ -254,7 +254,7 @@ describe('AC-75 / AC-76: create', () => {
     render(<App />);
     await started();
     for (const w of ['Driver front', 'Passenger front', 'Driver rear', 'Passenger rear'])
-      await user.click(screen.getByLabelText(w));
+      await user.click(screen.getByRole('checkbox', { name: w }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Tick at least one wheel.')).toBeInTheDocument();
     expect(screen.getByText('Enter whole kilometres, 0 to 10,000,000.')).toBeInTheDocument();

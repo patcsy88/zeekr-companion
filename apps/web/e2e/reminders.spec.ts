@@ -99,7 +99,7 @@ test('AC-17/18/19: overdue and upcoming groups, complete moves it to Completed, 
   await expect(page.getByRole('button', { name: 'Reopen' })).toBeVisible();
   await page.getByRole('link', { name: 'Back' }).click();
   await expect(page.getByRole('list', { name: 'Overdue reminders' })).toHaveCount(0);
-  await page.getByLabel(/^Completed \(/).check();
+  await page.getByRole('checkbox', { name: /^Completed \(/ }).check();
   await expect(
     page.getByRole('list', { name: 'Completed reminders' }).getByText(late),
   ).toBeVisible();
@@ -134,7 +134,7 @@ test('AC-20/21/22: template review creates nothing on cancel, and one reminder p
   await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(1);
   const title = unique('TPL');
   await page
-    .locator('input[type="checkbox"]:checked')
+    .locator('[role="checkbox"][aria-checked="true"]')
     .locator('xpath=ancestor::li')
     .getByLabel('Title')
     .fill(title);

@@ -163,7 +163,7 @@ describe('QA: template accept with nothing selected (AC-21)', () => {
     render(<App />);
     await screen.findByTestId('template-source');
     for (const box of screen.getAllByRole('checkbox')) {
-      if ((box as HTMLInputElement).checked) await user.click(box);
+      if (box.getAttribute('aria-checked') === 'true') await user.click(box);
     }
     await user.click(screen.getByRole('button', { name: 'Create selected reminders' }));
     await new Promise((r) => setTimeout(r, 150));

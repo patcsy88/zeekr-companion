@@ -7,6 +7,7 @@ import { parseMyrToSen, senToInput } from '../lib/money';
 import { KIND_LABELS, MAX_SIZE, TYRE_KINDS, WHEEL_LABELS, WHEELS } from '../lib/tyreText';
 import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 
 export interface TyreEventFormValues {
   date: string;
@@ -242,14 +243,12 @@ export function TyreEventForm({
             key={w}
             className="m-0 flex min-h-11 items-center gap-3 font-normal text-foreground"
           >
-            <input
-              type="checkbox"
-              className="m-0 size-5 shrink-0 accent-primary"
+            <Checkbox
               name="wheels"
               value={w}
               checked={wheels.includes(w)}
-              onChange={(e) => {
-                setWheels(e.target.checked ? [...wheels, w] : wheels.filter((x) => x !== w));
+              onCheckedChange={(checked) => {
+                setWheels(checked ? [...wheels, w] : wheels.filter((x) => x !== w));
               }}
             />{' '}
             {WHEEL_LABELS[w]}

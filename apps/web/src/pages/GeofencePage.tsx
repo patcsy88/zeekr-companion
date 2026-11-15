@@ -6,6 +6,7 @@ import { ACTIONS, ERROR, FORM, HINT, TextField } from '../components/Field';
 import { MUTED, NOTICE } from '../components/ListParts';
 import { Button } from '../components/ui/button';
 import { cn } from '../lib/cn';
+import { Checkbox } from '../components/ui/checkbox';
 
 interface Form {
   radius: string;
@@ -43,15 +44,11 @@ function StateGroup(props: {
           key={o.code}
           className="m-0 flex min-h-11 items-center gap-3 font-normal text-foreground"
         >
-          <input
-            type="checkbox"
-            className="m-0 size-5 shrink-0 accent-primary"
+          <Checkbox
             checked={props.chosen.includes(o.code)}
-            onChange={(e) => {
+            onCheckedChange={(checked) => {
               props.onChange(
-                e.target.checked
-                  ? [...props.chosen, o.code]
-                  : props.chosen.filter((c) => c !== o.code),
+                checked ? [...props.chosen, o.code] : props.chosen.filter((c) => c !== o.code),
               );
             }}
           />{' '}
