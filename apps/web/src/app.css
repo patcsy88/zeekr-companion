@@ -30,38 +30,90 @@
   }
 }
 
-/* COSS colour names, mapped to the app's own (teal) palette in styles.css. */
+/* COSS colour names, set to COSS's own neutral theme (coss.com/ui/r/style.json), light and dark. */
 @theme inline {
   --font-sans:
     'Inter Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI',
     Roboto, sans-serif;
   --font-heading: var(--font-sans);
-  --color-background: var(--control-bg);
-  --color-foreground: var(--fg);
-  --color-card: var(--card);
-  --color-card-foreground: var(--fg);
-  --color-popover: var(--control-bg);
-  --color-popover-foreground: var(--fg);
-  --color-primary: var(--brand);
-  --color-primary-foreground: var(--brand-fg);
-  --color-secondary: color-mix(in srgb, var(--fg) 5%, transparent);
-  --color-secondary-foreground: var(--fg);
-  --color-muted: color-mix(in srgb, var(--fg) 4%, transparent);
-  --color-muted-foreground: var(--muted);
-  --color-accent: color-mix(in srgb, var(--fg) 5%, transparent);
-  --color-accent-foreground: var(--fg);
-  --color-border: var(--line);
-  /* Control borders keep the app's 3:1 contrast colour rather than COSS's faint 10% black. */
+  --color-background: var(--coss-background);
+  --color-foreground: var(--coss-foreground);
+  --color-card: var(--coss-card);
+  --color-card-foreground: var(--coss-foreground);
+  --color-popover: var(--coss-card);
+  --color-popover-foreground: var(--coss-foreground);
+  --color-primary: var(--coss-primary);
+  --color-primary-foreground: var(--coss-primary-foreground);
+  --color-secondary: var(--coss-tint);
+  --color-secondary-foreground: var(--coss-foreground);
+  --color-muted: var(--coss-tint);
+  --color-muted-foreground: var(--coss-muted-foreground);
+  --color-accent: var(--coss-tint);
+  --color-accent-foreground: var(--coss-foreground);
+  --color-border: var(--coss-border);
+  /* Field borders keep the app's 3:1 contrast colour rather than COSS's faint 10% black (owner choice). */
   --color-input: var(--control-border);
-  --color-ring: var(--focus);
-  --color-destructive: var(--bad);
-  --color-destructive-foreground: var(--bad);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info);
-  --color-success: var(--ok);
-  --color-success-foreground: var(--ok);
-  --color-warning: var(--warn);
-  --color-warning-foreground: var(--warn);
+  --color-ring: var(--coss-ring);
+  --color-destructive: var(--coss-destructive);
+  --color-destructive-foreground: var(--coss-destructive-foreground);
+  --color-info: oklch(62.3% 0.214 259.815);
+  --color-info-foreground: var(--coss-info-foreground);
+  --color-success: oklch(69.6% 0.17 162.48);
+  --color-success-foreground: var(--coss-success-foreground);
+  --color-warning: oklch(76.9% 0.188 70.08);
+  --color-warning-foreground: var(--coss-warning-foreground);
+}
+
+/* Values from Tailwind's neutral, red, blue, emerald and amber scales, as COSS uses them. */
+:root {
+  --coss-background: #fff;
+  --coss-card: #fff;
+  --coss-foreground: oklch(26.9% 0 0);
+  --coss-primary: oklch(26.9% 0 0);
+  --coss-primary-foreground: oklch(98.5% 0 0);
+  --coss-tint: color-mix(in srgb, #000 4%, transparent);
+  --coss-muted-foreground: color-mix(in srgb, oklch(55.6% 0 0) 90%, #000);
+  --coss-border: color-mix(in srgb, #000 8%, transparent);
+  --coss-ring: oklch(70.8% 0 0);
+  --coss-destructive: oklch(63.7% 0.237 25.331);
+  --coss-destructive-foreground: oklch(50.5% 0.213 27.518);
+  --coss-info-foreground: oklch(48.8% 0.243 264.376);
+  --coss-success-foreground: oklch(50.8% 0.118 165.612);
+  --coss-warning-foreground: oklch(55.5% 0.163 48.998);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --coss-background: color-mix(in srgb, oklch(14.5% 0 0) 95%, #fff);
+    --coss-card: color-mix(in srgb, var(--coss-background) 98%, #fff);
+    --coss-foreground: oklch(97% 0 0);
+    --coss-primary: oklch(97% 0 0);
+    --coss-primary-foreground: oklch(26.9% 0 0);
+    --coss-tint: color-mix(in srgb, #fff 4%, transparent);
+    --coss-muted-foreground: color-mix(in srgb, oklch(55.6% 0 0) 90%, #fff);
+    --coss-border: color-mix(in srgb, #fff 6%, transparent);
+    --coss-ring: oklch(55.6% 0 0);
+    --coss-destructive: color-mix(in srgb, oklch(63.7% 0.237 25.331) 90%, #fff);
+    --coss-destructive-foreground: oklch(70.4% 0.191 22.216);
+    --coss-info-foreground: oklch(70.7% 0.165 254.624);
+    --coss-success-foreground: oklch(76.5% 0.177 163.223);
+    --coss-warning-foreground: oklch(82.8% 0.189 84.429);
+  }
+}
+:root[data-theme='dark'] {
+  --coss-background: color-mix(in srgb, oklch(14.5% 0 0) 95%, #fff);
+  --coss-card: color-mix(in srgb, var(--coss-background) 98%, #fff);
+  --coss-foreground: oklch(97% 0 0);
+  --coss-primary: oklch(97% 0 0);
+  --coss-primary-foreground: oklch(26.9% 0 0);
+  --coss-tint: color-mix(in srgb, #fff 4%, transparent);
+  --coss-muted-foreground: color-mix(in srgb, oklch(55.6% 0 0) 90%, #fff);
+  --coss-border: color-mix(in srgb, #fff 6%, transparent);
+  --coss-ring: oklch(55.6% 0 0);
+  --coss-destructive: color-mix(in srgb, oklch(63.7% 0.237 25.331) 90%, #fff);
+  --coss-destructive-foreground: oklch(70.4% 0.191 22.216);
+  --coss-info-foreground: oklch(70.7% 0.165 254.624);
+  --coss-success-foreground: oklch(76.5% 0.177 163.223);
+  --coss-warning-foreground: oklch(82.8% 0.189 84.429);
 }
 
 /* The part of preflight the COSS components rely on, limited to the components themselves. */
