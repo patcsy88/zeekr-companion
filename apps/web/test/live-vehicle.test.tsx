@@ -164,6 +164,20 @@ describe('live vehicle: the card', () => {
     expect(screen.getByTestId('live-asof')).toHaveTextContent('31 Oct 2026, 10:00 (KL)');
   });
 
+  it.each([
+    ['locked', 'Locked'],
+    ['unlocked', 'Unlocked'],
+    [null, 'no reading'],
+  ] as const)('shows central locking %s as "%s", read only', async (value, shown) => {
+    serveCard(card({ central_locking: value }));
+    open();
+    render(<App />);
+    const row = await screen.findByTestId('live-central-locking');
+    expect(row).toHaveTextContent(`Central locking${shown}`);
+    expect(row.querySelector('button, input, a')).toBeNull();
+    expect(screen.queryByRole('button', { name: /lock/i })).toBeNull();
+  });
+
   it('shows 12 V, tyre temperatures and read-only on/off indicators', async () => {
     serveCard(card());
     open();
@@ -469,6 +483,7 @@ describe('live vehicle: the history screen', () => {
     const gaps = screen.getAllByTestId('live-gap');
     expect(gaps).toHaveLength(1);
     expect(gaps[0]).toHaveTextContent('1 day 2 h');
+    expect(screen.getByRole('main')).not.toHaveTextContent(/lock/i);
     const charts = screen.getAllByTestId('live-trend');
     expect(charts).toHaveLength(2);
     for (const c of charts) {

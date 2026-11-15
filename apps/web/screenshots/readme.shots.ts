@@ -102,6 +102,7 @@ const liveCard = {
       sentry_active: false,
     },
   },
+  central_locking: 'locked',
 };
 
 const geofenceAlert = {

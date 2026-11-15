@@ -2,7 +2,8 @@
 
 Three parts, kept apart:
 - `map_status` keeps a short allow-list of fields from one status reply and drops the rest
-  (position, locks, doors, VIN, plate, nickname and everything not named here).
+  (position, locks, doors, VIN, plate, nickname and everything not named here). The one lock
+  field the owner approved, central locking, is read by `map_central_lock` into memory only.
 - `ZeekrStatusSource` wraps the `zeekr-ev-api` client. It calls `login`, `get_vehicle_list` and
   `get_status` and `get_remote_control_state` (both reads) and nothing else, and it raises only
   fixed messages, never the server's text.
@@ -56,6 +57,11 @@ MAX_LOGINS_PER_DAY = 10
 # is `vstdModeState`; the owner confirmed it reflects Sentry (2026-11-03).
 REMOTE_STATE_KEY = "_remoteControlState"
 SENTRY_KEY = "vstdModeState"
+
+# Central locking, live only (owner decision 2026-11-15, ADR-009 amendment): held in memory with
+# the last successful read and never stored, logged or sent to the model. Not part of `Snapshot`,
+# so it cannot reach the `live_reading` table.
+CENTRAL_LOCK_PATH = (_AVS, "drivingSafetyStatus", "centralLockingStatus")
 
 
 class ZeekrReadError(Exception):
@@ -177,6 +183,17 @@ def _plugged_in(connection: object, cross_check: object, charging: bool | None) 
 
 def _sentry(value: object) -> bool | None:
     """Only the two strings seen on the car: "1" is on, "0" is off. Anything else is None."""
+    if value == "1":
+        return True
+    if value == "0":
+        return False
+    return None
+
+
+def map_central_lock(status: object) -> bool | None:
+    """True when locked. Only the two codes read on the owner's car (2026-11-15): "1" locked,
+    "0" unlocked. Anything else is no reading."""
+    value = _dig(status, CENTRAL_LOCK_PATH)
     if value == "1":
         return True
     if value == "0":
@@ -454,6 +471,7 @@ class ZeekrLiveTelemetryProvider:
         self._clock = clock
         self._snapshot: Snapshot | None = None
         self._geofence: GeofenceInput | None = None
+        self._central_locked: bool | None = None
         self._next_try = 0.0
         self._failures = 0
         self._fetches = 0
@@ -488,6 +506,12 @@ class ZeekrLiveTelemetryProvider:
         the first read and after a failed one."""
         return self._geofence
 
+    @property
+    def central_locked(self) -> bool | None:
+        """Central locking from the last successful read, in memory only. None before the first
+        read, after a failed one, and when the car gave no known code."""
+        return self._central_locked
+
     def _current(self) -> Snapshot | None:
         if self.stopped or self._clock() < self._next_try:
             return self._snapshot
@@ -496,9 +520,11 @@ class ZeekrLiveTelemetryProvider:
             raw = self._source()
             self._snapshot = map_status(raw)
             self._geofence = map_geofence(raw)
+            self._central_locked = map_central_lock(raw)
         except Exception:
             self._failures += 1
             self._geofence = None
+            self._central_locked = None
             # Never sooner than the interval, whatever the cap.
             wait = max(
                 self._min_interval, min(self._min_interval * 2**self._failures, self._max_backoff)

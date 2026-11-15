@@ -117,6 +117,18 @@ def _readings(row: LiveReading | None) -> LiveReadings:
     )
 
 
+def _central_locking(
+    provider: ZeekrLiveTelemetryProvider, row: LiveReading | None
+) -> Literal["locked", "unlocked"] | None:
+    """The in-memory lock state, only when it comes from the same read as the stored row the card
+    shows, so an older lock state never sits under a newer time. Never stored (owner decision)."""
+    snap = provider.snapshot
+    locked = provider.central_locked
+    if row is None or snap is None or locked is None or snap.observed_at != row.observed_at:
+        return None
+    return "locked" if locked else "unlocked"
+
+
 class LiveVehicleService:
     def __init__(
         self,
@@ -144,6 +156,7 @@ class LiveVehicleService:
                 observed_at=None,
                 received_at=None,
                 readings=LiveReadings.empty(),
+                central_locking=None,
             )
         fetched = False
         store_failed = False
@@ -172,6 +185,7 @@ class LiveVehicleService:
             observed_at=row.observed_at if row else None,
             received_at=row.received_at if row else None,
             readings=_readings(row),
+            central_locking=_central_locking(provider, row) if status == "ok" else None,
         )
 
     def _store(self, snap: Snapshot, now: dt.datetime) -> bool:

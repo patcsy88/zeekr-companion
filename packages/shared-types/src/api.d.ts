@@ -1127,6 +1127,8 @@ export interface components {
         };
         /** LiveCardOut */
         LiveCardOut: {
+            /** Central Locking */
+            central_locking: ("locked" | "unlocked") | null;
             /** Interval Minutes */
             interval_minutes: number;
             /** Observed At */

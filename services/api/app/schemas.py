@@ -907,6 +907,9 @@ class LiveCardOut(BaseModel):
     observed_at: UtcDateTime | None
     received_at: UtcDateTime | None
     readings: LiveReadings
+    # Live only, never stored (owner decision 2026-11-15). Set only when `status` is "ok" and it
+    # comes from the same read as `observed_at`; otherwise null. Not in the history.
+    central_locking: Literal["locked", "unlocked"] | None
 
 
 class LiveReadingItem(LiveReadings):

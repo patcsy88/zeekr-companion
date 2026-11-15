@@ -9,6 +9,7 @@ import {
   formatKl,
   km,
   kpa,
+  lockState,
   percent,
   serviceKm,
   volts,
@@ -237,6 +238,12 @@ function CardBody({
             label="Next service in"
             value={`${serviceKm(r.service_distance_km)}, ${days(r.service_days)}`}
           />
+          <Stat
+            className="col-span-2"
+            label="Central locking"
+            value={lockState(card.central_locking)}
+            testId="live-central-locking"
+          />
         </dl>
         <h3 className={GROUP_TITLE}>Tyres</h3>
         <div className="my-2 grid grid-cols-[1fr_minmax(3rem,4.5rem)_1fr] grid-rows-[auto_auto] items-center gap-2">
@@ -272,9 +279,19 @@ function CardBody({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  className,
+  testId,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  testId?: string;
+}) {
   return (
-    <div className="rounded-xl bg-muted px-3 py-2">
+    <div className={cn('rounded-xl bg-muted px-3 py-2', className)} data-testid={testId}>
       <dt className={LABEL}>{label}</dt>
       <dd className="m-0 mt-0.5 font-semibold text-lg tabular-nums">{value}</dd>
     </div>

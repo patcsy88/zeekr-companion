@@ -244,6 +244,107 @@ def test_nothing_private_reaches_the_response_or_the_table(
     assert not [w for w in banned if f'"{w}' in card.lower()]
 
 
+def locked_reply(moment: dt.datetime, code: Any) -> dict[str, Any]:
+    body = with_time(moment)
+    body["additionalVehicleStatus"]["drivingSafetyStatus"]["centralLockingStatus"] = code
+    return body
+
+
+@pytest.mark.parametrize(("code", "shown"), [("1", "locked"), ("0", "unlocked")])
+def test_central_locking_is_shown_live_and_never_stored(
+    client: TestClient, auth_headers: dict[str, str], live: Any, code: str, shown: str
+) -> None:
+    live(locked_reply(recent(), code))
+    card = client.get(CARD, headers=auth_headers).json()
+    assert card["status"] == "ok" and card["central_locking"] == shown
+    # A cached answer from the same read still shows it.
+    assert client.get(CARD, headers=auth_headers).json()["central_locking"] == shown
+    history = client.get(HISTORY, headers=auth_headers).text
+    assert "central" not in history and "lock" not in history.lower()
+    with client.app.state.engine.connect() as conn:  # type: ignore[attr-defined]
+        columns = {
+            r[0]
+            for r in conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'live_reading'"
+                )
+            )
+        }
+    assert not [c for c in columns if "lock" in c]
+
+
+@pytest.mark.parametrize("code", ["2", "", None, 1, True, "locked", CANARY])
+def test_an_unknown_lock_code_is_no_reading(
+    client: TestClient, auth_headers: dict[str, str], live: Any, code: Any
+) -> None:
+    live(locked_reply(recent(), code))
+    body = client.get(CARD, headers=auth_headers).json()
+    assert body["status"] == "ok" and body["central_locking"] is None
+    assert CANARY not in json.dumps(body)
+
+
+def test_central_locking_is_no_reading_after_a_failure_and_when_off(
+    client: TestClient, auth_headers: dict[str, str], live: Any
+) -> None:
+    assert client.get(CARD, headers=auth_headers).json()["central_locking"] is None  # off
+    fail = ZeekrReadError("x")
+    _, clock = live(locked_reply(recent(), "1"), fail, fail, max_failures=2)
+    assert client.get(CARD, headers=auth_headers).json()["central_locking"] == "locked"
+    clock.now += 301
+    failed = client.get(CARD, headers=auth_headers).json()
+    assert failed["status"] == "unavailable" and failed["central_locking"] is None
+    assert failed["readings"]["odometer_km"] == 4321  # the stored reading is still shown
+    clock.now += 100_000
+    paused = client.get(CARD, headers=auth_headers).json()
+    assert paused["status"] == "paused" and paused["central_locking"] is None
+
+
+def test_central_locking_is_no_reading_after_a_restart(
+    client: TestClient, auth_headers: dict[str, str], live: Any
+) -> None:
+    moment = recent()
+    live(locked_reply(moment, "1"))
+    client.get(CARD, headers=auth_headers)
+    # A new provider (as after an API restart) inside the window: the stored row is shown, but
+    # the lock state is not remembered anywhere.
+    _, clock = live(ZeekrReadError("x"))
+    provider = client.app.state.live_telemetry  # type: ignore[attr-defined]
+    provider._next_try = clock.now + 300
+    body = client.get(CARD, headers=auth_headers).json()
+    assert body["observed_at"] is not None and body["central_locking"] is None
+
+
+def test_an_older_lock_state_never_sits_under_a_newer_time(
+    client: TestClient, auth_headers: dict[str, str], live: Any
+) -> None:
+    newer = recent(1)
+    with client.app.state.engine.begin() as conn:  # type: ignore[attr-defined]
+        conn.execute(
+            text(
+                "INSERT INTO live_reading (id, observed_at, received_at, odometer_km) "
+                "VALUES (gen_random_uuid(), :t, :t, 1)"
+            ),
+            {"t": newer},
+        )
+    live(locked_reply(recent(10), "1"))  # this read is older than the stored row
+    body = client.get(CARD, headers=auth_headers).json()
+    assert body["status"] == "ok" and body["central_locking"] is None
+
+
+def test_the_lock_value_is_never_logged(
+    client: TestClient, auth_headers: dict[str, str], live: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    live(locked_reply(recent(), "1"))
+    client.get(CARD, headers=auth_headers)
+    ours = [r for r in caplog.records if r.name.startswith(("app", "zeekr"))]
+    text_logged = "\n".join(r.getMessage() + " " + repr(r.args) for r in ours).lower()
+    assert "central" not in text_logged and "locked" not in text_logged
+
+
 def test_rows_older_than_twelve_months_are_deleted_when_one_is_stored(
     client: TestClient, auth_headers: dict[str, str], live: Any
 ) -> None:

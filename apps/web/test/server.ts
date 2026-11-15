@@ -827,6 +827,7 @@ export const OFF_CARD = {
       sentry_active: null,
     },
   },
+  central_locking: null,
 };
 
 const liveHandlers = [

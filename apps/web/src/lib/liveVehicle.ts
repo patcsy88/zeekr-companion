@@ -57,6 +57,12 @@ export function yesNo(value: boolean | null): string {
   return value === null ? NO_READING : value ? 'Yes' : 'No';
 }
 
+/** Central locking, live only (never stored). Null means no reading. */
+export function lockState(value: 'locked' | 'unlocked' | null): string {
+  if (value === null) return NO_READING;
+  return value === 'locked' ? 'Locked' : 'Unlocked';
+}
+
 /** A length of time as "2 h 5 min", "3 days 4 h" or "under a minute". */
 export function formatSpan(ms: number): string {
   const minutes = Math.floor(ms / 60_000);

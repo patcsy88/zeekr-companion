@@ -109,6 +109,44 @@ def test_snapshot_holds_nothing_from_dropped_fields() -> None:
     }
 
 
+def lock_status(code: object) -> dict[str, Any]:
+    body = status()
+    body["additionalVehicleStatus"]["drivingSafetyStatus"]["centralLockingStatus"] = code
+    return body
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [("1", True), ("0", False), ("2", None), (" 1", None), (1, None), (True, None), ("", None)],
+)
+def test_central_lock_reads_only_the_two_known_codes(code: object, expected: object) -> None:
+    assert zeekr_live.map_central_lock(lock_status(code)) is expected
+    assert zeekr_live.map_central_lock({}) is None
+
+
+def test_central_lock_is_kept_in_memory_and_cleared_by_a_failure() -> None:
+    replies: list[Any] = [lock_status("1"), ZeekrReadError("x")]
+    now = [0.0]
+    provider = ZeekrLiveTelemetryProvider(
+        lambda: _next(replies), clock=lambda: now[0], min_interval_s=300
+    )
+    seen = [provider.central_locked]
+    provider.read_odometer()
+    seen.append(provider.central_locked)
+    assert "central" not in repr(provider.snapshot).lower()
+    now[0] += 301
+    provider.read_odometer()
+    seen.append(provider.central_locked)
+    assert seen == [None, True, None]
+
+
+def _next(replies: list[Any]) -> Any:
+    reply = replies.pop(0)
+    if isinstance(reply, Exception):
+        raise reply
+    return reply
+
+
 @pytest.mark.parametrize("bad", ["", "  ", "abc", None, True, [], {}, "1e999", "nan"])
 def test_unusable_values_become_no_reading(bad: object) -> None:
     body = status()

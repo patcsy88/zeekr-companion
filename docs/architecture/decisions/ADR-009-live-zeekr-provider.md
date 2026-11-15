@@ -262,3 +262,12 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
   - The allow-list gains `statusOfChargerConnection` and `disChargeConnectStatus`.
 - **Limits (unverified):** one reading per state, all AC charging at home. DC fast-charging codes are not seen, so unseen codes show no reading. The lid fields are not used.
 - **Code:** `app/adapters/zeekr_live.py` (`_charging`, `_connection`, `_plugged_in`). Columns, API shape and the card are unchanged: no migration, no web change. Stored rows keep their stored values.
+
+## Amendment (APPROVED by the owner, 2026-11-15): central locking on the Vehicle card, live only
+
+- **Owner decision:** show whether the car is centrally locked on the Vehicle card. This is the one lock field the owner approves under the "Security state" note above. Door, trunk, window and `privateLockStatus` fields stay excluded.
+- **Field and codes (confirmed on the owner's car, 2026-11-15, owner-run `--dump --include-lock-door` piped to `grep`; only the lock line was shared):** `additionalVehicleStatus.drivingSafetyStatus.centralLockingStatus`. `"1"` is locked and `"0"` is unlocked. Any other value is no reading.
+- **Live only:** `map_central_lock` reads it into the provider's memory with each successful read, and a failed read clears it. It is not part of `Snapshot`, so it cannot reach the `live_reading` table. No column and no migration. It is never logged, never in the history, never sent to the model, and never stored on the device.
+- **Shown:** the card's top-level `central_locking` field (`locked`, `unlocked` or `null`; see `api-contracts.md`). It is set only when `status` is `ok` and it comes from the same read as the row shown. The card shows "no reading" after any failed read, while paused, after an API restart and when live readings are off.
+- **Unchanged:** read-only calls only, no command is sent to the car, and the app still cannot lock or unlock it.
+- **Limits:** the lock state is only as fresh as the last read (every `interval_minutes` while the page is open). Codes other than `"1"` and `"0"` have not been seen.
