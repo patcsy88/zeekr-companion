@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FailedNotice } from '../components/ErrorBox';
 import { BasisNote, StatusBadge } from '../components/ReminderParts';
@@ -14,6 +14,7 @@ import { Skeleton } from '../components/Skeleton';
 import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS } from '../components/ListParts';
 import { ERROR, HINT } from '../components/Field';
 import { Button } from '../components/ui/button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function ReminderDetailPage() {
   const { id } = useParams();
@@ -28,11 +29,6 @@ function ReminderDetail({ id }: { id: string }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (confirming) cancelRef.current?.focus();
-  }, [confirming]);
 
   if (data === undefined) return <Skeleton />;
   if (data.view === null) {
@@ -141,73 +137,52 @@ function ReminderDetail({ id }: { id: string }) {
       </Details>
       {r.due_odometer !== null ? <BasisNote basis={basis} /> : null}
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-labelledby="del-rem-title"
-          aria-describedby="del-rem-desc"
-          className={NOTICE.bad}
-        >
-          <h2 id="del-rem-title">Delete this reminder?</h2>
-          <p id="del-rem-desc">This cannot be undone.</p>
-          <div className={ROW_ACTIONS}>
-            <Button
-              variant="destructive"
-              size="lg"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              Delete
+      <div className={ROW_ACTIONS}>
+        {r.kind === 'service' && r.completed_on === null ? (
+          online ? (
+            <Button size="lg" render={<Link to={`/reminders/${id}/complete`} />}>
+              Complete service
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              ref={cancelRef}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className={ROW_ACTIONS}>
-          {r.kind === 'service' && r.completed_on === null ? (
-            online ? (
-              <Button size="lg" render={<Link to={`/reminders/${id}/complete`} />}>
+          ) : (
+            <>
+              <Button size="lg" disabled aria-describedby="cs-offline">
                 Complete service
               </Button>
-            ) : (
-              <>
-                <Button size="lg" disabled aria-describedby="cs-offline">
-                  Complete service
-                </Button>
-                <p className={HINT} id="cs-offline">
-                  Completing a service needs a connection.
-                </p>
-              </>
-            )
-          ) : (
-            <Button size="lg" disabled={busy} onClick={() => void toggleComplete()}>
-              {r.completed_on === null ? 'Mark complete' : 'Reopen'}
-            </Button>
-          )}
-          <Button variant="outline" size="lg" render={<Link to={`/reminders/${id}/edit`} />}>
-            Edit
+              <p className={HINT} id="cs-offline">
+                Completing a service needs a connection.
+              </p>
+            </>
+          )
+        ) : (
+          <Button size="lg" disabled={busy} onClick={() => void toggleComplete()}>
+            {r.completed_on === null ? 'Mark complete' : 'Reopen'}
           </Button>
-          <Button
-            variant="destructive"
-            size="lg"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Delete
-          </Button>
-          <Link to="/reminders">Back</Link>
-        </div>
-      )}
+        )}
+        <Button variant="outline" size="lg" render={<Link to={`/reminders/${id}/edit`} />}>
+          Edit
+        </Button>
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={() => {
+            setConfirming(true);
+          }}
+        >
+          Delete
+        </Button>
+        <Link to="/reminders">Back</Link>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title="Delete this reminder?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        busy={busy}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      />
     </article>
   );
 }

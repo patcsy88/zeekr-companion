@@ -173,6 +173,7 @@ test('edit and delete with confirmation (FR-4)', async ({ page, browser, baseURL
   await page.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByRole('alertdialog')).toBeVisible();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: description })).toBeVisible();
   await page.getByRole('button', { name: 'Delete' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();

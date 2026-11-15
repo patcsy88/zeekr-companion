@@ -318,6 +318,46 @@ describe('App flows', () => {
     });
   });
 
+  it('the delete dialog sits outside the page, closes on Escape and gives focus back', async () => {
+    const id = '66666666-6666-4666-8666-666666666666';
+    fake.records.set(id, {
+      id,
+      date: '2026-09-01',
+      odometer: 1,
+      provider: null,
+      description: 'Keep me',
+      cost_minor: 100,
+      currency: 'MYR',
+      notes: null,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+    });
+    const user = userEvent.setup();
+    signedInApp();
+    await user.click(await screen.findByRole('link', { name: /Keep me/ }));
+    const opener = await screen.findByRole('button', { name: 'Delete' });
+    await user.click(opener);
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete this service record?' });
+    expect(dialog).toHaveAccessibleDescription('This cannot be undone.');
+    expect(document.querySelector('main')?.contains(dialog)).toBe(false);
+    // The page behind is hidden while the dialog is open.
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Keep me' })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    });
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(opener).toHaveFocus();
+    });
+    expect(fake.deletes).toHaveLength(0);
+    expect(screen.getByRole('heading', { name: 'Keep me' })).toBeInTheDocument();
+  });
+
   it('creating a record while offline shows Pending in the list', async () => {
     const user = userEvent.setup();
     signedInApp();

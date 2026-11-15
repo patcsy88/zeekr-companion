@@ -320,8 +320,14 @@ describe('AC-78: edit and delete', () => {
     await started();
     await user.click(await screen.findByRole('button', { name: 'Delete' }));
     const dialog = screen.getByRole('alertdialog', { name: 'Delete this tyre event?' });
-    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // The dialog moves focus to Cancel once it has opened.
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    });
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
     expect(fake.tyreDeletes).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     await user.click(

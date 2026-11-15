@@ -128,6 +128,7 @@ test('AC-32/33: edit shows the saved values, saves changes, and delete needs con
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('Delete this expense?');
   await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   expect((await serverExpenses(browser, base)).some((x) => x.notes === notes)).toBe(true);
   await page.getByRole('button', { name: 'Delete' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();

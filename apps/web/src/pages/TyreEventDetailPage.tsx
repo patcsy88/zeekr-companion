@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { TyreEvent } from '../api/types';
 import { FailedNotice } from '../components/ErrorBox';
@@ -6,6 +6,7 @@ import { Skeleton } from '../components/Skeleton';
 import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS, SMALL } from '../components/ListParts';
 import { TextField } from '../components/Field';
 import { Button } from '../components/ui/button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Card } from '../components/ui/card';
 import { SyncBadge } from '../components/SyncBadge';
 import { useTyreEvent } from '../data/hooks';
@@ -86,11 +87,6 @@ function TyreEventDetail({ id }: { id: string }) {
   const data = useTyreEvent(id);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (confirming) cancelRef.current?.focus();
-  }, [confirming]);
 
   if (data === undefined) return <Skeleton />;
   if (data.view === null) {
@@ -183,53 +179,32 @@ function TyreEventDetail({ id }: { id: string }) {
 
       {x.kind === 'rotate' ? <RotationReminder event={x} /> : null}
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-labelledby="del-tyre-title"
-          aria-describedby="del-tyre-desc"
-          className={NOTICE.bad}
+      <div className={ROW_ACTIONS}>
+        <Button size="lg" render={<Link to={`/vehicle/tyres/${id}/edit`} />}>
+          Edit
+        </Button>
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={() => {
+            setConfirming(true);
+          }}
         >
-          <h2 id="del-tyre-title">Delete this tyre event?</h2>
-          <p id="del-tyre-desc">This cannot be undone.</p>
-          <div className={ROW_ACTIONS}>
-            <Button
-              variant="destructive"
-              size="lg"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              Delete
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              ref={cancelRef}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className={ROW_ACTIONS}>
-          <Button size="lg" render={<Link to={`/vehicle/tyres/${id}/edit`} />}>
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="lg"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Delete
-          </Button>
-          <Link to="/vehicle/tyres">Back</Link>
-        </div>
-      )}
+          Delete
+        </Button>
+        <Link to="/vehicle/tyres">Back</Link>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title="Delete this tyre event?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        busy={busy}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      />
     </article>
   );
 }

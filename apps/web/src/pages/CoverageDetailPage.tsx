@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FailedNotice } from '../components/ErrorBox';
 import { SyncBadge } from '../components/SyncBadge';
@@ -27,6 +27,7 @@ import {
   TITLE,
 } from '../components/ListParts';
 import { Button } from '../components/ui/button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { cn } from '../lib/cn';
 
 export function CoverageDetailPage() {
@@ -59,55 +60,41 @@ function ClaimRow({ v, coverageName }: { v: ClaimView; coverageName: string }) {
           </p>
         ) : null}
         {v.sync === 'failed' && v.error ? <FailedNotice error={v.error} /> : null}
-        {confirming ? (
-          <div role="alertdialog" aria-label="Delete claim" className={NOTICE.bad}>
-            <p>Delete this claim? This cannot be undone.</p>
-            <div className={ROW_ACTIONS}>
-              <Button
-                variant="destructive"
-                size="lg"
-                disabled={busy}
-                onClick={() => {
-                  setBusy(true);
-                  void removeClaim(c.id).finally(() => {
-                    setBusy(false);
-                    setConfirming(false);
-                  });
-                }}
-              >
-                Delete claim
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  setConfirming(false);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className={ROW_ACTIONS}>
-            <Button
-              variant="outline"
-              size="lg"
-              render={<Link to={`/warranty/claims/${c.id}/edit`} />}
-            >
-              Edit claim
-            </Button>
-            <Button
-              variant="destructive"
-              size="lg"
-              onClick={() => {
-                setConfirming(true);
-              }}
-            >
-              Delete claim
-            </Button>
-          </div>
-        )}
+        <div className={ROW_ACTIONS}>
+          <Button
+            variant="outline"
+            size="lg"
+            render={<Link to={`/warranty/claims/${c.id}/edit`} />}
+          >
+            Edit claim
+          </Button>
+          <Button
+            variant="destructive"
+            size="lg"
+            onClick={() => {
+              setConfirming(true);
+            }}
+          >
+            Delete claim
+          </Button>
+        </div>
+        <ConfirmDialog
+          open={confirming}
+          title="Delete this claim?"
+          description="This cannot be undone."
+          confirmLabel="Delete claim"
+          busy={busy}
+          onConfirm={() => {
+            setBusy(true);
+            void removeClaim(c.id).finally(() => {
+              setBusy(false);
+              setConfirming(false);
+            });
+          }}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+        />
       </div>
       <SyncBadge sync={v.sync} />
     </ItemCard>
@@ -119,11 +106,6 @@ function CoverageDetail({ id }: { id: string }) {
   const snap = useWarranty();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (confirming) cancelRef.current?.focus();
-  }, [confirming]);
 
   if (snap === undefined) return <Skeleton />;
   const view = snap.coverages.find((v) => v.coverage.id === id);
@@ -239,59 +221,36 @@ function CoverageDetail({ id }: { id: string }) {
         </ul>
       )}
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-labelledby="del-cov-title"
-          aria-describedby="del-cov-desc"
-          className={NOTICE.bad}
+      <div className={ROW_ACTIONS}>
+        <Button size="lg" render={<Link to={`/warranty/${id}/claims/new`} />}>
+          Add claim
+        </Button>
+        <Button variant="outline" size="lg" render={<Link to={`/warranty/${id}/edit`} />}>
+          Edit
+        </Button>
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={() => {
+            setConfirming(true);
+          }}
         >
-          <h2 id="del-cov-title">Delete this coverage?</h2>
-          <p id="del-cov-desc" data-testid="delete-claim-count">
-            This also deletes {c.claim_count} {c.claim_count === 1 ? 'claim' : 'claims'}. This
-            cannot be undone.
-          </p>
-          <div className={ROW_ACTIONS}>
-            <Button
-              variant="destructive"
-              size="lg"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              Delete coverage
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              ref={cancelRef}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className={ROW_ACTIONS}>
-          <Button size="lg" render={<Link to={`/warranty/${id}/claims/new`} />}>
-            Add claim
-          </Button>
-          <Button variant="outline" size="lg" render={<Link to={`/warranty/${id}/edit`} />}>
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="lg"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Delete
-          </Button>
-          <Link to="/warranty">Back</Link>
-        </div>
-      )}
+          Delete
+        </Button>
+        <Link to="/warranty">Back</Link>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title="Delete this coverage?"
+        description={`This also deletes ${c.claim_count} ${c.claim_count === 1 ? 'claim' : 'claims'}. This cannot be undone.`}
+        descriptionTestId="delete-claim-count"
+        confirmLabel="Delete coverage"
+        busy={busy}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      />
     </article>
   );
 }

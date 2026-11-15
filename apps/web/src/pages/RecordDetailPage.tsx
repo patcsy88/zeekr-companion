@@ -13,6 +13,7 @@ import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
 import { Details, HEAD, MUTED, NOTICE, PREWRAP, ROW_ACTIONS } from '../components/ListParts';
 import { Button } from '../components/ui/button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 /** The route id must be a UUID before anything is read or fetched: nothing else reaches the API. */
 export function RecordDetailPage() {
@@ -27,7 +28,6 @@ function RecordDetail({ id }: { id: string }) {
   const session = useSession();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const triedFetch = useRef(false);
   // Set as soon as the user confirms a delete. See the effect below.
   const deleting = useRef(false);
@@ -50,10 +50,6 @@ function RecordDetail({ id }: { id: string }) {
       live = false;
     };
   }, [data, id, session.signedIn]);
-
-  useEffect(() => {
-    if (confirming) cancelRef.current?.focus();
-  }, [confirming]);
 
   if (data === undefined) return <Skeleton />;
   if (data.view === null) {
@@ -133,53 +129,32 @@ function RecordDetail({ id }: { id: string }) {
         </dd>
       </Details>
 
-      {confirming ? (
-        <div
-          role="alertdialog"
-          aria-labelledby="del-title"
-          aria-describedby="del-desc"
-          className={NOTICE.bad}
+      <div className={ROW_ACTIONS}>
+        <Button variant="outline" size="lg" render={<Link to={`/records/${id}/edit`} />}>
+          Edit
+        </Button>
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={() => {
+            setConfirming(true);
+          }}
         >
-          <h2 id="del-title">Delete this service record?</h2>
-          <p id="del-desc">This cannot be undone.</p>
-          <div className={ROW_ACTIONS}>
-            <Button
-              variant="destructive"
-              size="lg"
-              disabled={busy}
-              onClick={() => void confirmDelete()}
-            >
-              Delete
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              ref={cancelRef}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className={ROW_ACTIONS}>
-          <Button variant="outline" size="lg" render={<Link to={`/records/${id}/edit`} />}>
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="lg"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Delete
-          </Button>
-          <Link to="/">Back</Link>
-        </div>
-      )}
+          Delete
+        </Button>
+        <Link to="/">Back</Link>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title="Delete this service record?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        busy={busy}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      />
     </article>
   );
 }

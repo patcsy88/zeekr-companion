@@ -18,11 +18,11 @@ import {
   volts,
   type Point,
 } from '../lib/liveVehicle';
-import { ACTIONS, ERROR } from '../components/Field';
+import { ERROR } from '../components/Field';
 import { HEAD, LIST, MUTED, NOTICE, SMALL } from '../components/ListParts';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { cn } from '../lib/cn';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const LIMIT = 500;
 
@@ -190,36 +190,28 @@ export function LiveHistoryPage() {
         </>
       )}
       {items.length > 0 ? (
-        confirming ? (
-          <div className={NOTICE.bad} role="alertdialog" aria-label="Confirm delete">
-            <p>Delete all stored readings? This cannot be undone.</p>
-            <div className={cn(ACTIONS, 'mt-2')}>
-              <Button variant="destructive" disabled={busy} onClick={() => void deleteAll()}>
-                Yes, delete all
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setConfirming(false);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="destructive"
-            size="lg"
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Delete all history
-          </Button>
-        )
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={() => {
+            setConfirming(true);
+          }}
+        >
+          Delete all history
+        </Button>
       ) : null}
+      <ConfirmDialog
+        open={confirming && items.length > 0}
+        title="Delete all stored readings?"
+        description="This cannot be undone."
+        confirmLabel="Yes, delete all"
+        busy={busy}
+        cancelDisabled={busy}
+        onConfirm={() => void deleteAll()}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      />
     </section>
   );
 }
