@@ -4,6 +4,7 @@ import type { SentryCommandResult } from '../api/types';
 import { ACTIONS } from './Field';
 import { NOTICE, SMALL } from './ListParts';
 import { Button } from './ui/button';
+import { SWITCH_BUTTON, SwitchTrack } from './SwitchTrack';
 
 // The server waits SENTRY_CONFIRM_WAIT_SECONDS (5 to 30, default 15) for the car to report, so the
 // request may take longer than the default timeout.
@@ -87,7 +88,7 @@ export function SentryControl({
         role="switch"
         aria-checked={current}
         aria-label={`Sentry: ${state}`}
-        className={`sentry-switch sentry-switch-${state}`}
+        className={SWITCH_BUTTON}
         disabled={phase === 'sending'}
         data-testid="sentry-switch"
         onClick={() => {
@@ -95,9 +96,7 @@ export function SentryControl({
           setPhase(phase === 'confirm' ? 'idle' : 'confirm');
         }}
       >
-        <span className="ro-track" aria-hidden="true">
-          <span className="ro-knob" />
-        </span>
+        <SwitchTrack state={state} />
         <span aria-hidden="true">{current ? 'On' : 'Off'}</span>
       </button>
       {phase === 'confirm' ? (

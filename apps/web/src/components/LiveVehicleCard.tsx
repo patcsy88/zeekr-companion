@@ -21,6 +21,14 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { HEAD, MUTED, SMALL } from './ListParts';
+import { cn } from '../lib/cn';
+
+/** A small label over a reading. */
+const LABEL = 'm-0 text-muted-foreground text-xs';
+/** Group heading, iOS grouped-list style (the same as on the Vehicle page). */
+const GROUP_TITLE =
+  'mx-1 mt-5 mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider';
 
 /**
  * Read-only live readings from the car (ADR-009). Online only: nothing here is stored on the
@@ -98,7 +106,7 @@ export function LiveVehicleCard() {
       className="my-3 block px-4 py-3"
       data-testid="live-card"
     >
-      <div className="row">
+      <div className={HEAD}>
         <h2 id="live-title" className="m-0">
           Live from the car
         </h2>
@@ -108,11 +116,11 @@ export function LiveVehicleCard() {
           </Button>
         ) : null}
       </div>
-      <p className="muted small">
+      <p className={SMALL}>
         Readings only. Nothing here is sent to the car. The Sentry switch is on the Sentry tab.
       </p>
       {!session.signedIn || !online ? (
-        <p className="muted" data-testid="live-offline">
+        <p className={MUTED} data-testid="live-offline">
           Needs a connection.
         </p>
       ) : card === null ? (
@@ -140,7 +148,7 @@ function CardBody({
   if (card.status === 'off') {
     return (
       <>
-        <p className="muted" data-testid="live-off">
+        <p className={MUTED} data-testid="live-off">
           Live readings are off.
         </p>
         <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
@@ -183,22 +191,24 @@ function CardBody({
         </Alert>
       ) : null}
       {card.observed_at === null ? (
-        <p className="muted" data-testid="live-none">
+        <p className={MUTED} data-testid="live-none">
           No reading has been stored yet.
         </p>
       ) : (
-        <p className="muted small" data-testid="live-asof">
+        <p className={SMALL} data-testid="live-asof">
           As of {formatKl(card.observed_at)}
           {card.received_at ? `, received ${formatKl(card.received_at)}` : ''}.
         </p>
       )}
-      <div className="dash" data-testid="live-readings">
-        <div className="dash-hero">
-          <p className="dash-label">Battery</p>
-          <p className="dash-big">{percent(r.battery_percent)}</p>
+      <div data-testid="live-readings">
+        <div className="pt-1 pb-2">
+          <p className={cn(LABEL, 'dash-label')}>Battery</p>
+          <p className="m-0 font-bold text-[2.6rem] tabular-nums leading-[1.1] tracking-tight">
+            {percent(r.battery_percent)}
+          </p>
           {r.battery_percent !== null ? (
             <div
-              className="bar"
+              className="my-1.5 h-2.5 overflow-hidden rounded-full bg-muted"
               role="progressbar"
               aria-label="Battery level"
               aria-valuemin={0}
@@ -206,17 +216,20 @@ function CardBody({
               aria-valuenow={Math.round(r.battery_percent)}
             >
               <div
-                className={`bar-fill${r.battery_percent <= 20 ? ' bar-low' : ''}`}
+                className={cn(
+                  'h-full transition-[width] duration-400',
+                  r.battery_percent <= 20 ? 'bg-destructive' : 'bg-primary',
+                )}
                 style={{ width: `${Math.min(100, Math.max(0, r.battery_percent))}%` }}
               />
             </div>
           ) : null}
-          <p className="badges">
+          <p className="m-0 mt-2 flex flex-wrap gap-1.5">
             <Flagged label="Plugged in" value={r.plugged_in} />
             <Flagged label="Charging" value={r.charging} />
           </p>
         </div>
-        <dl className="stats">
+        <dl className="m-0 my-3 grid grid-cols-2 gap-2">
           <Stat label="Range" value={km(r.range_km)} />
           <Stat label="Odometer" value={km(r.odometer_km)} />
           <Stat label="12 V battery" value={volts(r.battery_12v_volts)} />
@@ -225,8 +238,8 @@ function CardBody({
             value={`${serviceKm(r.service_distance_km)}, ${days(r.service_days)}`}
           />
         </dl>
-        <h3 className="group-title">Tyres</h3>
-        <div className="tyres">
+        <h3 className={GROUP_TITLE}>Tyres</h3>
+        <div className="my-2 grid grid-cols-[1fr_minmax(3rem,4.5rem)_1fr] grid-rows-[auto_auto] items-center gap-2">
           <Tyre label="Passenger front" kpaValue={t.passenger_front} c={tc.passenger_front} />
           <CarOutline />
           <Tyre label="Driver front" kpaValue={t.driver_front} c={tc.driver_front} />
@@ -234,19 +247,22 @@ function CardBody({
           <Tyre label="Driver rear" kpaValue={t.driver_rear} c={tc.driver_rear} />
         </div>
       </div>
-      <h3 className="group-title">Reported on / off</h3>
-      <dl className="group" data-testid="live-indicators">
+      <h3 className={GROUP_TITLE}>Reported on / off</h3>
+      <dl
+        className="m-0 mb-3 overflow-hidden rounded-2xl border bg-muted [&>div]:flex [&>div]:min-h-11 [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-4 [&>div]:py-2 [&>div+div]:border-t [&_dd]:m-0 [&_dd]:text-right [&_dd]:text-muted-foreground"
+        data-testid="live-indicators"
+      >
         <Flag label="Pre-climate" value={ind.pre_climate_active} />
         <Flag label="Fragrance" value={ind.fragrance_active} />
         <Flag label="Overheat protection" value={ind.overheat_protection_active} />
         <Flag label="VTM TS" value={ind.vtm_ts_active} />
         <Flag label="Engine enable running" value={ind.engine_enable_running} />
       </dl>
-      <p className="muted small">
+      <p className={SMALL}>
         These are the car's own reported flags. Their exact meanings are not verified, and this page
         cannot change any of them.
       </p>
-      <p className="muted small">
+      <p className={SMALL}>
         Updates about every {card.interval_minutes} minutes while this page is open.
       </p>
       <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
@@ -258,9 +274,9 @@ function CardBody({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="stat">
-      <dt className="dash-label">{label}</dt>
-      <dd>{value}</dd>
+    <div className="rounded-xl bg-muted px-3 py-2">
+      <dt className={LABEL}>{label}</dt>
+      <dd className="m-0 mt-0.5 font-semibold text-lg tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -280,7 +296,7 @@ function Flag({ label, value }: { label: string; value: boolean | null }) {
 function CarOutline() {
   return (
     <svg
-      className="car-outline"
+      className="col-start-2 row-span-2 row-start-1 max-h-34 w-full text-muted-foreground opacity-55"
       viewBox="0 0 60 120"
       fill="none"
       stroke="currentColor"
@@ -325,9 +341,10 @@ function Tyre({
   c: number | null;
 }) {
   return (
-    <div className="tyre">
-      <p className="dash-label">{label}</p>
-      <p className="tyre-value">
+    // "tyre" and "dash-label" stay as hooks for the tests that read the tyre order.
+    <div className="tyre rounded-xl border bg-muted px-2.5 py-2 [&:nth-of-type(even)]:col-start-3 [&:nth-of-type(even)]:text-right [&:nth-of-type(odd)]:col-start-1">
+      <p className={cn(LABEL, 'dash-label')}>{label}</p>
+      <p className="m-0 mt-0.5 font-semibold tabular-nums">
         {kpa(kpaValue)}, {celsius(c)}
       </p>
     </div>

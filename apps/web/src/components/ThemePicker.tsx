@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { readTheme, saveTheme, type Theme } from '../lib/theme';
+import { Button } from './ui/button';
 
 const LABEL: Record<Theme, string> = { system: 'Auto', light: 'Light', dark: 'Dark' };
 const NEXT: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' };
@@ -37,9 +38,9 @@ export function ThemePicker() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const next = NEXT[theme];
   return (
-    <button
-      type="button"
-      className="theme-picker"
+    <Button
+      variant="ghost"
+      size="icon-xl"
       aria-label={`Appearance: ${LABEL[theme]}`}
       title={`Appearance: ${LABEL[theme]}. Tap for ${LABEL[next]}.`}
       onClick={() => {
@@ -48,6 +49,6 @@ export function ThemePicker() {
       }}
     >
       <ThemeIcon theme={theme} />
-    </button>
+    </Button>
   );
 }

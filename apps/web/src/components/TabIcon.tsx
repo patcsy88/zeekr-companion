@@ -20,7 +20,7 @@ const PATHS: Record<TabIconName, string> = {
 export function TabIcon({ name }: { name: TabIconName }) {
   return (
     <svg
-      className="tab-icon"
+      className="flex-none"
       viewBox="0 0 24 24"
       width="22"
       height="22"

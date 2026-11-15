@@ -14,6 +14,7 @@ import { uuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
 import { Skeleton } from '../components/Skeleton';
+import { HEAD, MUTED } from '../components/ListParts';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -37,14 +38,14 @@ export function VehiclePage() {
   const view = snap.view;
   return (
     <section aria-labelledby="vehicle-title">
-      <div className="row">
+      <div className={HEAD}>
         <h1 id="vehicle-title">Vehicle</h1>
         {view ? <SyncBadge sync={view.sync} /> : null}
       </div>
       <LiveVehicleCard />
       {view === null ? (
         <>
-          <p className="muted">
+          <p className={MUTED}>
             {snap.loaded ? 'No vehicle profile yet.' : 'Vehicle details have not been loaded yet.'}
           </p>
           <Button size="lg" render={<Link to="/vehicle/edit" />}>

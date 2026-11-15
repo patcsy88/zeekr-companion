@@ -7,6 +7,9 @@ import {
 } from '../data/hooks';
 import { formatTimestamp } from '../lib/dates';
 import { syncAll } from '../sync/engine';
+import { SMALL } from './ListParts';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 /** Always-visible sync state: offline, pending, failed, last sync, and the Sync now button. */
 export function SyncBar() {
@@ -17,63 +20,70 @@ export function SyncBar() {
   const last = useLastSynced();
 
   return (
-    <div className="syncbar" role="region" aria-label="Sync status">
-      <ul className="statuses">
+    <div
+      className="mx-auto flex max-w-2xl flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 [&_p]:m-0"
+      role="region"
+      aria-label="Sync status"
+    >
+      <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
         <li>
           {online ? (
-            <span className="badge ok">Online</span>
+            <Badge variant="success" size="lg">
+              Online
+            </Badge>
           ) : (
-            <span className="badge warn" data-testid="offline-indicator">
+            <Badge variant="warning" size="lg" data-testid="offline-indicator">
               {typeof navigator !== 'undefined' && !navigator.onLine
                 ? 'Offline'
                 : 'Server unreachable'}
-            </span>
+            </Badge>
           )}
         </li>
         {pending > 0 ? (
           <li>
-            <span className="badge info" data-testid="pending-count">
+            <Badge variant="info" size="lg" data-testid="pending-count">
               {pending} waiting to sync
-            </span>
+            </Badge>
           </li>
         ) : null}
         {failed > 0 ? (
           <li>
-            <span className="badge bad" data-testid="failed-count">
+            <Badge variant="error" size="lg" data-testid="failed-count">
               {failed} failed
-            </span>
+            </Badge>
           </li>
         ) : null}
         {blocked > 0 ? (
           <li>
-            <span className="badge bad" data-testid="blocked-count">
+            <Badge variant="error" size="lg" data-testid="blocked-count">
               {blocked} blocked
-            </span>
+            </Badge>
           </li>
         ) : null}
         {!session.signedIn ? (
           <li>
-            <span className="badge warn">
+            <Badge variant="warning" size="lg">
               {paused || session.needsLogin ? 'Sign in to resume sync' : 'Signed out'}
-            </span>
+            </Badge>
           </li>
         ) : null}
       </ul>
       {!online && pending > 0 ? (
-        <p className="muted small">Your changes are saved on this device and will sync later.</p>
+        <p className={SMALL}>Your changes are saved on this device and will sync later.</p>
       ) : null}
-      <p className="muted small" aria-live="polite">
+      <p className={SMALL} aria-live="polite">
         {flushing ? 'Syncing…' : last ? `Last synced ${formatTimestamp(last)}` : 'Not synced yet'}
       </p>
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="lg"
         onClick={() => {
           void syncAll(true);
         }}
         disabled={flushing || !session.signedIn}
       >
         Sync now
-      </button>
+      </Button>
     </div>
   );
 }

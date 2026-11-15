@@ -8,7 +8,7 @@ export const THEME_KEY = 'zc-theme';
 export const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
 
 // The browser bar colours, the same as the theme-color tags in index.html.
-const BAR_COLOUR = { light: '#0f5e57', dark: '#0f1514' } as const;
+const BAR_COLOUR = { light: '#ffffff', dark: '#161616' } as const;
 
 function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && (THEMES as readonly string[]).includes(value);

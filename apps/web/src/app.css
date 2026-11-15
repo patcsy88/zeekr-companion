@@ -1,57 +1,19 @@
 /*
- * Stylesheet entry (COSS UI pilot, docs/product/coss-ui-pilot-proposal.md).
+ * Stylesheet entry (COSS UI, docs/product/coss-ui-pilot-proposal.md).
  *
- * Layer order: theme, base, legacy, components, utilities. The app's own stylesheet sits in the
- * "legacy" layer, so every existing rule keeps its order and specificity against the others, and
- * Tailwind utilities (the COSS components) win over it. Tailwind's preflight reset is left out on
- * purpose, so the pages that are not converted do not shift.
+ * Tailwind's theme, its preflight reset, and the utilities the COSS components and pages use.
+ * The old hand-written stylesheet is gone; the few page-wide rules it had are in the base layer
+ * below.
  */
-@layer theme, base, legacy, components, utilities;
+@layer theme, base, components, utilities;
 
 @import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities) source(none);
-@import './styles.css' layer(legacy);
 
-/* Only the converted files are scanned; add each page here as it moves to COSS. */
-@source './components/ui';
-@source './components/Field.tsx';
-@source './components/RecordForm.tsx';
-@source './components/ReminderForm.tsx';
-@source './components/ExpenseForm.tsx';
-@source './components/ClaimForm.tsx';
-@source './components/CoverageForm.tsx';
-@source './components/TyreEventForm.tsx';
-@source './pages/CompleteServicePage.tsx';
-@source './components/ListParts.tsx';
-@source './components/SyncBadge.tsx';
-@source './components/ReminderParts.tsx';
-@source './components/WarrantyParts.tsx';
-@source './components/ErrorBox.tsx';
-@source './pages/RecordsPage.tsx';
-@source './pages/RemindersPage.tsx';
-@source './pages/ExpensesPage.tsx';
-@source './pages/WarrantyPage.tsx';
-@source './pages/TyresPage.tsx';
-@source './pages/RecordDetailPage.tsx';
-@source './pages/ReminderDetailPage.tsx';
-@source './pages/ExpenseDetailPage.tsx';
-@source './pages/CoverageDetailPage.tsx';
-@source './pages/TyreEventDetailPage.tsx';
-@source './pages/ReminderTemplatePage.tsx';
-@source './pages/WarrantyTemplatePage.tsx';
-@source './pages/SentryPage.tsx';
-@source './pages/GeofencePage.tsx';
-@source './pages/AdvisoryPage.tsx';
-@source './pages/LiveHistoryPage.tsx';
-@source './components/SentryControl.tsx';
-@source './components/SentryPanel.tsx';
-@source './components/AutoSentryPanel.tsx';
-@source './components/LiveTrend.tsx';
-@source './components/SignIn.tsx';
-@source './components/LiveVehicleCard.tsx';
-@source './pages/VehiclePage.tsx';
+@source '.';
 
-/* Dark mode follows the same data-theme choice as styles.css: "dark", or "system" on a dark phone. */
+/* Dark mode follows the data-theme choice: "dark", or "system" on a dark phone. */
 @custom-variant dark {
   &:where([data-theme='dark'], [data-theme='dark'] *) {
     @slot;
@@ -149,21 +111,125 @@
   --coss-warning-foreground: oklch(82.8% 0.189 84.429);
 }
 
-/* The part of preflight the COSS components rely on, limited to the components themselves. */
+/*
+ * Page-wide rules. Preflight zeroes every margin; paragraphs, plain lists and headings get back
+ * the spacing the pages were laid out with. Utility classes still win: their layer comes later.
+ */
 @layer base {
-  [data-slot],
-  [data-slot]::before,
-  [data-slot]::after {
-    box-sizing: border-box;
-    border: 0 solid var(--color-border);
+  :root {
+    /* Field edge: 3:1 against the page in both themes (see --color-input). */
+    --control-border: #8c8c8c;
+    --focus: #1a73e8;
+    color-scheme: light dark;
+    -webkit-font-smoothing: antialiased;
   }
-  :is(button, input, select, textarea)[data-slot] {
-    font: inherit;
-    letter-spacing: inherit;
-    color: inherit;
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --control-border: #808080;
+      --focus: #7ab4ff;
+    }
   }
-  :is(input, textarea)[data-slot] {
-    background: transparent;
+  :root[data-theme='dark'] {
+    --control-border: #808080;
+    --focus: #7ab4ff;
+    color-scheme: dark;
+  }
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--color-border);
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    /* Room for the fixed tab bar. */
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  h1 {
+    margin: 0.5rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  @media (min-width: 40rem) {
+    h1 {
+      font-size: 1.7rem;
+    }
+  }
+  p {
+    margin: 1em 0;
+  }
+  ul:not([class]),
+  ol:not([class]) {
+    margin: 1em 0;
+    padding-inline-start: 1.5rem;
+    list-style: disc;
+  }
+  ol:not([class]) {
+    list-style: decimal;
+  }
+  /* Text links ("Back to…", "Suggested…"): links styled as buttons or tabs carry their own classes. */
+  a:not([class]) {
+    color: var(--color-foreground);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Loading placeholder bars (Skeleton). The class is also what the tests count. */
+.skeleton-line {
+  display: block;
+  height: 1rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    90deg,
+    var(--color-muted) 25%,
+    color-mix(in srgb, var(--color-foreground) 10%, transparent) 50%,
+    var(--color-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line:nth-child(2) {
+  width: 85%;
+}
+.skeleton-line:nth-child(3) {
+  width: 65%;
+}
+.skeleton-line:nth-child(4) {
+  width: 75%;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
 

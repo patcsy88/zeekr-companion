@@ -1,5 +1,4 @@
 // Copied from COSS UI (https://coss.com/ui, MIT). Edit here; there is no upstream sync.
-// Local change: no-underline, because the app has no Tailwind preflight and links render as buttons.
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, type VariantProps } from 'class-variance-authority';

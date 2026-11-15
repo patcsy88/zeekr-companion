@@ -9,6 +9,7 @@ import { NOTICE, SMALL } from './ListParts';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { cn } from '../lib/cn';
+import { SWITCH_BUTTON, SwitchTrack } from './SwitchTrack';
 
 const LOG_PATH = '/vehicle/sentry/log?limit=20';
 const SHOWN = 3;
@@ -136,7 +137,7 @@ export function AutoSentryPanel() {
         role="switch"
         aria-checked={auto.enabled}
         aria-label={`Automatic Sentry on: ${auto.enabled ? 'on' : 'off'}`}
-        className={`sentry-switch sentry-switch-${auto.enabled ? 'on' : 'off'}`}
+        className={SWITCH_BUTTON}
         disabled={busy || blocked}
         data-testid="auto-sentry-switch"
         onClick={() => {
@@ -144,9 +145,7 @@ export function AutoSentryPanel() {
           else setNote(`The quiet period must be a whole number from ${min} to ${max} minutes.`);
         }}
       >
-        <span className="ro-track" aria-hidden="true">
-          <span className="ro-knob" />
-        </span>
+        <SwitchTrack state={auto.enabled ? 'on' : 'off'} />
         <span aria-hidden="true">{auto.enabled ? 'On' : 'Off'}</span>
       </button>
       {blocked ? (

@@ -2,7 +2,7 @@
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <svg
-      className="logo"
+      className="shrink-0"
       width={size}
       height={size}
       viewBox="0 0 64 64"

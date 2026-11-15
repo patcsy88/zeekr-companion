@@ -49,11 +49,11 @@ describe('theme', () => {
   it('sets the browser bar colour to the chosen theme, or per phone setting on Auto', () => {
     addBarTags();
     applyTheme('dark');
-    expect(barColours()).toEqual(['#0f1514', '#0f1514']);
+    expect(barColours()).toEqual(['#161616', '#161616']);
     applyTheme('light');
-    expect(barColours()).toEqual(['#0f5e57', '#0f5e57']);
+    expect(barColours()).toEqual(['#ffffff', '#ffffff']);
     applyTheme('system');
-    expect(barColours()).toEqual(['#0f5e57', '#0f1514']);
+    expect(barColours()).toEqual(['#ffffff', '#161616']);
   });
 
   it('the icon button shows the saved choice and taps through Auto, Light, Dark', async () => {

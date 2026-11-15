@@ -7,6 +7,7 @@ import { saveClaimEdit, saveCoverageEdit, saveNewClaim, saveNewCoverage } from '
 import { issuesByField } from '../lib/forms';
 import { isUuid, uuid } from '../lib/uuid';
 import { Skeleton } from '../components/Skeleton';
+import { MUTED } from '../components/ListParts';
 
 export function NewCoveragePage() {
   const nav = useNavigate();
@@ -73,7 +74,7 @@ function NewClaim({ coverageId }: { coverageId: string }) {
   return (
     <section aria-labelledby="new-claim-title">
       <h1 id="new-claim-title">Add claim</h1>
-      <p className="muted">For: {view.coverage.name}</p>
+      <p className={MUTED}>For: {view.coverage.name}</p>
       <ClaimForm
         coverage={view.coverage}
         submitLabel="Save"

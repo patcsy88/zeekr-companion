@@ -1,4 +1,5 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { Button } from './ui/button';
 
 /** Service worker updates are not automatic: the user chooses when to reload. */
 export function UpdatePrompt() {
@@ -16,17 +17,18 @@ export function UpdatePrompt() {
   });
   if (!needRefresh) return null;
   return (
-    <div className="update" role="status">
+    <div
+      className="sticky top-0 z-20 flex items-center justify-center gap-3 border-b bg-background p-2 text-sm"
+      role="status"
+    >
       <span>New version available.</span>
-      <button
-        type="button"
-        className="primary"
+      <Button
         onClick={() => {
           void updateServiceWorker(true);
         }}
       >
         Reload
-      </button>
+      </Button>
     </div>
   );
 }

@@ -57,22 +57,25 @@ function Layout() {
 
   return (
     <>
-      <a href="#main" className="skip">
+      <a
+        href="#main"
+        className="absolute -left-[999px] z-50 rounded-lg bg-background p-2 text-foreground focus:top-2 focus:left-2"
+      >
         Skip to content
       </a>
       <UpdatePrompt />
-      <header className="top">
-        <p className="brand">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/82 px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 backdrop-blur-lg backdrop-saturate-180">
+        <p className="m-0 flex items-center gap-2 font-semibold text-foreground">
           <Logo size={26} />
           <span>Zeekr Companion</span>
         </p>
-        <div className="top-actions">
+        <div className="flex items-center gap-2">
           <ThemePicker />
           {session.signedIn ? <AccountMenu /> : null}
         </div>
       </header>
       <SyncBar />
-      <main id="main">
+      <main id="main" className="mx-auto max-w-2xl px-4 py-3">
         {!session.signedIn ? (
           // Signed out: only the sign-in form. No page, tab or saved data is shown (owner decision 2026-11-07).
           <SignIn
@@ -115,7 +118,7 @@ function Layout() {
             <Route path="/vehicle/tyres/new" element={<NewTyreEventPage />} />
             <Route path="/vehicle/tyres/:id" element={<TyreEventDetailPage />} />
             <Route path="/vehicle/tyres/:id/edit" element={<EditTyreEventPage />} />
-            <Route path="*" element={<p>Page not found.</p>} />
+            <Route path="*" element={<p className="my-4">Page not found.</p>} />
           </Routes>
         )}
       </main>
@@ -124,34 +127,41 @@ function Layout() {
   );
 }
 
+/** One tab: icon over a label, sized so all seven fit on a 320 px screen. The current tab is tinted. */
+const TAB =
+  'flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 pt-2 pb-2 text-center font-semibold text-[0.5rem] text-muted-foreground no-underline min-[22.5rem]:text-[0.56rem] min-[26rem]:text-[0.7rem] min-[30rem]:text-[0.85rem] sm:p-3.5 sm:text-base [&.active]:bg-accent [&.active]:text-foreground';
+
 function TabBar() {
   return (
-    <nav className="tabs" aria-label="Main">
-      <NavLink to="/" end>
+    <nav
+      className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-background/82 px-0.5 pt-0.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg backdrop-saturate-180"
+      aria-label="Main"
+    >
+      <NavLink className={TAB} to="/" end>
         <TabIcon name="service" />
         <span>Service</span>
       </NavLink>
-      <NavLink to="/reminders">
+      <NavLink className={TAB} to="/reminders">
         <TabIcon name="reminders" />
         <span>Reminders</span>
       </NavLink>
-      <NavLink to="/expenses">
+      <NavLink className={TAB} to="/expenses">
         <TabIcon name="expenses" />
         <span>Expenses</span>
       </NavLink>
-      <NavLink to="/warranty">
+      <NavLink className={TAB} to="/warranty">
         <TabIcon name="warranty" />
         <span>Warranty</span>
       </NavLink>
-      <NavLink to="/sentry">
+      <NavLink className={TAB} to="/sentry">
         <TabIcon name="sentry" />
         <span>Sentry</span>
       </NavLink>
-      <NavLink to="/geofence">
+      <NavLink className={TAB} to="/geofence">
         <TabIcon name="geofence" />
         <span>Geofence</span>
       </NavLink>
-      <NavLink to="/vehicle">
+      <NavLink className={TAB} to="/vehicle">
         <TabIcon name="vehicle" />
         <span>Vehicle</span>
       </NavLink>
