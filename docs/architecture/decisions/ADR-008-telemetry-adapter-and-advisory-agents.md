@@ -88,6 +88,17 @@ The owner approved **LangChain, LangGraph and LangSmith**. The agent had recomme
 - **Host logs stay the primary audit record.** LangSmith is a second copy for debugging, not the record of what left the host.
 - **Second third party.** With LangSmith, derived values reach two companies (Anthropic and LangChain), each with its own retention. This is accepted by the owner.
 
+### Amendment 2026-11-16: traces hold the prompt and the reply (owner decision)
+
+The owner asked for LangSmith tracing of the model call, filed under an agent address, and approved this design with the environment `production` (the Pi is the real host).
+
+- **Content.** Each model call becomes one LangSmith run (`advisory_explanation`, type `llm`). It holds the system prompt, the user prompt (only the approved derived values from decision 7, built by `build_prompt`), the reply text, the model name and the token counts. Until now the client stripped all inputs, outputs and metadata, so only timing and status were sent; those hooks are removed. The limit above still holds: no notes, names, VIN, plate, certificate numbers, GPS, usernames or free text can reach the prompt, because `build_prompt` refuses any other field.
+- **Not sent.** The endpoint address (for example the proxy's), the model key and the LangSmith key, and the host's runtime details (platform and library versions, `omit_traced_runtime_info`). LangChain's own tracing of the chat model stays off, because it would also send the chat model's settings, which include the endpoint address. A failed call is recorded by its exception type only, since a connection error message can name the endpoint. Tests with fake values prove all of this.
+- **Where.** `LANGSMITH_ENDPOINT` (default `https://api.smith.langchain.com`, the US region), `LANGSMITH_AGENT_ID` (default `zeekr-companion`) and `LANGSMITH_AGENT_ENVIRONMENT` (default `production`). Runs are sent to the agent address `lrn:agents/zeekr-companion/environments/production`, not to a project. `ADVISORY_TRACING_API_URL` is replaced by `LANGSMITH_ENDPOINT`. An endpoint that is not `https://`, or an agent id or environment that LangSmith would refuse, stops the API at start.
+- **Switch.** Unchanged: off unless `ADVISORY_TRACING_ENABLED=true` and `ADVISORY_TRACING_API_KEY` is set. `LANGSMITH_TRACING` is never set, so the library cannot start tracing on its own; without the switch every call runs with tracing forced off, and a test proves this with the three `LANGSMITH_*` variables set.
+- **Region.** The suggested EU region above is not used; the owner set the US endpoint. Traces with prompts and replies are kept for the plan's retention (base traces 14 days on the Developer plan, as read on 2026-10-29; not re-checked).
+- **Skills.** The seven LangSmith agent skills from `langchain-ai/langsmith-skills` (commit `dfe2f5d`, MIT) are copied into `.opencode/skills/` for the coding agent. They are not part of the app. The LangSmith CLI they mention is not installed (owner decision).
+
 ## Owner approvals (2026-10-29)
 
 - **Provider and plan:** Anthropic, prepaid or pay-as-you-go with a **monthly cap of 10.00**. The currency was not stated; Anthropic bills in US dollars as far as the agent knows, so the owner should confirm that the cap is 10.00 USD in the console. The owner sets the cap in the Anthropic console and checks that it is applied before the key goes on the host. The app also keeps its own call counter and stops calling the model once a configurable monthly call limit is reached, so the cap is not the only guard.

@@ -114,22 +114,19 @@ def reply_text(content: Any) -> str:
     return ""
 
 
-def _hide_everything(_: Any) -> dict[str, Any]:
-    """LangSmith privacy hook: traces keep timing and status, never content."""
-    return {}
-
-
 def make_langsmith_client(api_key: str, api_url: str, **extra: Any) -> Any:
+    """Owner decision 2026-11-16: traces hold the prompt and the reply. The host's runtime details
+    (platform, versions) are left out."""
     from langsmith import Client
 
-    return Client(
-        api_url=api_url,
-        api_key=api_key,
-        hide_inputs=_hide_everything,
-        hide_outputs=_hide_everything,
-        hide_metadata=_hide_everything,
-        **extra,
-    )
+    return Client(api_url=api_url, api_key=api_key, omit_traced_runtime_info=True, **extra)
+
+
+@dataclass(frozen=True)
+class Tracing:
+    client: Any
+    agent_id: str
+    environment: str
 
 
 class AnthropicReasoningModel:
@@ -138,12 +135,12 @@ class AnthropicReasoningModel:
         api_key: str,
         model_id: str,
         *,
-        langsmith_client: Any | None = None,
+        tracing: Tracing | None = None,
         chat_factory: Callable[[], Any] | None = None,
         base_url: str | None = None,
     ) -> None:
         self.model_id = model_id
-        self._langsmith_client = langsmith_client
+        self._tracing = tracing
         if chat_factory is not None:
             self._chat = chat_factory()
         else:
@@ -164,11 +161,45 @@ class AnthropicReasoningModel:
         from langsmith import tracing_context
 
         messages = [SystemMessage(content=system), HumanMessage(content=user)]
-        if self._langsmith_client is None:
+        if self._tracing is None:
             with tracing_context(enabled=False):
                 return self._chat.invoke(messages)
-        with tracing_context(enabled=True, client=self._langsmith_client):
-            return self._chat.invoke(messages)
+        return self._invoke_traced(messages, system, user, self._tracing)
+
+    def _invoke_traced(self, messages: list[Any], system: str, user: str, t: Tracing) -> Any:
+        """One hand-built run per call. LangChain's own tracing stays off, because it would also
+        send the chat model's settings, which include the endpoint address. A failure is recorded
+        by its type only, since a connection error message can name the endpoint."""
+        from langsmith import agent_address, trace, tracing_context
+
+        address = agent_address(t.agent_id, t.environment)
+        failure: Exception | None = None
+        with (
+            tracing_context(enabled=True, client=t.client, address=address),
+            trace(
+                "advisory_explanation",
+                run_type="llm",
+                inputs={"system": system, "user": user},
+                metadata={"ls_provider": "anthropic", "ls_model_name": self.model_id},
+                client=t.client,
+                address=address,
+            ) as run,
+        ):
+            try:
+                with tracing_context(enabled=False):
+                    reply = self._chat.invoke(messages)
+            except Exception as exc:
+                failure = exc
+                run.end(error=type(exc).__name__)
+            else:
+                usage = getattr(reply, "usage_metadata", None) or {}
+                run.end(
+                    outputs={"reply": reply_text(reply.content)},
+                    metadata={"usage_metadata": dict(usage)},
+                )
+        if failure is not None:
+            raise failure
+        return reply
 
     def explain(self, condition: str, inputs: dict[str, int | str]) -> ModelResult:
         user = build_prompt(condition, inputs)
@@ -200,19 +231,19 @@ def build_reasoning_model(settings: Settings) -> ReasoningModel | None:
         return None
     if settings.anthropic_api_key is None or not settings.advisory_model_id:
         return None
-    client = None
-    if (
-        settings.advisory_tracing_enabled
-        and settings.advisory_tracing_api_key is not None
-        and settings.advisory_tracing_api_url
-    ):
-        client = make_langsmith_client(
-            settings.advisory_tracing_api_key.get_secret_value(),
-            settings.advisory_tracing_api_url,
+    tracing = None
+    if settings.advisory_tracing_enabled and settings.advisory_tracing_api_key is not None:
+        tracing = Tracing(
+            make_langsmith_client(
+                settings.advisory_tracing_api_key.get_secret_value(),
+                settings.langsmith_endpoint,
+            ),
+            settings.langsmith_agent_id,
+            settings.langsmith_agent_environment,
         )
     return AnthropicReasoningModel(
         settings.anthropic_api_key.get_secret_value(),
         settings.advisory_model_id,
-        langsmith_client=client,
+        tracing=tracing,
         base_url=settings.advisory_model_base_url,
     )

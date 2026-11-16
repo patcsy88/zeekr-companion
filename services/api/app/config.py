@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import re
+
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.dburl import normalise_database_url
 
 _MIN_DISTINCT_CHARS = 12
+
+# The same rules as langsmith's `agent_address`, checked at start instead of at the first call.
+_AGENT_ID = re.compile(r"[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?")
+AGENT_ENVIRONMENTS = ("local", "development", "staging", "production")
 
 ZEEKR_LIVE_FIELDS = (
     "zeekr_username",
@@ -46,10 +52,13 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     # Optional Anthropic-compatible endpoint (host `.env` only). Empty means api.anthropic.com.
     advisory_model_base_url: str | None = Field(default=None, max_length=200)
-    # Deliberately not named LANGSMITH_*: the library reads those itself and would trace unscrubbed.
+    # The switch and the key are not named LANGSMITH_*, so the library cannot start tracing on its
+    # own (LANGSMITH_TRACING stays unset). The other three only say where traces go (2026-11-16).
     advisory_tracing_enabled: bool = False
     advisory_tracing_api_key: SecretStr | None = None
-    advisory_tracing_api_url: str | None = Field(default=None, max_length=200)
+    langsmith_endpoint: str = Field(default="https://api.smith.langchain.com", max_length=200)
+    langsmith_agent_id: str = Field(default="zeekr-companion", max_length=63)
+    langsmith_agent_environment: str = Field(default="production", max_length=16)
 
     # Live Zeekr readings (ADR-009). Off by default. The values live in the host `infra/.env` only.
     zeekr_live_enabled: bool = False
@@ -86,7 +95,6 @@ class Settings(BaseSettings):
         "anthropic_api_key",
         "advisory_model_base_url",
         "advisory_tracing_api_key",
-        "advisory_tracing_api_url",
         "zeekr_username",
         "zeekr_password",
         "zeekr_country_code",
@@ -149,6 +157,34 @@ class Settings(BaseSettings):
             raise ValueError("ADVISORY_MODEL_BASE_URL must start with http:// or https://")
         # The Anthropic SDK adds /v1/messages itself, so a trailing /v1 would double up.
         return url.removesuffix("/v1")
+
+    @field_validator("langsmith_endpoint")
+    @classmethod
+    def _check_langsmith_endpoint(cls, value: str) -> str:
+        url = value.strip().rstrip("/")
+        if not url.startswith("https://"):
+            raise ValueError("LANGSMITH_ENDPOINT must start with https://")
+        return url
+
+    @field_validator("langsmith_agent_id")
+    @classmethod
+    def _check_langsmith_agent_id(cls, value: str) -> str:
+        if not _AGENT_ID.fullmatch(value):
+            raise ValueError(
+                "LANGSMITH_AGENT_ID must be 1 to 63 lowercase letters, digits or hyphens, "
+                "starting with a letter and ending with a letter or digit"
+            )
+        return value
+
+    @field_validator("langsmith_agent_environment")
+    @classmethod
+    def _check_langsmith_agent_environment(cls, value: str) -> str:
+        env = value.strip().lower()
+        if env not in AGENT_ENVIRONMENTS:
+            raise ValueError(
+                "LANGSMITH_AGENT_ENVIRONMENT must be one of " + ", ".join(AGENT_ENVIRONMENTS)
+            )
+        return env
 
     @field_validator("advisory_model_id", mode="before")
     @classmethod

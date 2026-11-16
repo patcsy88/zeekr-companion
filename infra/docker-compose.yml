@@ -48,7 +48,10 @@ services:
       ADVISORY_MODEL_BASE_URL: ${ADVISORY_MODEL_BASE_URL:-}
       ADVISORY_TRACING_ENABLED: ${ADVISORY_TRACING_ENABLED:-false}
       ADVISORY_TRACING_API_KEY: ${ADVISORY_TRACING_API_KEY:-}
-      ADVISORY_TRACING_API_URL: ${ADVISORY_TRACING_API_URL:-}
+      # Where traces go (owner decision 2026-11-16). LANGSMITH_TRACING is never set here.
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
+      LANGSMITH_AGENT_ID: ${LANGSMITH_AGENT_ID:-zeekr-companion}
+      LANGSMITH_AGENT_ENVIRONMENT: ${LANGSMITH_AGENT_ENVIRONMENT:-production}
       # Optional live Zeekr readings (ADR-009). Off and empty by default; values live in infra/.env only.
       ZEEKR_LIVE_ENABLED: ${ZEEKR_LIVE_ENABLED:-false}
       ZEEKR_LIVE_INTERVAL_MINUTES: ${ZEEKR_LIVE_INTERVAL_MINUTES:-5}

@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import text
@@ -170,25 +171,163 @@ def test_empty_env_values_are_unset(database_url: str) -> None:
         database_url,
         anthropic_api_key="",
         advisory_tracing_api_key=" ",
-        advisory_tracing_api_url="",
     )
     assert s.anthropic_api_key is None
     assert s.advisory_tracing_api_key is None
-    assert s.advisory_tracing_api_url is None
 
 
-def test_trace_hooks_drop_content_and_metadata() -> None:
-    fake_secret = "sk-ant-FAKE-0000000000"
+class FakeSession(requests.Session):
+    """Catches what the LangSmith client would send. Nothing leaves the test."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.bodies: list[dict[str, Any]] = []
+
+    def request(self, method: Any, url: Any, *args: Any, **kwargs: Any) -> requests.Response:
+        body = kwargs.get("data") or kwargs.get("json")
+        if isinstance(body, bytes):
+            body = body.decode()
+        if isinstance(body, str):
+            self.bodies.append(json.loads(body))
+        reply = requests.Response()
+        reply.status_code = 200
+        reply._content = b"{}"
+        reply.url = str(url)
+        return reply
+
+
+def traced_model(chat: FakeChat, session: FakeSession) -> AnthropicReasoningModel:
     client = reasoning.make_langsmith_client(
-        "ls-fake", "http://127.0.0.1:9", auto_batch_tracing=False
+        "ls-FAKE-KEY-0000",
+        "https://api.smith.langchain.com",
+        auto_batch_tracing=False,
+        session=session,
     )
-    payload = {"messages": [fake_secret], "password": fake_secret}
-    for hook in (client._hide_inputs, client._hide_outputs, client._hide_metadata):
-        assert hook(payload) == {}
-    assert fake_secret not in json.dumps(reasoning._hide_everything(payload))
+    tracing = reasoning.Tracing(client, "zeekr-companion", "production")
+    return AnthropicReasoningModel("k", "model-x", tracing=tracing, chat_factory=lambda: chat)
 
 
-def test_tracing_is_off_unless_a_client_is_given() -> None:
+def test_langsmith_settings_default_to_the_owner_values(database_url: str) -> None:
+    s = make_settings(database_url)
+    assert s.langsmith_endpoint == "https://api.smith.langchain.com"
+    assert s.langsmith_agent_id == "zeekr-companion"
+    assert s.langsmith_agent_environment == "production"
+    s = make_settings(
+        database_url,
+        langsmith_endpoint="https://eu.api.smith.langchain.com/",
+        langsmith_agent_environment="Local",
+    )
+    assert s.langsmith_endpoint == "https://eu.api.smith.langchain.com"
+    assert s.langsmith_agent_environment == "local"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("langsmith_endpoint", "http://api.smith.langchain.com"),
+        ("langsmith_agent_id", "Zeekr-Companion"),
+        ("langsmith_agent_id", "zeekr-"),
+        ("langsmith_agent_id", "1zeekr"),
+        ("langsmith_agent_environment", "prod"),
+        ("langsmith_agent_environment", ""),
+    ],
+)
+def test_bad_langsmith_settings_stop_the_start(database_url: str, field: str, value: str) -> None:
+    with pytest.raises(ValueError):
+        make_settings(database_url, **{field: value})
+
+
+def test_tracing_needs_the_switch_and_the_key(database_url: str) -> None:
+    on = {
+        "advisory_model_enabled": True,
+        "anthropic_api_key": SecretStr("k"),
+        "advisory_model_id": "model-x",
+    }
+    plain = build_reasoning_model(make_settings(database_url, **on))
+    assert isinstance(plain, AnthropicReasoningModel) and plain._tracing is None
+    no_key = build_reasoning_model(make_settings(database_url, advisory_tracing_enabled=True, **on))
+    assert isinstance(no_key, AnthropicReasoningModel) and no_key._tracing is None
+    traced = build_reasoning_model(
+        make_settings(
+            database_url,
+            advisory_tracing_enabled=True,
+            advisory_tracing_api_key=SecretStr("ls-FAKE-KEY-0000"),
+            **on,
+        )
+    )
+    assert isinstance(traced, AnthropicReasoningModel) and traced._tracing is not None
+    assert traced._tracing.agent_id == "zeekr-companion"
+    assert traced._tracing.environment == "production"
+    assert traced._tracing.client.api_url == "https://api.smith.langchain.com"
+
+
+def test_a_trace_holds_the_prompt_and_reply_for_the_agent_address() -> None:
+    session = FakeSession()
+    chat = FakeChat()
+    result = traced_model(chat, session).explain("date_vs_km_warranty", DATE_INPUTS)
+    assert result.outcome == "ok" and len(chat.calls) == 1
+    assert len(session.bodies) == 2  # the run is opened, then closed
+    opened, closed = session.bodies
+    for body in session.bodies:
+        assert body["address"] == "lrn:agents/zeekr-companion/environments/production"
+        assert "project_name" not in body and "session_name" not in body
+    assert opened["name"] == "advisory_explanation" and opened["run_type"] == "llm"
+    assert opened["inputs"]["system"] == reasoning.SYSTEM_PROMPT
+    assert opened["inputs"]["user"] == build_prompt("date_vs_km_warranty", DATE_INPUTS)
+    assert closed["outputs"] == {"reply": GOOD}
+    assert closed["extra"]["metadata"]["usage_metadata"] == {"input_tokens": 12, "output_tokens": 7}
+    assert closed["extra"]["metadata"]["ls_model_name"] == "model-x"
+
+
+def test_a_trace_never_holds_the_endpoint_keys_or_host_details() -> None:
+    session = FakeSession()
+    client = reasoning.make_langsmith_client(
+        "ls-FAKE-KEY-0000",
+        "https://api.smith.langchain.com",
+        auto_batch_tracing=False,
+        session=session,
+    )
+    model = AnthropicReasoningModel(
+        "sk-FAKE-MODEL-KEY",
+        "model-x",
+        tracing=reasoning.Tracing(client, "zeekr-companion", "production"),
+        base_url="http://proxy.invalid:1234",
+    )
+
+    def unreachable(_messages: Any) -> Any:
+        raise ConnectionError("could not reach http://proxy.invalid:1234")
+
+    model._chat = type("Chat", (), {"invoke": staticmethod(unreachable)})()
+    result = model.explain("date_vs_km_warranty", DATE_INPUTS)
+    assert result.outcome == "error"
+    sent = json.dumps(session.bodies)
+    for secret in ("proxy.invalid", "1234", "sk-FAKE-MODEL-KEY", "ls-FAKE-KEY-0000"):
+        assert secret not in sent
+    assert session.bodies[-1]["error"] == "ConnectionError"
+    for body in session.bodies:
+        assert "serialized" not in body or not body["serialized"]
+        assert "runtime" not in body.get("extra", {})
+
+
+def test_the_chat_model_itself_is_never_traced() -> None:
+    seen: list[Any] = []
+
+    class Chat(FakeChat):
+        def invoke(self, messages: Any) -> FakeReply:
+            from langsmith.run_helpers import get_tracing_context
+
+            seen.append(get_tracing_context().get("enabled"))
+            return super().invoke(messages)
+
+    traced_model(Chat(), FakeSession()).explain("date_vs_km_warranty", DATE_INPUTS)
+    assert seen == [False]
+
+
+def test_tracing_is_off_unless_a_client_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Compose passes these to the container; on their own they must not start tracing.
+    monkeypatch.setenv("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
+    monkeypatch.setenv("LANGSMITH_AGENT_ID", "zeekr-companion")
+    monkeypatch.setenv("LANGSMITH_AGENT_ENVIRONMENT", "production")
     seen: list[Any] = []
 
     class Chat(FakeChat):
