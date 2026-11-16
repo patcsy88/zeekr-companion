@@ -40,7 +40,7 @@ Coverage floors (owner decision 2026-11-10, option B): each floor sits just belo
 
 A failed gate blocks completion. Gates are never skipped to obtain a pass. A gate that cannot run is reported as not run, with the reason.
 
-Image scan on GitHub (added by the owner 2026-11-09; not a local gate): `.github/workflows/trivy.yml` builds the api and web images from their real Dockerfiles and scans each with Trivy for CRITICAL and HIGH findings, on every push and pull request to `main` and weekly. Findings appear in the repository's Security tab under `trivy-api` and `trivy-web`; they do not fail the run. Every action is pinned to a commit hash; never pin `trivy-action` to a tag (its tags were force-pushed to malicious code in March 2026).
+Image scan on GitHub (added by the owner 2026-11-09; not a local gate): `.github/workflows/trivy.yml` builds the api and web images from their real Dockerfiles and scans each with Trivy for CRITICAL and HIGH findings, on every push and pull request to `main` and weekly. Findings appear in the repository's Security tab under `trivy-api` and `trivy-web`; they do not fail the run. Every action is pinned to a commit hash; never pin `trivy-action` to a tag (its tags were force-pushed to malicious code in March 2026). API image hardening (owner approved 2026-11-16): `services/api/Dockerfile` runs `apt-get upgrade` so Debian security fixes newer than the base image are included, and removes pip after `pip install .`, because nothing runs it later and its bundled packages carried findings. Checked on the Mac with Trivy 0.70.0 (container image): 54 HIGH findings on `v0.9.9` became 47, with the zlib, msgpack, urllib3 and setuptools findings gone; the rest have no Debian fix yet.
 
 ## Rules
 

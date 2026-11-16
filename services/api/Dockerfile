@@ -6,11 +6,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /srv/api
 
+# Take Debian security fixes newer than the base image (for example zlib, Trivy). Lists removed
+# in the same layer.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml ./
 COPY app ./app
 # `pip install .` leaves build/ (a stale copy of app/) and *.egg-info in the working directory.
-# The app runs from /srv/api/app, so remove them in the same layer.
-RUN pip install . && rm -rf build ./*.egg-info
+# The app runs from /srv/api/app, so remove them in the same layer. pip is then removed too:
+# nothing runs it after the build, and its bundled packages (msgpack, urllib3, setuptools) carried
+# Trivy findings.
+RUN pip install . && rm -rf build ./*.egg-info && pip uninstall -y pip
 
 COPY alembic.ini ./
 COPY alembic ./alembic
