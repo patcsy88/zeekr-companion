@@ -1,9 +1,10 @@
 """Static, versioned reminder templates (FR-12). Read-only data: nothing here creates a reminder.
 
 Content comes only from research entry M12 (docs/research/vehicle-integrations.md), the Zeekr
-Malaysia schedule PDF, Performance Range (AWD) table, re-checked 2026-10-22. The PDF marks no work
-and no cost at 20,000, 60,000, 100,000 and 140,000 km, so the template starts at 40,000 km (owner
-decision 2026-11-02, version 2) and holds only the visits that have work.
+Malaysia schedule PDF, Performance Range (AWD) table, re-checked 2026-10-22 and 2026-11-16
+(unchanged). The PDF marks no work and no cost at 20,000, 60,000, 100,000 and 140,000 km, so the
+template starts at 40,000 km (owner decision 2026-11-02, version 2) and holds only the visits that
+have work.
 """
 
 from __future__ import annotations
@@ -60,7 +61,7 @@ def get_templates() -> ReminderTemplateList:
                     ),
                     research_ref="M12",
                     status="verified",
-                    retrieved=dt.date(2026, 10, 22),
+                    retrieved=dt.date(2026, 11, 16),
                 ),
                 caveat=(
                     "Requirements vary by model, build date, operating conditions and local "

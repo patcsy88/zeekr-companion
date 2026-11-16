@@ -119,7 +119,7 @@ export const TEMPLATE: ReminderTemplate = {
     url: 'https://assets.zeekrlife.com/assets/my/Service_Maintenance_Schedule_And_Pricing.pdf',
     research_ref: 'M12',
     status: 'verified',
-    retrieved: '2026-10-22',
+    retrieved: '2026-11-16',
   },
   caveat:
     'Requirements vary by model, build date, operating conditions and local rules. Confirm against your own booklet or service centre.',

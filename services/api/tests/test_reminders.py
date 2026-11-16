@@ -475,7 +475,7 @@ def test_ac23_template_content_is_only_what_m12_states(
     assert tpl["version"] == 2
     assert tpl["source"]["research_ref"] == "M12"
     assert tpl["source"]["status"] == "verified"
-    assert tpl["source"]["retrieved"] == "2026-10-22"
+    assert tpl["source"]["retrieved"] == "2026-11-16"
     assert tpl["interval"] == {"km": 40000, "months": 24, "rule": "whichever comes first"}
     assert tpl["baseline_required"] is True
     assert "build date" in tpl["caveat"]
