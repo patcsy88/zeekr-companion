@@ -221,6 +221,14 @@ Covers FR-1. Owner answers (2026-11-08): Black Nova is included with 265/45 R20;
 | AC-89 | Choosing a variant fills Drive (AWD or RWD) until the owner changes Drive; Drive stays editable. Steering stays fixed. |
 | AC-90 | Editing an existing profile reads a saved listed variant, year, drive and size back into the form. An older variant or tyre value not in the list is kept as a "Current: ..." option and is saved unchanged unless the owner picks another. |
 
+## Acceptance criteria: Service intervals on the Service tab (requested by the owner 2026-11-16)
+
+Covers FR-12. Owner answers (2026-11-16): the card is collapsed by default; due dates are calculated from the purchase date in the vehicle profile. Web only: no API, data model or contract change.
+
+| ID | Criterion |
+|---|---|
+| AC-91 | The Service tab shows a collapsed "Service intervals" card above the service history, built from the stored service template (FR-12, research M12): the interval and rule in the summary; when opened, each checkpoint with its km, its due date (the vehicle purchase date plus the checkpoint months, calendar months, clamped to the month end) or its months when no purchase date is set (with a link to the vehicle profile), and its work items; the source title linked to the PDF, the retrieved date and the caveat; and a link to the template review. Prices and labour hours are not shown. If the template was never loaded on this device the tab says it needs one online visit; if the server offers no template there is no card. Opening the card creates nothing. |
+
 ## Open questions for the owner
 
 Resolved:

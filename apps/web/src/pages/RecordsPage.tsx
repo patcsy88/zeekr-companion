@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { describeError } from '../api/errors';
+import { ServiceIntervalsCard } from '../components/ServiceIntervalsCard';
 import { SyncBadge } from '../components/SyncBadge';
 import { useConnectivity, useRecords, useSession } from '../data/hooks';
 import { loadMoreRecords } from '../data/repository';
@@ -48,6 +49,8 @@ export function RecordsPage() {
           Add service
         </Button>
       </div>
+
+      <ServiceIntervalsCard />
 
       {snap === undefined ? (
         <Skeleton />
