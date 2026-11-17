@@ -169,7 +169,7 @@ Needs a host with Docker Engine and the Compose plugin, on **x86_64** or **aarch
 3. `docker compose up -d --wait`. It pulls the images, so there is no build and no `npm ci`.
 4. Create the owner login: `docker compose exec api python -m app.cli.set_owner`. Optional second step: `docker compose exec api python -m app.cli.set_mfa` (see section 4).
 5. Check it as in section 5.
-6. To update: change `ZEEKR_VERSION` to the new tag, then `docker compose pull` and `docker compose up -d --wait`. To go back, set the old tag. A migration runs when `api` starts, so take a fresh encrypted export first when the release notes mention one (section 7).
+6. To update: first download `infra/docker-compose.release.yml` for the new tag and save it over your `docker-compose.yml` (the compose file can change between releases, for example a new service, image or setting). Keep your `.env`. Then change `ZEEKR_VERSION` to the new tag, `docker compose pull` and `docker compose up -d --wait`. To go back, restore the old compose file and set the old tag. A migration runs when `api` starts, so take a fresh encrypted export first when the release notes mention one (section 7). If you keep the low-memory overlay, also refresh `docker-compose.lowmem.yml` the same way.
 
 Browser error reporting (`VITE_SENTRY_DSN`) is **off** in the published web image. To have it, install from a clone.
 

@@ -29,6 +29,11 @@ def sample_inputs(today: dt.date) -> dict[str, int | str]:
     }
 
 
+def tracing_on(settings: Settings) -> bool:
+    """True when a trace is sent for each call: the switch is on and the key is set."""
+    return settings.advisory_tracing_enabled and settings.advisory_tracing_api_key is not None
+
+
 def main() -> int:
     settings = Settings()
     if not settings.advisory_model_enabled:
@@ -39,7 +44,9 @@ def main() -> int:
         print("The key or model id is not set. Nothing was sent.", file=sys.stderr)
         return 2
     where = settings.advisory_model_base_url or "the default Anthropic endpoint"
+    traced = tracing_on(settings)
     print(f"Model: {model.model_id}. Endpoint: {where}. Sending made-up numbers only.")
+    print(f"Tracing: {'on' if traced else 'off'}.")
     result = model.explain(_CONDITION, sample_inputs(today_kl()))
     print(f"Outcome: {result.outcome}")
     print(f"Tokens: in={result.input_tokens} out={result.output_tokens}")
@@ -47,6 +54,9 @@ def main() -> int:
         print(f"Reply: {result.response_text}")
     if result.explanation is not None:
         print(f"Parsed urgency: {result.explanation.urgency}")
+    if traced:
+        # The traced path sends one run per call, on success or failure. No address is printed.
+        print("Trace sent to LangSmith.")
     return 0 if result.outcome == "ok" else 1
 
 

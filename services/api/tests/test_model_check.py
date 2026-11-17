@@ -73,5 +73,37 @@ def test_reports_the_outcome_and_never_the_key(
     out = capsys.readouterr().out
     assert "sk-fake-key-value" not in out
     assert "Tokens: in=12 out=7" in out
+    assert "Tracing: off." in out
+    assert "Trace sent" not in out
     sent = json.dumps([[m.content for m in call] for call in chat.calls])
     assert "km_to_limit: 1200" in sent
+
+
+def test_reports_tracing_on_and_never_the_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    database_url: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    chat = FakeChat(GOOD)
+    patch_settings(
+        monkeypatch,
+        database_url,
+        advisory_model_enabled=True,
+        anthropic_api_key=SecretStr("sk-fake-key-value"),
+        advisory_model_id="model-x",
+        advisory_model_base_url="http://proxy.invalid:1",
+        advisory_tracing_enabled=True,
+        advisory_tracing_api_key=SecretStr("lsv2_fake_key"),
+    )
+    monkeypatch.setattr(
+        model_check,
+        "build_reasoning_model",
+        lambda _s: AnthropicReasoningModel("k", "model-x", chat_factory=lambda: chat),
+    )
+    assert model_check.main() == 0
+    out = capsys.readouterr().out
+    assert "Tracing: on." in out
+    assert "Trace sent to LangSmith." in out
+    # The trace line names no address, key or proxy.
+    for secret in ("proxy.invalid", "lsv2_fake_key", "api.smith.langchain.com"):
+        assert secret not in out.split("Trace sent")[1]
