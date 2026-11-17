@@ -157,6 +157,17 @@ const geofence = {
   home_set: true,
 };
 
+// A made-up offset from home (km), never a coordinate: outside the sample 8 km radius.
+const geofenceMap = {
+  state: 'ok',
+  radius_km: 8,
+  car: { east_km: 9.6, north_km: 4.1 },
+  outside: true,
+  observed_at: READ_AT,
+  age_minutes: 5,
+  stale: false,
+};
+
 const odometer = {
   km: 42000,
   source: 'live_reading',
@@ -190,6 +201,7 @@ function answer(path: string): unknown {
     };
   if (path.startsWith('/vehicle/sentry/log')) return { items: autoLog, retention_months: 12 };
   if (path === '/geofence/settings') return geofence;
+  if (path === '/geofence/map') return geofenceMap;
   return null;
 }
 
@@ -214,7 +226,7 @@ const SCREENS = [
   { name: 'service-history', path: '/', ready: null },
   { name: 'reminders', path: '/reminders', ready: null },
   { name: 'sentry', path: '/sentry', ready: 'geofence-alert' },
-  { name: 'geofence', path: '/geofence', ready: 'geo-status' },
+  { name: 'geofence', path: '/geofence', ready: 'geo-map-car' },
 ] as const;
 
 for (const theme of ['light', 'dark'] as const) {

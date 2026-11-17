@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="apps/web/public/favicon.svg" width="88" alt="Zeekr Companion logo">
+</p>
+
 # Zeekr Companion
 
 A personal vehicle-management app for one owner's Zeekr 7X AWD Performance (RHD, Malaysia). It is a mobile-first web app (PWA) that you install to the iPhone home screen from Safari, backed by a self-hosted API. Amounts are in MYR (stored as integer sen) and distances in km.
@@ -8,16 +12,18 @@ Status: in daily use by one owner on a self-hosted Ubuntu host. It is a personal
 
 The app works fully from manual records. Live car data is optional and off by default.
 
-- **Service:** service records with date, odometer, provider, description and cost.
+- **Service:** service records with date, odometer, provider, description and cost. A collapsed "Service intervals" card shows the official maintenance schedule, with due dates worked out from the purchase date in the vehicle profile.
 - **Reminders:** service reminders by date and odometer, a completion flow that records the service, and a template for the maintenance schedule.
 - **Expenses:** costs by category, with monthly totals and an optional energy (kWh) figure for charging.
 - **Warranty:** coverages and claims, with a template of the standard coverage items.
-- **Vehicle:** the vehicle's details, plus a live card (battery, range, tyre pressures, odometer and other indicators) and a history page when live readings are on.
+- **Vehicle:** the vehicle's details, plus a live card and a history page when live readings are on. The card shows battery, range, odometer, charging, tyre pressures and temperatures, 12 V battery voltage, central locking and other indicators.
+- **Tyres:** a log of tyre replacements, rotations, repairs, alignments and balancing, per wheel, with the distance driven since the last replacement and the last rotation.
 - **Sentry:** shows the car's Sentry state, and has a switch that asks before it sends Sentry on or off. An optional "Automatic Sentry on" sends Sentry on once when the car is parked asleep outside your home area. It has a second lock on the host.
-- **Geofence:** an in-app notice when the car is parked outside your home area with Sentry off. The home point is set on the host and never stored in the repo.
-- **Advisory:** rule-based suggestions, such as a service pace check, that you can accept or decline. They are proposals only and never act on their own. A hosted model can explain them, but it is off by default and has never been called.
+- **Geofence:** an in-app notice when the car is parked outside your home area with Sentry off, and a simple map (not a street map) showing home, the radius and how far the car is from home, rounded to 0.1 km. The home point stays on the host and is never stored in the repo; the app never receives a coordinate.
+- **Advisory:** rule-based suggestions, such as a service pace check, that you can accept or decline. They are proposals only and never act on their own. A hosted model can explain them in plain words; it is off by default, and so is the optional LangSmith tracing of those calls (ADR-008).
 - **Offline use:** records are cached on the device and changes made offline are queued, then sent when you are back online.
-- **Sign in:** one owner account with a username and password. There is a single "Sign out" button. It asks first, then signs out and clears the data saved on the device. Your records stay on the server.
+- **Sign in:** one owner account with a username and password, plus an optional authenticator-app code with recovery codes (ADR-013). There is a single "Sign out" button. It asks first, then signs out and clears the data saved on the device. Your records stay on the server.
+- **Look:** light, dark or follow the phone (Auto).
 - **Backups:** scheduled database dumps and an encrypted off-site export, with a restore check (`infra/backup/RESTORE.md`).
 
 The only command the app can send to the car is Sentry on or off (ADR-010). Everything else it reads from the car is read-only.
@@ -26,15 +32,15 @@ The only command the app can send to the car is Sentry on or off (ADR-010). Ever
 
 iPhone width (390 px), light and dark. Every value shown is synthetic (an RWD Long Range in 2030 with invented readings and settings). None of it comes from a real car, account, location or history. To retake them, run `npm run screenshots` in `apps/web`. It needs no API or database because the script answers every request with sample data.
 
-| Vehicle | Service history | Reminders |
-|---|---|---|
+| Vehicle                                                                                                                                                       | Service history                                                                                                                                                                               | Reminders                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/vehicle-light.png" width="180" alt="Vehicle, light"> <img src="docs/screenshots/vehicle-dark.png" width="180" alt="Vehicle, dark"> | <img src="docs/screenshots/service-history-light.png" width="180" alt="Service history, light"> <img src="docs/screenshots/service-history-dark.png" width="180" alt="Service history, dark"> | <img src="docs/screenshots/reminders-light.png" width="180" alt="Reminders, light"> <img src="docs/screenshots/reminders-dark.png" width="180" alt="Reminders, dark"> |
-| Live card: battery, range, odometer, next service and tyres | Service records, newest first | Overdue and upcoming, by date and odometer |
+| Live card: battery, range, odometer, next service and tyres                                                                                                   | Service records, newest first                                                                                                                                                                 | Overdue and upcoming, by date and odometer                                                                                                                            |
 
-| Sentry | Geofence |
-|---|---|
+| Sentry                                                                                                                                                    | Geofence                                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/sentry-light.png" width="180" alt="Sentry, light"> <img src="docs/screenshots/sentry-dark.png" width="180" alt="Sentry, dark"> | <img src="docs/screenshots/geofence-light.png" width="180" alt="Geofence, light"> <img src="docs/screenshots/geofence-dark.png" width="180" alt="Geofence, dark"> |
-| A geofence notice and the Sentry switch, which asks before it sends | Radius, check interval and the vehicle states that count. No map or position. |
+| A geofence notice and the Sentry switch, which asks before it sends                                                                                       | The map: home, the radius and the car's distance from home. No street map or coordinates.                                                                         |
 
 ## How it is built
 
@@ -52,7 +58,7 @@ You need a Linux host with Docker Engine and the Compose plugin. The app has no 
 The images are `linux/amd64` and `linux/arm64` (releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`: `x86_64` or `aarch64` works, 32-bit ARM (`armv7l`) does not.
 
 1. Make a folder and download three files from `infra/` into it: `docker-compose.release.yml` (save it as `docker-compose.yml`), `.env.example` and `install.sh`. Then run `chmod +x install.sh`.
-2. Run `./install.sh --version v0.1.0`. It writes `.env` with random `POSTGRES_PASSWORD` and `TOKEN_SECRET` values, never prints them, and sets the file to mode 600. It refuses to run if `.env` already exists, because a new database password would lock the app out of an existing database.
+2. Run `./install.sh --version <release tag>`, for example `--version v0.9.12` (the release tags are listed under Tags on GitHub). It writes `.env` with random `POSTGRES_PASSWORD` and `TOKEN_SECRET` values, never prints them, and sets the file to mode 600. It refuses to run if `.env` already exists, because a new database password would lock the app out of an existing database.
 3. Run `docker compose up -d --wait`.
 4. Create the app login. It asks for a username and a password of at least 12 characters:
    `docker compose exec api python -m app.cli.set_owner`
