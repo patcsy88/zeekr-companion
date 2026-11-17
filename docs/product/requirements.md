@@ -229,6 +229,18 @@ Covers FR-12. Owner answers (2026-11-16): the card is collapsed by default; due 
 |---|---|
 | AC-91 | The Service tab shows a collapsed "Service intervals" card above the service history, built from the stored service template (FR-12, research M12): the interval and rule in the summary; when opened, each checkpoint with its km, its due date (the vehicle purchase date plus the checkpoint months, calendar months, clamped to the month end) or its months when no purchase date is set (with a link to the vehicle profile), and its work items; the source title linked to the PDF, the retrieved date and the caveat; and a link to the template review. Prices and labour hours are not shown. If the template was never loaded on this device the tab says it needs one online visit; if the server offers no template there is no card. Opening the card creates nothing. |
 
+## Acceptance criteria: Geofence map (owner approved 2026-11-17, option A)
+
+Owner answers (2026-11-17): option A (an SVG diagram, not a street map); the card shows the distance from home; offsets are rounded to 0.1 km. Contract: `docs/architecture/api-contracts.md`, the 2026-11-17 geofence map amendment. No migration.
+
+| ID | Criterion |
+|---|---|
+| AC-92 | `GET /api/v1/geofence/map` needs a valid token (`401` without one or with a bad one) and is sent with `Cache-Control: no-store`. |
+| AC-93 | The response `state` is `off` (geofence or live readings off), `home_not_set` (no manual point and no saved lookup result), `no_reading`, `incomplete` (no time, a time more than 5 minutes ahead, or no position), `stale` (older than the stale limit in force; the car is still given) or `ok`. Outside `ok` and `stale`, `car` and `outside` are null. `radius_km` and the stale limit are the values in force (saved, else `.env`). |
+| AC-94 | `car` is `{east_km, north_km}` from home, each rounded to 0.1 km, east and north positive, never `-0.0`, within 1% (plus 0.1 km) of the true distance. `outside` matches the alert rule at the boundary. The body never holds a coordinate, the home address or query, usage mode, gear or Sentry. |
+| AC-95 | The map never calls the car, never starts a home lookup and writes nothing (no database row, no file). |
+| AC-96 | The Geofence tab shows a "Map" card when online: home, the dashed radius, the car dot (green inside, amber outside, faded when stale), a scale bar and north; the distance from home, inside or outside, and the reading age; a far car (beyond four radii) is drawn on the edge with an arrow and a note. Each non-drawing state shows a plain message. Refresh asks the server again. Offline the card is hidden with a message, and nothing from the map is saved on the device. Only the exact path `/geofence/map` is allowed by the client. |
+
 ## Open questions for the owner
 
 Resolved:

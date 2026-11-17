@@ -832,6 +832,17 @@ export const OFF_CARD = {
 
 const liveHandlers = [
   http.get('*/api/v1/live-vehicle', () => HttpResponse.json(OFF_CARD)),
+  http.get('*/api/v1/geofence/map', () =>
+    HttpResponse.json({
+      state: 'off',
+      radius_km: 5,
+      car: null,
+      outside: null,
+      observed_at: null,
+      age_minutes: null,
+      stale: false,
+    }),
+  ),
   http.get('*/api/v1/advisory/proposals', () => HttpResponse.json({ items: [] })),
   http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
   http.get('*/api/v1/vehicle/sentry/auto', () =>

@@ -1001,6 +1001,40 @@ ADR-011 is accepted (2026-11-06). The owner approved this data model and contrac
 - **Web:** the Geofence tab drops the gear picks and shows "Sentry is only turned on when the car is in P (Park)." The usage-mode picks become "Vehicle State(s)" with "Deep Sleep" and "Parked".
 - **Compatibility:** an old cached web app that still sends `gear_codes` gets a `400` on save until it reloads. Single owner; accepted.
 
+### Amendment: geofence map (owner approved 2026-11-17, option A; no migration)
+
+The owner approved a diagram on the Geofence tab showing home, the radius and the car. It is an SVG drawing in the web app with no street map, no new package and no CSP change.
+
+**This changes the 2026-11-05 rule** that the car position never appears in a response. Only the car's offset from home, rounded to 0.1 km, and `outside` may now be returned. The home address, the lookup query and every coordinate (home or car) still never appear in any request, response or log.
+
+| Method | Path | Meaning |
+| --- | --- | --- |
+| `GET` | `/api/v1/geofence/map` | The map state from the reading already held in memory. `200`, `401` |
+
+Response:
+
+```json
+{
+  "state": "ok | off | home_not_set | no_reading | incomplete | stale",
+  "radius_km": 5.0,
+  "car": { "east_km": 0.0, "north_km": 3.3 },
+  "outside": false,
+  "observed_at": "timestamp|null",
+  "age_minutes": 4,
+  "stale": false
+}
+```
+
+- `radius_km` is the radius in force (the saved value, or the host `.env` value).
+- `off`: the geofence or live readings are off on the host. `home_not_set`: no manual home point and no saved lookup result. `no_reading`: the live provider holds no reading. `incomplete`: the reading has no time, a time more than 5 minutes ahead (`CLOCK_SKEW`), or no position. `stale`: the reading is older than the stale limit; `car` and `outside` are still given and `stale` is `true`. In every state except `ok` and `stale`, `car` and `outside` are `null`; `observed_at` and `age_minutes` are given only when the reading has a believable time.
+- `car` is `{east_km, north_km}`: a flat projection centred on home, each value rounded to 0.1 km (never `-0.0`). East and north are positive.
+- `outside` uses the same great-circle distance and rule as the alert check (`distance > radius`), on the exact position, not the rounded offset.
+- Usage mode, gear and Sentry are not returned.
+- Read only: it never calls the car, never starts a Nominatim lookup (it uses only the manual home point or the saved lookup result) and writes nothing to the database or the state volume.
+- Token required, `no-store`, the existing error shape. No new error code.
+- Web: a "Map" card on the Geofence tab, online only, with a Refresh button. Nothing from it is saved in IndexedDB. A car further than four radii away is drawn on the edge in its direction, with an arrow.
+- Acceptance criteria: AC-92 to AC-96 in `docs/product/requirements.md`.
+
 ## Tyre events (APPROVED by the owner, 2026-11-08)
 
 Covers FR-9 (AC-75 to AC-86 in `docs/product/requirements.md`). Reuses all Conventions above (`/api/v1`, `snake_case`, client UUIDs, Bearer token, `no-store`, 64 KiB body limit, error shape and codes, `currency` MYR only, `extra=forbid`, trimmed strings, no NUL). No new status code or error code. No approved part changes.

@@ -169,6 +169,27 @@ export interface paths {
         patch: operations["patch_expense_api_v1_expenses__expense_id__patch"];
         trace?: never;
     };
+    "/api/v1/geofence/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Map
+         * @description The car's offset from home (km, rounded to 0.1) from the reading already held. Never a
+         *     coordinate. Never calls the car.
+         */
+        get: operations["get_map_api_v1_geofence_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geofence/settings": {
         parameters: {
             query?: never;
@@ -1044,6 +1065,16 @@ export interface components {
             /** Total Minor */
             total_minor: number;
         };
+        /**
+         * GeofenceCarOffsetOut
+         * @description The car's offset from home in km, rounded to 0.1 km. Never a coordinate.
+         */
+        GeofenceCarOffsetOut: {
+            /** East Km */
+            east_km: number;
+            /** North Km */
+            north_km: number;
+        };
         /** GeofenceLimitsOut */
         GeofenceLimitsOut: {
             /** Interval Minutes Max */
@@ -1060,6 +1091,25 @@ export interface components {
             stale_minutes_min: number;
             /** Usage Mode Options */
             usage_mode_options: components["schemas"]["GeofenceOptionOut"][];
+        };
+        /** GeofenceMapOut */
+        GeofenceMapOut: {
+            /** Age Minutes */
+            age_minutes: number | null;
+            car: components["schemas"]["GeofenceCarOffsetOut"] | null;
+            /** Observed At */
+            observed_at: string | null;
+            /** Outside */
+            outside: boolean | null;
+            /** Radius Km */
+            radius_km: number;
+            /** Stale */
+            stale: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "off" | "home_not_set" | "no_reading" | "incomplete" | "stale";
         };
         /** GeofenceOptionOut */
         GeofenceOptionOut: {
@@ -2789,6 +2839,44 @@ export interface operations {
             };
             /** @description not_found: resource does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_map_api_v1_geofence_map_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceMapOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

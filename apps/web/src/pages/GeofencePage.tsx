@@ -7,6 +7,7 @@ import { MUTED, NOTICE } from '../components/ListParts';
 import { Button } from '../components/ui/button';
 import { cn } from '../lib/cn';
 import { Checkbox } from '../components/ui/checkbox';
+import { GeofenceMapCard } from '../components/GeofenceMapCard';
 
 interface Form {
   radius: string;
@@ -95,7 +96,9 @@ export function GeofencePage() {
     return (
       <section aria-labelledby="geo-title">
         <h1 id="geo-title">Geofence</h1>
-        <p className={MUTED}>Geofence settings need a sign-in and a connection to the server.</p>
+        <p className={MUTED}>
+          The geofence map and settings need a sign-in and a connection to the server.
+        </p>
       </section>
     );
   }
@@ -179,6 +182,7 @@ export function GeofencePage() {
         These settings decide when the app shows a notice. It never sends anything to the car. Your
         home address stays on the host and is not shown here.
       </p>
+      <GeofenceMapCard />
       {data ? (
         <p className={HINT} data-testid="geo-status">
           Geofence: {data.enabled ? 'on' : 'off'} (set on the host). Home point:{' '}

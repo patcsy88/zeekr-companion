@@ -99,7 +99,11 @@ class HomeResolver:
         self._done = True
         return self._point
 
-    def _find(self) -> HomePoint | None:
+    def known(self) -> HomePoint | None:
+        """The manual override or the saved lookup result. Never calls the lookup service."""
+        return self._find(lookup=False)
+
+    def _find(self, *, lookup: bool = True) -> HomePoint | None:
         s = self._settings
         if s.geofence_home_lat is not None and s.geofence_home_lon is not None:
             manual = _valid(
@@ -113,7 +117,7 @@ class HomeResolver:
             return None
         digest = _digest(query)
         saved = self._read_saved(digest)
-        if saved is not None:
+        if saved is not None or not lookup:
             return saved
         try:
             found = self._fetch(query)

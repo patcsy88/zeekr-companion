@@ -22,6 +22,7 @@ from app.services.advisory import AdvisoryService
 from app.services.auth import AuthService
 from app.services.auto_sentry import AutoSentrySettingsService
 from app.services.expenses import ExpenseService
+from app.services.geofence_map import GeofenceMapService
 from app.services.geofence_settings import GeofenceSettingsService
 from app.services.live_vehicle import LiveVehicleService
 from app.services.reminders import ReminderService
@@ -122,6 +123,13 @@ def get_geofence_settings_service(request: Request, session: SessionDep) -> Geof
     return GeofenceSettingsService(GeofenceSettingsRepository(session), request.app.state.settings)
 
 
+def get_geofence_map_service(request: Request, session: SessionDep) -> GeofenceMapService:
+    state = request.app.state
+    return GeofenceMapService(
+        GeofenceSettingsRepository(session), state.settings, state.live_telemetry
+    )
+
+
 def get_auto_sentry_settings_service(
     request: Request, session: SessionDep
 ) -> AutoSentrySettingsService:
@@ -145,6 +153,7 @@ SentryCommandServiceDep = Annotated[SentryCommandService, Depends(get_sentry_com
 GeofenceSettingsServiceDep = Annotated[
     GeofenceSettingsService, Depends(get_geofence_settings_service)
 ]
+GeofenceMapServiceDep = Annotated[GeofenceMapService, Depends(get_geofence_map_service)]
 AutoSentrySettingsServiceDep = Annotated[
     AutoSentrySettingsService, Depends(get_auto_sentry_settings_service)
 ]

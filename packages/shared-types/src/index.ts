@@ -63,6 +63,7 @@ export type SentryState = Schemas["SentryStateOut"];
 export type GeofenceSettings = Schemas["GeofenceSettingsOut"];
 export type GeofenceSettingsInput = Schemas["GeofenceSettingsIn"];
 export type GeofenceOption = Schemas["GeofenceOptionOut"];
+export type GeofenceMap = Schemas["GeofenceMapOut"];
 export type CommandLog = Schemas["CommandLogOut"];
 export type CommandLogItem = Schemas["CommandLogItem"];
 export type AutoSentry = Schemas["AutoSentryOut"];

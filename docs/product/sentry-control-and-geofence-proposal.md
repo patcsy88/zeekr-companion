@@ -307,3 +307,9 @@ Drafted 2026-11-05 from the owner's request and answers. **Data model and contra
 ## Update 2026-11-08: gear fixed at P, vehicle states narrowed (owner approved)
 
 The owner set the car-state condition for the geofence, and so for automatic Sentry: gear must be P (`gearAutoStatus '0'`), which is no longer a setting, and the vehicle state must be Deep Sleep (`usageMode '0'`) and/or Parked (`'1'`), chosen on the Geofence tab under "Vehicle State(s)". The other four states never count. Radius, check interval and stale limit are unchanged. The gear and usage-mode pick lists in the Piece C sections above are superseded. `usageMode '1'` (Parked) is `unverified`: it has not been read on the owner's car. Details: `docs/architecture/api-contracts.md`, the 2026-11-08 geofence amendment.
+
+## Update 2026-11-17: geofence map (owner approved, option A)
+
+The owner approved a map on the Geofence tab: an SVG diagram with home in the middle, the radius and the car, north up. There is no street map, no new package and no CSP change. The card shows the distance from home, and offsets are rounded to 0.1 km.
+
+This amends the 2026-11-05 rule in the Piece C contract above ("The home address, coordinates, distance and car position never appear in a request or response"). The new `GET /api/v1/geofence/map` returns the car's offset from home (east and north, in km, rounded to 0.1 km) and whether it is outside the radius. Coordinates, the home address and the lookup query still never leave the host. The endpoint uses only the reading the server already holds: it never calls the car, never starts a home lookup and writes nothing. Details: `docs/architecture/api-contracts.md`, the 2026-11-17 geofence map amendment; AC-92 to AC-96 in `docs/product/requirements.md`.
