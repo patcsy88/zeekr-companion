@@ -1,31 +1,43 @@
 #!/usr/bin/env bash
-# First-time setup: creates .env with fresh random secrets before the first "docker compose up".
-#   ./install.sh                   create .env (from .env.example if it is next to this script)
-#   ./install.sh --version v0.1.0  also set ZEEKR_VERSION (release install, docker-compose.release.yml)
-#                                  without --version, a release install shows the latest release tag
-#                                  from GitHub and asks y/n before using it
-#   ./install.sh --start           then start the stack (docker compose up -d --wait, waiting up to
-#                                  WAIT_SECONDS, default 180), create the owner login (you type the
-#                                  username and password), offer two-step sign-in (MFA) y/n, then offer
-#                                  the optional Tailscale sidecar (private HTTPS for the phone) y/n
-#   ./install.sh --script-version  print the version of this script and exit
-#                                  first it checks the system (Linux and distro, x86_64 or aarch64) and that
-#                                  Docker and the Compose plugin work; if not, it suggests how to install them
-#
-# Safety:
-# - It never overwrites an existing .env. The database password is fixed when the database volume is
-#   first created, so a new one would lock the API out of an existing database.
-# - Secrets are written to .env (mode 600) and never printed.
-# - There is no default login. Only with --start does it run the owner-login command, and you type the
-#   username and password. Without --start, after the stack is up, run:
-#     docker compose exec api python -m app.cli.set_owner
+# First-time setup of a release install: creates .env with fresh random secrets. Run ./install.sh --help.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.21"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.22"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
-self="$here/$(basename "$0")"
 cd "$here"
+
+usage() {
+  cat <<EOF
+install.sh $SCRIPT_VERSION
+First-time setup of a release install: creates .env with fresh random secrets.
+Run it in the folder that holds docker-compose.yml (and .env.example).
+
+Usage: ./install.sh <flag> [<flag>]
+
+Flags:
+  --init            Check the system and Docker, then write .env from .env.example with random
+                    POSTGRES_PASSWORD and TOKEN_SECRET (mode 600, never printed). On a release
+                    install it first shows the latest release tag and asks y/n. Starts nothing.
+  --version vN.N.N  Same as --init, with ZEEKR_VERSION set to that tag and no latest-release
+                    question.
+  --start           Same as --init, then: docker compose up -d --wait (up to WAIT_SECONDS,
+                    default 180), the owner login (you type the username and password), MFA
+                    y/n, the optional Tailscale sidecar y/n, and docker compose ps.
+                    Combine it with --version to fix the tag.
+  --script-version  Print this script's version and exit.
+  -h, --help        Show this text and exit.
+
+Safety:
+  - It refuses to run if .env already exists (the database password is fixed when the database
+    volume is first created, so a new one would lock the API out of an existing database).
+  - Secrets are written to .env (mode 600) and never printed.
+  - There is no default login. Only --start runs the owner-login command, and you type the
+    username and password. Without --start, after the stack is up, run:
+      docker compose exec api python -m app.cli.set_owner
+  - It never installs Docker and never runs sudo.
+EOF
+}
 version=""
 start=0
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
@@ -33,13 +45,15 @@ case "$WAIT_SECONDS" in
   ''|*[!0-9]*) echo "WAIT_SECONDS must be a whole number of seconds (got: $WAIT_SECONDS)" >&2; exit 2 ;;
 esac
 [ "$WAIT_SECONDS" -ge 30 ] || { echo "WAIT_SECONDS must be at least 30 (got: $WAIT_SECONDS)" >&2; exit 2; }
+[ $# -gt 0 ] || { usage; exit 0; }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
+    --init) shift ;;
+    --version) version="${2:-}"; [ -n "$version" ] || { echo "install.sh: --version needs a value, for example v0.1.0 (try --help)" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
     --script-version) echo "install.sh $SCRIPT_VERSION"; exit 0 ;;
-    -h|--help) sed -n 2,21p "$self"; exit 0 ;;
-    *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "install.sh: the flag \"$1\" is not recognised." >&2; echo >&2; usage >&2; exit 2 ;;
   esac
 done
 echo "install.sh $SCRIPT_VERSION"
@@ -86,7 +100,7 @@ suggest_docker() { # suggest_docker <what is missing>
       echo "    less get-docker.sh"
       echo "    sudo sh get-docker.sh"
     fi
-    echo "Then run ./install.sh again. Nothing was changed."
+    echo "Then run the same ./install.sh command again. Nothing was changed."
   } >&2
   exit 1
 }

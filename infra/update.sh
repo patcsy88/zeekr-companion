@@ -1,34 +1,10 @@
 #!/usr/bin/env bash
-# Update a release install (docker-compose.release.yml, ADR-012) to the newest published version.
-#   ./update.sh          show the running and newest versions, then ask y/n before changing anything
-#   ./update.sh --check  show them only, change nothing
-#   ./update.sh --script-version  print the version of this script and exit
-#
+# Move a release install to the newest published version. Run ./update.sh --help for the flags.
 # Run it in the folder that holds docker-compose.yml and .env (the folder install.sh was run in).
 # A clone install that builds its own images is not supported: use deploy-guide.md section 7.
-#
-# What "y" does, in order (deploy-guide.md, "Install from published images", step 6):
-#   1. pulls both new images; if either is not published yet, it stops with nothing changed
-#   2. keeps the current compose file as docker-compose.yml.<old tag>, then downloads
-#      infra/docker-compose.release.yml for the new tag over docker-compose.yml
-#      (and docker-compose.lowmem.yml the same way, only if that file is already here)
-#   3. sets ZEEKR_VERSION in .env to the new tag; no other line is touched
-#   4. docker compose up -d --wait, then docker compose ps. It waits up to WAIT_SECONDS (below) for
-#      the containers to become healthy. A slow host (a Raspberry Pi) can report api "unhealthy"
-#      while it is still starting, so it keeps watching api until the time is up, then tries again.
-#
-# Settings (edit here, or set them for one run: WAIT_SECONDS=300 ./update.sh):
-#   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 180)
-#   BAR_WIDTH     cells in the image-pull progress bar, 4 to 40 (default 6)
-#
-# Safety:
-# - Nothing changes unless you answer y. Any other answer exits.
-# - If the new version adds a database migration, it asks again and goes on only if you say a fresh
-#   encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
-# - It never prints .env, never removes containers, volumes or images, and never runs prune.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.21"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.22"   # the release tag this file ships in; infra/check-script-version.sh checks it
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
 BAR_WIDTH="${BAR_WIDTH:-6}"
 
@@ -39,13 +15,47 @@ image_api="ghcr.io/$repo-api"
 image_web="ghcr.io/$repo-web"
 tag_re='^v[0-9]+\.[0-9]+\.[0-9]+$'
 
-check_only=0
+usage() {
+  cat <<EOF
+update.sh $SCRIPT_VERSION
+Move a release install to the newest published version.
+Run it in the folder that holds docker-compose.yml and .env.
+
+Usage: ./update.sh <flag>
+
+Flags:
+  --restart         Show the version in .env, the version api and web are running, and the
+                    newest release on GitHub, with the releases in between and whether any adds
+                    a database migration. Then ask y/n. Only y changes anything: it pulls the
+                    api and web images (stops with nothing changed if either is missing), keeps
+                    the compose file as docker-compose.yml.<old tag>, downloads the new one,
+                    sets ZEEKR_VERSION in .env, then runs docker compose up -d --wait and
+                    docker compose ps. Only containers whose image or settings changed are
+                    recreated, so db keeps running. It always goes to the newest release.
+  --script-version  Print this script's version and exit.
+  -h, --help        Show this text and exit.
+
+Settings (edit in the script, or for one run: WAIT_SECONDS=300 ./update.sh --restart):
+  WAIT_SECONDS      How long to wait for healthy containers (default 180, minimum 30).
+  BAR_WIDTH         Cells in the image-pull progress bar, 4 to 40 (default 6).
+
+Safety:
+  - --restart changes nothing unless you answer y.
+  - If a release adds a database migration (or GitHub does not answer), it asks again and goes on
+    only if you say a fresh encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
+    It cannot check that you took it.
+  - It refuses to go to a version older than the running one.
+  - It never prints .env, removes containers, volumes or images, or runs prune.
+EOF
+}
+
+[ $# -gt 0 ] || { usage; exit 0; }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check) check_only=1; shift ;;
+    --restart) shift ;;
     --script-version) echo "update.sh $SCRIPT_VERSION"; exit 0 ;;
-    -h|--help) sed -n 2,28p "$0"; exit 0 ;;
-    *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "update.sh: the flag \"$1\" is not recognised." >&2; echo >&2; usage >&2; exit 2 ;;
   esac
 done
 echo "update.sh $SCRIPT_VERSION"
@@ -118,8 +128,7 @@ if [ "$current" = "$latest" ]; then
   exit 0
 fi
 if [ "$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)" = "$current" ]; then
-  echo "$current is newer than the newest tag $latest. Nothing to do."
-  exit 0
+  die "$current is newer than the newest tag $latest. Refused; nothing was changed."
 fi
 
 between="$(printf '%s\n' "$tags" | awk -v a="$current" -v b="$latest" '
@@ -143,10 +152,6 @@ else
   echo "Database migration:  unknown (GitHub did not answer). Treating it as yes."
 fi
 
-if [ "$check_only" -eq 1 ]; then
-  echo "Check only. Nothing was changed."
-  exit 0
-fi
 [ -t 0 ] || die "needs a terminal to answer y/n; nothing was changed"
 
 echo
@@ -154,7 +159,7 @@ ask "Update from $current to $latest?" || { echo "Nothing was changed."; exit 0;
 if [ "$migration" != "no" ]; then
   echo "A migration runs when api starts and is not undone by going back a version."
   ask "Have you taken a fresh encrypted export (infra/backup/RESTORE.md, \"Off-machine backup\")?" \
-    || { echo "Take the export first, then run ./update.sh again. Nothing was changed."; exit 0; }
+    || { echo "Take the export first, then run ./update.sh --restart again. Nothing was changed."; exit 0; }
 fi
 
 # --- 1. Pull the new images before touching any file -----------------------------------------
