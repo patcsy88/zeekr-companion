@@ -18,6 +18,7 @@
 #
 # Settings (edit here, or set them for one run: WAIT_SECONDS=180 ./update.sh):
 #   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 120)
+#   BAR_WIDTH     cells in the image-pull progress bar, 4 to 40 (default 10)
 #
 # Safety:
 # - Nothing changes unless you answer y. Any other answer exits.
@@ -27,6 +28,7 @@
 set -euo pipefail
 
 WAIT_SECONDS="${WAIT_SECONDS:-120}"
+BAR_WIDTH="${BAR_WIDTH:-10}"
 
 repo="patcsy88/zeekr-companion"
 api_url="https://api.github.com/repos/$repo"
@@ -39,7 +41,7 @@ check_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) check_only=1; shift ;;
-    -h|--help) sed -n 2,26p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,22p "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -58,6 +60,10 @@ case "$WAIT_SECONDS" in
   ''|*[!0-9]*) die "WAIT_SECONDS must be a whole number of seconds (got: $WAIT_SECONDS)" ;;
 esac
 [ "$WAIT_SECONDS" -ge 30 ] || die "WAIT_SECONDS must be at least 30 (got: $WAIT_SECONDS)"
+case "$BAR_WIDTH" in
+  ''|*[!0-9]*) die "BAR_WIDTH must be a whole number (got: $BAR_WIDTH)" ;;
+esac
+{ [ "$BAR_WIDTH" -ge 4 ] && [ "$BAR_WIDTH" -le 40 ]; } || die "BAR_WIDTH must be 4 to 40 (got: $BAR_WIDTH)"
 
 for cmd in docker curl sort grep sed awk; do
   command -v "$cmd" >/dev/null 2>&1 || die "needs $cmd"
@@ -144,10 +150,50 @@ if [ "$migration" != "no" ]; then
 fi
 
 # --- 1. Pull the new images before touching any file -----------------------------------------
-echo "Pulling the api image $latest (1 of 2)..."
-docker pull "$image_api:$latest" || die "api image $latest is not available yet; nothing was changed"
-echo "Pulling the web image $latest (2 of 2)..."
-docker pull "$image_web:$latest" || die "web image $latest is not available yet; nothing was changed"
+bar_levels=(⣀ ⣄ ⣤ ⣦ ⣶ ⣷ ⣿)   # empty to full: 6 steps of fill inside each cell
+
+pull_with_bar() { # pull_with_bar <heading> <image>: a [⣿⣿⣤⣀] bar that fills as layers finish
+  local heading="$1" image="$2" log pid total done_n steps filled full part bar i last="" rc=0
+  log="$(mktemp)"
+  docker pull "$image" >"$log" 2>&1 &
+  pid=$!
+
+  draw() { # Docker's non-terminal output names each layer: "Pulling fs layer", then "Pull complete"
+    total="$(grep -cE 'Pulling fs layer|Already exists' "$log" || true)"
+    done_n="$(grep -cE 'Pull complete|Already exists' "$log" || true)"
+    steps=$((BAR_WIDTH * 6)); filled=0
+    [ "$total" -eq 0 ] || filled=$((done_n * steps / total))
+    full=$((filled / 6)); part=$((filled % 6)); bar=""; i=0
+    while [ "$i" -lt "$BAR_WIDTH" ]; do
+      if [ "$i" -lt "$full" ]; then bar="${bar}${bar_levels[6]}"
+      elif [ "$i" -eq "$full" ]; then bar="${bar}${bar_levels[$part]}"
+      else bar="${bar}${bar_levels[0]}"; fi
+      i=$((i + 1))
+    done
+    if [ -t 1 ]; then
+      printf '\r%s [%s] ' "$heading" "$bar"
+    elif [ "$bar" != "$last" ]; then   # not a terminal: one line per change, no carriage returns
+      echo "$heading [$bar]"; last="$bar"
+    fi
+  }
+
+  while kill -0 "$pid" 2>/dev/null; do draw; sleep 1; done
+  wait "$pid" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    total=1; done_n=1; draw   # a finished pull always ends on a full bar
+    if [ -t 1 ]; then printf '\n'; fi
+    rm -f "$log"
+  else
+    if [ -t 1 ]; then printf '\n'; fi
+    echo "Pull failed. Docker said:" >&2
+    sed 's/^/    /' "$log" >&2
+    rm -f "$log"
+    return 1
+  fi
+}
+
+pull_with_bar "api $latest (1 of 2)" "$image_api:$latest" || die "api image $latest could not be pulled; nothing was changed"
+pull_with_bar "web $latest (2 of 2)" "$image_web:$latest" || die "web image $latest could not be pulled; nothing was changed"
 
 # --- 2. Download the compose file(s) for the new tag and check them --------------------------
 new_compose="$(mktemp docker-compose.new.XXXXXX)"

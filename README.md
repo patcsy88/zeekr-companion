@@ -64,7 +64,7 @@ The images are `linux/amd64` and `linux/arm64` (releases up to `v0.1.3` are `lin
    `docker compose exec api python -m app.cli.set_owner`
    Optional second step (authenticator-app code, ADR-013): `docker compose exec api python -m app.cli.set_mfa`. See `docs/operations/deploy-guide.md`.
 5. Open the app on port 8080. By default it listens on `127.0.0.1` only. To reach it from your phone, read `WEB_BIND_ADDRESS` in `docs/operations/deploy-guide.md` first.
-6. To update later, run `./update.sh`. It shows the running and newest versions and asks y/n before changing anything (`./update.sh --check` only shows them). It shows the download progress and waits up to 120 seconds for the containers to be healthy; change `WAIT_SECONDS` in the script, or run `WAIT_SECONDS=180 ./update.sh`, on a slow host.
+6. To update later, run `./update.sh`. It shows the running and newest versions and asks y/n before changing anything (`./update.sh --check` only shows them). It draws a small braille progress bar for each image pull and waits up to 120 seconds for the containers to be healthy; change `WAIT_SECONDS` in the script, or run `WAIT_SECONDS=180 ./update.sh`, on a slow host.
 
 There is no `latest` tag. To update, set `ZEEKR_VERSION` in `.env` to the new tag, then run `docker compose pull` and `docker compose up -d --wait`.
 
