@@ -41,6 +41,7 @@ os="$(uname -s)"
 arch="$(uname -m)"
 distro_id=""; distro_like=""; distro_name="$os"
 if [ "$os" = "Linux" ] && [ -r "$OS_RELEASE_FILE" ]; then
+  # shellcheck source=/dev/null
   IFS='|' read -r distro_id distro_like distro_name < <(. "$OS_RELEASE_FILE"; echo "${ID:-}|${ID_LIKE:-}|${PRETTY_NAME:-Linux}")
 fi
 echo "System: $distro_name ($os, $arch)"
