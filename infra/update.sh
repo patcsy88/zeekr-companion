@@ -12,7 +12,12 @@
 #      infra/docker-compose.release.yml for the new tag over docker-compose.yml
 #      (and docker-compose.lowmem.yml the same way, only if that file is already here)
 #   3. sets ZEEKR_VERSION in .env to the new tag; no other line is touched
-#   4. docker compose up -d --wait, then docker compose ps
+#   4. docker compose up -d --wait, then docker compose ps. It waits up to WAIT_SECONDS (below) for
+#      the containers to become healthy. A slow host (a Raspberry Pi) can report api "unhealthy"
+#      while it is still starting, so it keeps watching api until the time is up, then tries again.
+#
+# Settings (edit here, or set them for one run: WAIT_SECONDS=180 ./update.sh):
+#   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 120)
 #
 # Safety:
 # - Nothing changes unless you answer y. Any other answer exits.
@@ -20,6 +25,8 @@
 #   encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
 # - It never prints .env, never removes containers, volumes or images, and never runs prune.
 set -euo pipefail
+
+WAIT_SECONDS="${WAIT_SECONDS:-120}"
 
 repo="patcsy88/zeekr-companion"
 api_url="https://api.github.com/repos/$repo"
@@ -32,7 +39,7 @@ check_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) check_only=1; shift ;;
-    -h|--help) sed -n 2,20p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,26p "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -46,6 +53,11 @@ ask() { # ask <question>: true only for y or Y
   read -r -p "$1 [y/n] " reply || return 1
   case "$reply" in y|Y) return 0 ;; *) return 1 ;; esac
 }
+
+case "$WAIT_SECONDS" in
+  ''|*[!0-9]*) die "WAIT_SECONDS must be a whole number of seconds (got: $WAIT_SECONDS)" ;;
+esac
+[ "$WAIT_SECONDS" -ge 30 ] || die "WAIT_SECONDS must be at least 30 (got: $WAIT_SECONDS)"
 
 for cmd in docker curl sort grep sed awk; do
   command -v "$cmd" >/dev/null 2>&1 || die "needs $cmd"
@@ -132,9 +144,10 @@ if [ "$migration" != "no" ]; then
 fi
 
 # --- 1. Pull the new images before touching any file -----------------------------------------
-echo "Pulling $latest images..."
-docker pull -q "$image_api:$latest" >/dev/null || die "api image $latest is not available yet; nothing was changed"
-docker pull -q "$image_web:$latest" >/dev/null || die "web image $latest is not available yet; nothing was changed"
+echo "Pulling the api image $latest (1 of 2)..."
+docker pull "$image_api:$latest" || die "api image $latest is not available yet; nothing was changed"
+echo "Pulling the web image $latest (2 of 2)..."
+docker pull "$image_web:$latest" || die "web image $latest is not available yet; nothing was changed"
 
 # --- 2. Download the compose file(s) for the new tag and check them --------------------------
 new_compose="$(mktemp docker-compose.new.XXXXXX)"
@@ -171,8 +184,40 @@ mv "$new_env" .env
 echo "Set ZEEKR_VERSION=$latest in .env. Old compose file kept as docker-compose.yml.$current."
 
 # --- 4. Start the new version -----------------------------------------------------------------
-if ! docker compose up -d --wait; then
-  echo "docker compose up did not finish healthy. Check: docker compose ps, docker compose logs api" >&2
+api_health() {
+  local id
+  id="$(docker compose ps -q api 2>/dev/null || true)"
+  [ -n "$id" ] || { echo "not running"; return; }
+  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" 2>/dev/null \
+    || echo "unknown"
+}
+
+start_stack() { # up to WAIT_SECONDS in total; keeps watching api if it is reported unhealthy early
+  local deadline=$((SECONDS + WAIT_SECONDS)) left status
+  while :; do
+    left=$((deadline - SECONDS))
+    [ "$left" -ge 1 ] || return 1
+    echo "Starting the containers (waiting up to ${left}s for them to be healthy)..."
+    if docker compose up -d --wait --wait-timeout "$left"; then
+      return 0
+    fi
+    # Compose gives up as soon as api reports "unhealthy", but its health check keeps running and a
+    # slow host can still finish starting. Watch it until it is healthy or the time is up.
+    while :; do
+      left=$((deadline - SECONDS))
+      [ "$left" -ge 1 ] || return 1
+      status="$(api_health)"
+      echo "  api: $status (${left}s left)"
+      [ "$status" = "healthy" ] && break
+      sleep 5
+    done
+  done
+}
+
+if ! start_stack; then
+  echo "The containers were not all healthy after ${WAIT_SECONDS}s. api is: $(api_health)." >&2
+  echo "Check: docker compose ps, docker compose logs --tail 50 api" >&2
+  echo "If api turns healthy later, run docker compose up -d --wait to start the rest." >&2
   echo "To go back: cp docker-compose.yml.$current docker-compose.yml, set ZEEKR_VERSION=$current in .env," >&2
   echo "then docker compose up -d --wait. A migration that already ran is not undone that way." >&2
   exit 1
