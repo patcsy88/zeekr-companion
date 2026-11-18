@@ -2,7 +2,7 @@
 # First-time setup of a release install: creates .env with fresh random secrets. Run ./install.sh --help.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.23"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.24"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
@@ -216,7 +216,7 @@ start_stack() {
 }
 
 setup_tailscale() {
-  local reply="" name="" tmp
+  local reply="" name="" tmp reason="" tries=0
   read -r -p "Set up private HTTPS with Tailscale for your phone? (optional) [y/n] " reply || reply=""
   case "$reply" in
     y|Y) ;;
@@ -224,16 +224,25 @@ setup_tailscale() {
   esac
   echo "The machine name is published in public Certificate Transparency logs and cannot be taken back."
   echo "Use a neutral name: no zeekr, personal name, plate or city (for example app-1)."
-  read -r -p "Machine name: " name || name=""
-  name="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
-  case "$name" in
-    '') echo "No name given, so Tailscale was skipped."; return 0 ;;
-    *zeekr*) echo "That name contains zeekr, so it was refused and Tailscale was skipped." >&2; return 0 ;;
-  esac
-  if ! [[ "$name" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
-    echo "Use only letters, digits and hyphens (1 to 63, not starting or ending with a hyphen). Tailscale was skipped." >&2
-    return 0
-  fi
+  while :; do
+    read -r -p "Machine name: " name || name=""
+    name="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
+    reason=""
+    case "$name" in
+      '') reason="No name was given." ;;
+      *zeekr*) reason="\"$name\" is not allowed: the name must not contain zeekr." ;;
+      *) [[ "$name" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] \
+           || reason="\"$name\" is not allowed: use only letters, digits and hyphens (1 to 63, not starting or ending with a hyphen)." ;;
+    esac
+    [ -n "$reason" ] || break
+    echo "$reason" >&2
+    tries=$((tries + 1))
+    if [ "$tries" -ge 3 ]; then
+      echo "Stopped after 3 tries, so Tailscale was skipped. Later: infra/README.md, \"Owner runbook: private HTTPS with the Tailscale sidecar\"." >&2
+      return 0
+    fi
+    echo "Try another name." >&2
+  done
   read -r -p "Use \"$name\"? It is permanent once issued. [y/n] " reply || reply=""
   case "$reply" in y|Y) ;; *) echo "Tailscale was skipped."; return 0 ;; esac
   tmp="$(mktemp .env.XXXXXX)"
