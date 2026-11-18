@@ -20,6 +20,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+self="$here/$(basename "$0")"
 cd "$here"
 version=""
 start=0
@@ -32,7 +33,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
-    -h|--help) sed -n 2,19p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,19p "$self"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
