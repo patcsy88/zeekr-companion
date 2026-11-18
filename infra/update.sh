@@ -16,8 +16,8 @@
 #      the containers to become healthy. A slow host (a Raspberry Pi) can report api "unhealthy"
 #      while it is still starting, so it keeps watching api until the time is up, then tries again.
 #
-# Settings (edit here, or set them for one run: WAIT_SECONDS=180 ./update.sh):
-#   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 120)
+# Settings (edit here, or set them for one run: WAIT_SECONDS=300 ./update.sh):
+#   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 180)
 #   BAR_WIDTH     cells in the image-pull progress bar, 4 to 40 (default 6)
 #
 # Safety:
@@ -27,7 +27,7 @@
 # - It never prints .env, never removes containers, volumes or images, and never runs prune.
 set -euo pipefail
 
-WAIT_SECONDS="${WAIT_SECONDS:-120}"
+WAIT_SECONDS="${WAIT_SECONDS:-180}"
 BAR_WIDTH="${BAR_WIDTH:-6}"
 
 repo="patcsy88/zeekr-companion"
