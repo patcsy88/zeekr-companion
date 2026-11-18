@@ -57,13 +57,14 @@ You need a Linux host with Docker Engine and the Compose plugin. The app has no 
 
 The images are `linux/amd64` and `linux/arm64` (releases up to `v0.1.3` are `linux/amd64` only). Check with `uname -m`: `x86_64` or `aarch64` works, 32-bit ARM (`armv7l`) does not.
 
-1. Make a folder and download three files from `infra/` into it: `docker-compose.release.yml` (save it as `docker-compose.yml`), `.env.example` and `install.sh`. Then run `chmod +x install.sh`.
+1. Make a folder and download four files from `infra/` into it: `docker-compose.release.yml` (save it as `docker-compose.yml`), `.env.example`, `install.sh` and `update.sh`. Then run `chmod +x install.sh update.sh`.
 2. Run `./install.sh --version <release tag>`, for example `--version v0.9.12` (the release tags are listed under Tags on GitHub). It writes `.env` with random `POSTGRES_PASSWORD` and `TOKEN_SECRET` values, never prints them, and sets the file to mode 600. It refuses to run if `.env` already exists, because a new database password would lock the app out of an existing database.
 3. Run `docker compose up -d --wait`.
 4. Create the app login. It asks for a username and a password of at least 12 characters:
    `docker compose exec api python -m app.cli.set_owner`
    Optional second step (authenticator-app code, ADR-013): `docker compose exec api python -m app.cli.set_mfa`. See `docs/operations/deploy-guide.md`.
 5. Open the app on port 8080. By default it listens on `127.0.0.1` only. To reach it from your phone, read `WEB_BIND_ADDRESS` in `docs/operations/deploy-guide.md` first.
+6. To update later, run `./update.sh`. It shows the running and newest versions and asks y/n before changing anything (`./update.sh --check` only shows them).
 
 There is no `latest` tag. To update, set `ZEEKR_VERSION` in `.env` to the new tag, then run `docker compose pull` and `docker compose up -d --wait`.
 

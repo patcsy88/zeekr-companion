@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# Update a release install (docker-compose.release.yml, ADR-012) to the newest published version.
+#   ./update.sh          show the running and newest versions, then ask y/n before changing anything
+#   ./update.sh --check  show them only, change nothing
+#
+# Run it in the folder that holds docker-compose.yml and .env (the folder install.sh was run in).
+# A clone install that builds its own images is not supported: use deploy-guide.md section 7.
+#
+# What "y" does, in order (deploy-guide.md, "Install from published images", step 6):
+#   1. pulls both new images; if either is not published yet, it stops with nothing changed
+#   2. keeps the current compose file as docker-compose.yml.<old tag>, then downloads
+#      infra/docker-compose.release.yml for the new tag over docker-compose.yml
+#      (and docker-compose.lowmem.yml the same way, only if that file is already here)
+#   3. sets ZEEKR_VERSION in .env to the new tag; no other line is touched
+#   4. docker compose up -d --wait, then docker compose ps
+#
+# Safety:
+# - Nothing changes unless you answer y. Any other answer exits.
+# - If the new version adds a database migration, it asks again and goes on only if you say a fresh
+#   encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
+# - It never prints .env, never removes containers, volumes or images, and never runs prune.
+set -euo pipefail
+
+repo="patcsy88/zeekr-companion"
+api_url="https://api.github.com/repos/$repo"
+raw_url="https://raw.githubusercontent.com/$repo"
+image_api="ghcr.io/$repo-api"
+image_web="ghcr.io/$repo-web"
+tag_re='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+check_only=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --check) check_only=1; shift ;;
+    -h|--help) sed -n 2,20p "$0"; exit 0 ;;
+    *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+  esac
+done
+
+here="$(cd "$(dirname "$0")" && pwd)"
+cd "$here"
+
+die() { echo "$*" >&2; exit 1; }
+ask() { # ask <question>: true only for y or Y
+  local reply=""
+  read -r -p "$1 [y/n] " reply || return 1
+  case "$reply" in y|Y) return 0 ;; *) return 1 ;; esac
+}
+
+for cmd in docker curl sort grep sed awk; do
+  command -v "$cmd" >/dev/null 2>&1 || die "needs $cmd"
+done
+docker compose version >/dev/null 2>&1 || die "needs the Docker Compose plugin (docker compose)"
+[ -f docker-compose.yml ] || die "no docker-compose.yml in $here"
+[ -f .env ] || die "no .env in $here (run install.sh first)"
+grep -q 'ZEEKR_VERSION' docker-compose.yml \
+  || die "docker-compose.yml is not the release compose file; update a clone install with deploy-guide.md section 7"
+
+# --- What is configured and what is running -------------------------------------------------
+configured="$(grep -E '^ZEEKR_VERSION=' .env | tail -n 1 | cut -d= -f2- | tr -d '"'"'"' ')" || true
+running=""
+cid="$(docker compose ps -q api 2>/dev/null || true)"
+if [ -n "$cid" ]; then
+  running="$(docker inspect -f '{{.Config.Image}}' "$cid" 2>/dev/null | sed 's/.*://')" || true
+fi
+web_running=""
+wid="$(docker compose ps -q web 2>/dev/null || true)"
+if [ -n "$wid" ]; then
+  web_running="$(docker inspect -f '{{.Config.Image}}' "$wid" 2>/dev/null | sed 's/.*://')" || true
+fi
+
+echo "Configured in .env:  ${configured:-not set}"
+echo "Running (api):       ${running:-not running}"
+echo "Running (web):       ${web_running:-not running}"
+
+current="${running:-$configured}"
+[[ "$current" =~ $tag_re ]] || die "cannot tell the current version (expected a tag like v0.1.0)"
+if [ -n "$running" ] && [ -n "$configured" ] && [ "$running" != "$configured" ]; then
+  echo "Note: .env says $configured but $running is running. Comparing against $running."
+fi
+
+# --- The newest published version ------------------------------------------------------------
+tags="$(curl -fsSL --max-time 30 "$api_url/tags?per_page=100" \
+  | grep -oE '"name": *"v[0-9]+\.[0-9]+\.[0-9]+"' | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -uV)" \
+  || die "could not read the release tags from GitHub; nothing was changed"
+latest="$(printf '%s\n' "$tags" | tail -n 1)"
+[[ "$latest" =~ $tag_re ]] || die "no release tag found on GitHub; nothing was changed"
+echo "Newest release:      $latest"
+
+if [ "$current" = "$latest" ]; then
+  echo "Up to date. Nothing to do."
+  exit 0
+fi
+if [ "$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)" = "$current" ]; then
+  echo "$current is newer than the newest tag $latest. Nothing to do."
+  exit 0
+fi
+
+between="$(printf '%s\n' "$tags" | awk -v a="$current" -v b="$latest" '
+  BEGIN { on = 0 } $0 == a { on = 1; next } on { print } $0 == b { exit }')"
+echo "Releases after $current: $(printf '%s' "$between" | tr '\n' ' ')"
+
+# --- Does the update add a migration? --------------------------------------------------------
+migration="unknown"
+if compare="$(curl -fsSL --max-time 30 "$api_url/compare/$current...$latest")"; then
+  found="$(printf '%s' "$compare" \
+    | grep -oE '"filename": *"services/api/alembic/versions/[^"]+"' \
+    | sed -E 's/.*versions\/([^"]+)"/\1/' | sort -u)" || true
+  if [ -n "$found" ]; then
+    migration="yes"
+    echo "Database migration:  yes ($(printf '%s' "$found" | tr '\n' ' '))"
+  else
+    migration="no"
+    echo "Database migration:  no"
+  fi
+else
+  echo "Database migration:  unknown (GitHub did not answer). Treating it as yes."
+fi
+
+if [ "$check_only" -eq 1 ]; then
+  echo "Check only. Nothing was changed."
+  exit 0
+fi
+[ -t 0 ] || die "needs a terminal to answer y/n; nothing was changed"
+
+echo
+ask "Update from $current to $latest?" || { echo "Nothing was changed."; exit 0; }
+if [ "$migration" != "no" ]; then
+  echo "A migration runs when api starts and is not undone by going back a version."
+  ask "Have you taken a fresh encrypted export (infra/backup/RESTORE.md, \"Off-machine backup\")?" \
+    || { echo "Take the export first, then run ./update.sh again. Nothing was changed."; exit 0; }
+fi
+
+# --- 1. Pull the new images before touching any file -----------------------------------------
+echo "Pulling $latest images..."
+docker pull -q "$image_api:$latest" >/dev/null || die "api image $latest is not available yet; nothing was changed"
+docker pull -q "$image_web:$latest" >/dev/null || die "web image $latest is not available yet; nothing was changed"
+
+# --- 2. Download the compose file(s) for the new tag and check them --------------------------
+new_compose="$(mktemp docker-compose.new.XXXXXX)"
+trap 'rm -f "$new_compose" "${new_lowmem:-}" "${new_env:-}"' EXIT
+curl -fsSL --max-time 30 "$raw_url/$latest/infra/docker-compose.release.yml" -o "$new_compose" \
+  || die "could not download the $latest compose file; nothing was changed"
+grep -q 'ZEEKR_VERSION' "$new_compose" || die "the downloaded compose file looks wrong; nothing was changed"
+ZEEKR_VERSION="$latest" docker compose -f "$new_compose" config -q \
+  || die "the $latest compose file does not validate with this .env; nothing was changed"
+
+new_lowmem=""
+if [ -f docker-compose.lowmem.yml ]; then
+  new_lowmem="$(mktemp docker-compose.lowmem.new.XXXXXX)"
+  curl -fsSL --max-time 30 "$raw_url/$latest/infra/docker-compose.lowmem.yml" -o "$new_lowmem" \
+    || die "could not download the $latest low-memory overlay; nothing was changed"
+fi
+
+# --- 3. Swap the files: keep the old ones next to them for going back ------------------------
+cp -p docker-compose.yml "docker-compose.yml.$current"
+mv "$new_compose" docker-compose.yml
+if [ -n "$new_lowmem" ]; then
+  cp -p docker-compose.lowmem.yml "docker-compose.lowmem.yml.$current"
+  mv "$new_lowmem" docker-compose.lowmem.yml
+fi
+
+new_env="$(mktemp .env.new.XXXXXX)"
+awk -v v="$latest" '
+  /^ZEEKR_VERSION=/ { print "ZEEKR_VERSION=" v; done = 1; next }
+  { print }
+  END { if (!done) print "ZEEKR_VERSION=" v }
+' .env > "$new_env"
+chmod 600 "$new_env"
+mv "$new_env" .env
+echo "Set ZEEKR_VERSION=$latest in .env. Old compose file kept as docker-compose.yml.$current."
+
+# --- 4. Start the new version -----------------------------------------------------------------
+if ! docker compose up -d --wait; then
+  echo "docker compose up did not finish healthy. Check: docker compose ps, docker compose logs api" >&2
+  echo "To go back: cp docker-compose.yml.$current docker-compose.yml, set ZEEKR_VERSION=$current in .env," >&2
+  echo "then docker compose up -d --wait. A migration that already ran is not undone that way." >&2
+  exit 1
+fi
+docker compose ps
+echo "Updated to $latest."
