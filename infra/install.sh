@@ -2,7 +2,7 @@
 # First-time setup of a release install: creates .env with fresh random secrets. Run ./install.sh --help.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.25"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.26"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
@@ -140,6 +140,7 @@ setup_tailscale() {
   echo "The Tailscale container is starting. It stays unhealthy until you log in (this is expected):"
   echo "  1. docker compose logs tailscale     (open the login link in a browser signed in to your Tailscale account;"
   echo "     do not paste the link anywhere)"
+  echo "     If the link stops working, the container has restarted and printed a new one: run docker compose logs --tail 20 tailscale and use the newest link."
   echo "  2. docker compose up -d --wait       (after logging in)"
   echo "  Then follow infra/README.md from step 5 (HTTPS address, phone check, close the plain HTTP port)."
 }
