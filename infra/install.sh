@@ -4,7 +4,9 @@
 #   ./install.sh --version v0.1.0  also set ZEEKR_VERSION (release install, docker-compose.release.yml)
 #                                  without --version, a release install shows the latest release tag
 #                                  from GitHub and asks y/n before using it
-#   ./install.sh --start           then run: docker compose up -d --wait
+#   ./install.sh --start           then start the stack (docker compose up -d --wait, waiting up to
+#                                  WAIT_SECONDS, default 180), create the owner login (you type the
+#                                  username and password) and offer two-step sign-in (MFA) y/n
 #                                  first it checks the system (Linux and distro, x86_64 or aarch64) and that
 #                                  Docker and the Compose plugin work; if not, it suggests how to install them
 #
@@ -12,7 +14,8 @@
 # - It never overwrites an existing .env. The database password is fixed when the database volume is
 #   first created, so a new one would lock the API out of an existing database.
 # - Secrets are written to .env (mode 600) and never printed.
-# - It does not create the owner login. After the stack is up, run:
+# - There is no default login. Only with --start does it run the owner-login command, and you type the
+#   username and password. Without --start, after the stack is up, run:
 #     docker compose exec api python -m app.cli.set_owner
 set -euo pipefail
 
@@ -20,11 +23,16 @@ here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
 version=""
 start=0
+WAIT_SECONDS="${WAIT_SECONDS:-180}"
+case "$WAIT_SECONDS" in
+  ''|*[!0-9]*) echo "WAIT_SECONDS must be a whole number of seconds (got: $WAIT_SECONDS)" >&2; exit 2 ;;
+esac
+[ "$WAIT_SECONDS" -ge 30 ] || { echo "WAIT_SECONDS must be at least 30 (got: $WAIT_SECONDS)" >&2; exit 2; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
-    -h|--help) sed -n 2,16p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,19p "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -156,11 +164,55 @@ unset pg tok
 echo "Created .env in $here (mode 600) with new random POSTGRES_PASSWORD and TOKEN_SECRET."
 echo "Never commit it or paste it anywhere. Back it up somewhere private: it is not recoverable."
 
+web_port="$(sed -n 's/^WEB_PORT=//p' .env | tail -n 1)"; web_port="${web_port:-8080}"
+
+start_stack() {
+  local deadline=$((SECONDS + WAIT_SECONDS)) state="" cid left
+  echo "Starting the containers (pulls the images; waiting up to ${WAIT_SECONDS}s for them to be healthy)..."
+  if docker compose up -d --wait --wait-timeout "$WAIT_SECONDS"; then return 0; fi
+  # Compose gives up as soon as api reports unhealthy; a slow host may still be starting it.
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    cid="$(docker compose ps -q api 2>/dev/null || true)"
+    state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid" 2>/dev/null || true)"
+    [ "$state" = healthy ] && break
+    echo "  api: ${state:-not running} ($((deadline - SECONDS))s left)"
+    sleep 5
+  done
+  if [ "$state" != healthy ]; then
+    docker compose ps >&2
+    echo "api did not become healthy. Look: docker compose logs --tail 50 api" >&2
+    echo ".env is kept, so do not run install.sh again. Fix the cause, then: docker compose up -d --wait" >&2
+    return 1
+  fi
+  left=$((deadline - SECONDS)); [ "$left" -ge 30 ] || left=30
+  docker compose up -d --wait --wait-timeout "$left"
+}
+
 if [ "$start" -eq 1 ]; then
-  docker compose up -d --wait
-  echo "Stack is up. Create the owner login now:"
+  start_stack || exit 1
+  if [ -t 0 ]; then
+    echo "Create the owner login (you choose the username and password; there is no default):"
+    docker compose exec api python -m app.cli.set_owner || {
+      echo "Owner login not created. Run it again: docker compose exec api python -m app.cli.set_owner" >&2
+      exit 1
+    }
+    reply=""
+    read -r -p "Set up two-step sign-in (MFA) now? Use a private terminal. [y/n] " reply || reply=""
+    case "$reply" in
+      y|Y) docker compose exec api python -m app.cli.set_mfa \
+             || echo "MFA not set up. Nothing was saved. To try again: docker compose exec api python -m app.cli.set_mfa" >&2 ;;
+      *) echo "Skipped MFA. Later: docker compose exec api python -m app.cli.set_mfa" ;;
+    esac
+  else
+    echo "No terminal, so the prompts were skipped. Run these yourself:"
+    echo "  docker compose exec api python -m app.cli.set_owner"
+    echo "  docker compose exec api python -m app.cli.set_mfa   (optional)"
+  fi
+  docker compose ps
+  echo "Done. The app listens on 127.0.0.1:${web_port} on this host."
 else
   echo "Next:"
   echo "  docker compose up -d --wait"
+  echo "  docker compose exec api python -m app.cli.set_owner"
+  echo "  (or run ./install.sh --start next time to do all of this, including the owner login)"
 fi
-echo "  docker compose exec api python -m app.cli.set_owner"
