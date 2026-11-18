@@ -2,6 +2,8 @@
 # First-time setup: creates .env with fresh random secrets before the first "docker compose up".
 #   ./install.sh                   create .env (from .env.example if it is next to this script)
 #   ./install.sh --version v0.1.0  also set ZEEKR_VERSION (release install, docker-compose.release.yml)
+#                                  without --version, a release install shows the latest release tag
+#                                  from GitHub and asks y/n before using it
 #   ./install.sh --start           then run: docker compose up -d --wait
 #
 # Safety:
@@ -20,7 +22,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
-    -h|--help) sed -n 2,12p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,14p "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -49,8 +51,21 @@ if [ -n "$version" ]; then
   esac
 fi
 if grep -q 'ZEEKR_VERSION' docker-compose.yml 2>/dev/null && [ -z "$version" ]; then
-  echo "This is the release compose file, so it needs a version: ./install.sh --version v0.1.0" >&2
-  exit 2
+  [ -t 0 ] || { echo "This is the release compose file and no --version was given, and there is no terminal to ask on. Run: ./install.sh --version v0.1.0" >&2; exit 2; }
+  tags="$(curl -fsSL --max-time 30 "https://api.github.com/repos/patcsy88/zeekr-companion/tags?per_page=100" 2>/dev/null \
+    | grep -oE '"name": *"v[0-9]+\.[0-9]+\.[0-9]+"' | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -uV)" || tags=""
+  latest="$(printf '%s\n' "$tags" | tail -n 1)"
+  if [ -z "$latest" ]; then
+    echo "Could not read the latest release from GitHub. Run: ./install.sh --version v0.1.0" >&2
+    exit 2
+  fi
+  echo "Latest release: $latest"
+  reply=""
+  read -r -p "Install $latest? [y/n] " reply || reply=""
+  case "$reply" in
+    y|Y) version="$latest" ;;
+    *) echo "Nothing was changed. For another version run: ./install.sh --version vX.Y.Z" >&2; exit 1 ;;
+  esac
 fi
 
 umask 077
