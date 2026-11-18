@@ -6,7 +6,8 @@
 #                                  from GitHub and asks y/n before using it
 #   ./install.sh --start           then start the stack (docker compose up -d --wait, waiting up to
 #                                  WAIT_SECONDS, default 180), create the owner login (you type the
-#                                  username and password) and offer two-step sign-in (MFA) y/n
+#                                  username and password), offer two-step sign-in (MFA) y/n, then offer
+#                                  the optional Tailscale sidecar (private HTTPS for the phone) y/n
 #                                  first it checks the system (Linux and distro, x86_64 or aarch64) and that
 #                                  Docker and the Compose plugin work; if not, it suggests how to install them
 #
@@ -33,7 +34,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
-    -h|--help) sed -n 2,19p "$self"; exit 0 ;;
+    -h|--help) sed -n 2,20p "$self"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -189,6 +190,42 @@ start_stack() {
   docker compose up -d --wait --wait-timeout "$left"
 }
 
+setup_tailscale() {
+  local reply="" name="" tmp
+  read -r -p "Set up private HTTPS with Tailscale for your phone? (optional) [y/n] " reply || reply=""
+  case "$reply" in
+    y|Y) ;;
+    *) echo "Skipped Tailscale. Later: infra/README.md, \"Owner runbook: private HTTPS with the Tailscale sidecar\"."; return 0 ;;
+  esac
+  echo "The machine name is published in public Certificate Transparency logs and cannot be taken back."
+  echo "Use a neutral name: no zeekr, personal name, plate or city (for example app-1)."
+  read -r -p "Machine name: " name || name=""
+  name="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
+  case "$name" in
+    '') echo "No name given, so Tailscale was skipped."; return 0 ;;
+    *zeekr*) echo "That name contains zeekr, so it was refused and Tailscale was skipped." >&2; return 0 ;;
+  esac
+  if ! [[ "$name" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+    echo "Use only letters, digits and hyphens (1 to 63, not starting or ending with a hyphen). Tailscale was skipped." >&2
+    return 0
+  fi
+  read -r -p "Use \"$name\"? It is permanent once issued. [y/n] " reply || reply=""
+  case "$reply" in y|Y) ;; *) echo "Tailscale was skipped."; return 0 ;; esac
+  tmp="$(mktemp .env.XXXXXX)"
+  NAME="$name" awk '
+    /^#? *COMPOSE_PROFILES=/ { if (!p) print "COMPOSE_PROFILES=tailscale"; p=1; next }
+    /^TS_HOSTNAME=/          { print "TS_HOSTNAME=" ENVIRON["NAME"]; h=1; next }
+    { print }
+    END { if (!p) print "COMPOSE_PROFILES=tailscale"; if (!h) print "TS_HOSTNAME=" ENVIRON["NAME"] }
+  ' .env > "$tmp" && chmod 600 "$tmp" && mv "$tmp" .env
+  docker compose up -d
+  echo "The Tailscale container is starting. It stays unhealthy until you log in (this is expected):"
+  echo "  1. docker compose logs tailscale     (open the login link in a browser signed in to your Tailscale account;"
+  echo "     do not paste the link anywhere)"
+  echo "  2. docker compose up -d --wait       (after logging in)"
+  echo "  Then follow infra/README.md from step 5 (HTTPS address, phone check, close the plain HTTP port)."
+}
+
 if [ "$start" -eq 1 ]; then
   start_stack || exit 1
   if [ -t 0 ]; then
@@ -204,10 +241,12 @@ if [ "$start" -eq 1 ]; then
              || echo "MFA not set up. Nothing was saved. To try again: docker compose exec api python -m app.cli.set_mfa" >&2 ;;
       *) echo "Skipped MFA. Later: docker compose exec api python -m app.cli.set_mfa" ;;
     esac
+    setup_tailscale
   else
     echo "No terminal, so the prompts were skipped. Run these yourself:"
     echo "  docker compose exec api python -m app.cli.set_owner"
     echo "  docker compose exec api python -m app.cli.set_mfa   (optional)"
+    echo "  Optional private HTTPS for your phone: infra/README.md, \"Owner runbook: private HTTPS with the Tailscale sidecar\""
   fi
   docker compose ps
   echo "Done. The app listens on 127.0.0.1:${web_port} on this host."
