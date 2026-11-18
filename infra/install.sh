@@ -8,6 +8,7 @@
 #                                  WAIT_SECONDS, default 180), create the owner login (you type the
 #                                  username and password), offer two-step sign-in (MFA) y/n, then offer
 #                                  the optional Tailscale sidecar (private HTTPS for the phone) y/n
+#   ./install.sh --script-version  print the version of this script and exit
 #                                  first it checks the system (Linux and distro, x86_64 or aarch64) and that
 #                                  Docker and the Compose plugin work; if not, it suggests how to install them
 #
@@ -19,6 +20,8 @@
 #   username and password. Without --start, after the stack is up, run:
 #     docker compose exec api python -m app.cli.set_owner
 set -euo pipefail
+
+SCRIPT_VERSION="v0.9.21"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
 self="$here/$(basename "$0")"
@@ -34,10 +37,12 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="${2:-}"; [ -n "$version" ] || { echo "--version needs a value, for example v0.1.0" >&2; exit 2; }; shift 2 ;;
     --start) start=1; shift ;;
-    -h|--help) sed -n 2,20p "$self"; exit 0 ;;
+    --script-version) echo "install.sh $SCRIPT_VERSION"; exit 0 ;;
+    -h|--help) sed -n 2,21p "$self"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
+echo "install.sh $SCRIPT_VERSION"
 
 if [ -e .env ]; then
   echo ".env already exists, so nothing was changed." >&2
@@ -134,6 +139,10 @@ if grep -q 'ZEEKR_VERSION' docker-compose.yml 2>/dev/null && [ -z "$version" ]; 
     exit 2
   fi
   echo "Latest release: $latest"
+  if [ "$(printf '%s\n%s\n' "$SCRIPT_VERSION" "$latest" | sort -V | tail -n 1)" != "$SCRIPT_VERSION" ]; then
+    echo "Note: this install.sh is $SCRIPT_VERSION but the newest release is $latest. A newer copy:"
+    echo "  curl -fsSL -o install.sh https://raw.githubusercontent.com/patcsy88/zeekr-companion/$latest/infra/install.sh"
+  fi
   reply=""
   read -r -p "Install $latest? [y/n] " reply || reply=""
   case "$reply" in

@@ -2,6 +2,7 @@
 # Update a release install (docker-compose.release.yml, ADR-012) to the newest published version.
 #   ./update.sh          show the running and newest versions, then ask y/n before changing anything
 #   ./update.sh --check  show them only, change nothing
+#   ./update.sh --script-version  print the version of this script and exit
 #
 # Run it in the folder that holds docker-compose.yml and .env (the folder install.sh was run in).
 # A clone install that builds its own images is not supported: use deploy-guide.md section 7.
@@ -27,6 +28,7 @@
 # - It never prints .env, never removes containers, volumes or images, and never runs prune.
 set -euo pipefail
 
+SCRIPT_VERSION="v0.9.21"   # the release tag this file ships in; infra/check-script-version.sh checks it
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
 BAR_WIDTH="${BAR_WIDTH:-6}"
 
@@ -41,10 +43,12 @@ check_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) check_only=1; shift ;;
-    -h|--help) sed -n 2,22p "$0"; exit 0 ;;
+    --script-version) echo "update.sh $SCRIPT_VERSION"; exit 0 ;;
+    -h|--help) sed -n 2,28p "$0"; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
+echo "update.sh $SCRIPT_VERSION"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
@@ -104,6 +108,10 @@ tags="$(curl -fsSL --max-time 30 "$api_url/tags?per_page=100" \
 latest="$(printf '%s\n' "$tags" | tail -n 1)"
 [[ "$latest" =~ $tag_re ]] || die "no release tag found on GitHub; nothing was changed"
 echo "Newest release:      $latest"
+if [ "$(printf '%s\n%s\n' "$SCRIPT_VERSION" "$latest" | sort -V | tail -n 1)" != "$SCRIPT_VERSION" ]; then
+  echo "Note: this update.sh is $SCRIPT_VERSION but the newest release is $latest. A newer copy:"
+  echo "  curl -fsSL -o update.sh $raw_url/$latest/infra/update.sh"
+fi
 
 if [ "$current" = "$latest" ]; then
   echo "Up to date. Nothing to do."
