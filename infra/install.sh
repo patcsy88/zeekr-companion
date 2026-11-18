@@ -2,7 +2,7 @@
 # First-time setup of a release install: creates .env with fresh random secrets. Run ./install.sh --help.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.22"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.23"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
@@ -33,7 +33,9 @@ Safety:
     volume is first created, so a new one would lock the API out of an existing database).
   - Secrets are written to .env (mode 600) and never printed.
   - There is no default login. Only --start runs the owner-login command, and you type the
-    username and password. Without --start, after the stack is up, run:
+    username and password. If it fails (for example the two passwords differ) you may try up to
+    3 times; after that the other steps still run (MFA is skipped, because it needs an owner),
+    it prints what is still to do and exits 0. Without --start, after the stack is up, run:
       docker compose exec api python -m app.cli.set_owner
   - It never installs Docker and never runs sudo.
 EOF
@@ -240,8 +242,18 @@ setup_tailscale() {
     /^TS_HOSTNAME=/          { print "TS_HOSTNAME=" ENVIRON["NAME"]; h=1; next }
     { print }
     END { if (!p) print "COMPOSE_PROFILES=tailscale"; if (!h) print "TS_HOSTNAME=" ENVIRON["NAME"] }
-  ' .env > "$tmp" && chmod 600 "$tmp" && mv "$tmp" .env
-  docker compose up -d
+  ' .env > "$tmp"
+  if ! { chmod 600 "$tmp" && mv "$tmp" .env; }; then
+    rm -f "$tmp"
+    echo "Could not update .env, so Tailscale was skipped." >&2
+    return 0
+  fi
+  if ! docker compose up -d; then
+    echo ".env now has COMPOSE_PROFILES=tailscale and TS_HOSTNAME=$name, but the container did not start." >&2
+    echo "Check the error above, then run: docker compose up -d" >&2
+    echo "After it starts, follow infra/README.md from step 4 (the Tailscale login)." >&2
+    return 0
+  fi
   echo "The Tailscale container is starting. It stays unhealthy until you log in (this is expected):"
   echo "  1. docker compose logs tailscale     (open the login link in a browser signed in to your Tailscale account;"
   echo "     do not paste the link anywhere)"
@@ -249,21 +261,37 @@ setup_tailscale() {
   echo "  Then follow infra/README.md from step 5 (HTTPS address, phone check, close the plain HTTP port)."
 }
 
+owner_ok=0
+create_owner() { # up to 3 tries; never ends the script, so the steps after it still run
+  local attempt=1 reply=""
+  echo "Create the owner login (you choose the username and password; there is no default):"
+  while :; do
+    if docker compose exec api python -m app.cli.set_owner; then owner_ok=1; return 0; fi
+    echo "Owner login not created." >&2
+    if [ "$attempt" -ge 3 ]; then echo "Stopped after 3 tries." >&2; return 0; fi
+    reply=""
+    read -r -p "Try again? [y/n] " reply || reply=""
+    case "$reply" in y|Y) attempt=$((attempt + 1)) ;; *) return 0 ;; esac
+  done
+}
+
 if [ "$start" -eq 1 ]; then
   start_stack || exit 1
+  owner_pending=0
   if [ -t 0 ]; then
-    echo "Create the owner login (you choose the username and password; there is no default):"
-    docker compose exec api python -m app.cli.set_owner || {
-      echo "Owner login not created. Run it again: docker compose exec api python -m app.cli.set_owner" >&2
-      exit 1
-    }
-    reply=""
-    read -r -p "Set up two-step sign-in (MFA) now? Use a private terminal. [y/n] " reply || reply=""
-    case "$reply" in
-      y|Y) docker compose exec api python -m app.cli.set_mfa \
-             || echo "MFA not set up. Nothing was saved. To try again: docker compose exec api python -m app.cli.set_mfa" >&2 ;;
-      *) echo "Skipped MFA. Later: docker compose exec api python -m app.cli.set_mfa" ;;
-    esac
+    create_owner
+    if [ "$owner_ok" -eq 1 ]; then
+      reply=""
+      read -r -p "Set up two-step sign-in (MFA) now? Use a private terminal. [y/n] " reply || reply=""
+      case "$reply" in
+        y|Y) docker compose exec api python -m app.cli.set_mfa \
+               || echo "MFA not set up. Nothing was saved. To try again: docker compose exec api python -m app.cli.set_mfa" >&2 ;;
+        *) echo "Skipped MFA. Later: docker compose exec api python -m app.cli.set_mfa" ;;
+      esac
+    else
+      owner_pending=1
+      echo "Skipped MFA: there is no owner account yet."
+    fi
     setup_tailscale
   else
     echo "No terminal, so the prompts were skipped. Run these yourself:"
@@ -272,7 +300,14 @@ if [ "$start" -eq 1 ]; then
     echo "  Optional private HTTPS for your phone: infra/README.md, \"Owner runbook: private HTTPS with the Tailscale sidecar\""
   fi
   docker compose ps
-  echo "Done. The app listens on 127.0.0.1:${web_port} on this host."
+  if [ "$owner_pending" -eq 1 ]; then
+    echo "Still to do:"
+    echo "  docker compose exec api python -m app.cli.set_owner"
+    echo "  docker compose exec api python -m app.cli.set_mfa   (after the owner exists, optional)"
+    echo "The stack is running on 127.0.0.1:${web_port}, but there is no owner login yet, so you cannot sign in."
+  else
+    echo "Done. The app listens on 127.0.0.1:${web_port} on this host."
+  fi
 else
   echo "Next:"
   echo "  docker compose up -d --wait"
