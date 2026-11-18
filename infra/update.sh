@@ -18,7 +18,7 @@
 #
 # Settings (edit here, or set them for one run: WAIT_SECONDS=180 ./update.sh):
 #   WAIT_SECONDS  how long to wait for healthy containers after starting them (default 120)
-#   BAR_WIDTH     cells in the image-pull progress bar, 4 to 40 (default 10)
+#   BAR_WIDTH     cells in the image-pull progress bar, 4 to 40 (default 6)
 #
 # Safety:
 # - Nothing changes unless you answer y. Any other answer exits.
@@ -28,7 +28,7 @@
 set -euo pipefail
 
 WAIT_SECONDS="${WAIT_SECONDS:-120}"
-BAR_WIDTH="${BAR_WIDTH:-10}"
+BAR_WIDTH="${BAR_WIDTH:-6}"
 
 repo="patcsy88/zeekr-companion"
 api_url="https://api.github.com/repos/$repo"
