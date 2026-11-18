@@ -63,6 +63,9 @@ The images are `linux/amd64` and `linux/arm64` (releases up to `v0.1.3` are `lin
 4. Create the app login. It asks for a username and a password of at least 12 characters:
    `docker compose exec api python -m app.cli.set_owner`
    Optional second step (authenticator-app code, ADR-013): `docker compose exec api python -m app.cli.set_mfa`. See `docs/operations/deploy-guide.md`.
+
+   After install, four stand-alone flags of `install.sh` (each runs alone, in a private terminal, and needs `.env` and a working Docker) cover the same steps: `./install.sh --user-reset` (create the owner login or reset its username and password), `--mfa-on`, `--mfa-off` and `--deploy-tailscale` (set up the sidecar or change its machine name). The first three need `api` running; `./install.sh --help` lists them.
+
 5. Open the app on port 8080. By default it listens on `127.0.0.1` only. To reach it from your phone, read `WEB_BIND_ADDRESS` in `docs/operations/deploy-guide.md` first.
 6. To check which copy of a script you have, run `./install.sh --script-version` or `./update.sh --script-version`; the version is also the first line each script prints. Both scripts add a note, with a `curl` line for the newer copy, when the newest release is newer than the script. To update later, run `./update.sh --restart` (a bare `./update.sh` only prints the help, and there is no look-only mode: answer `n` to change nothing). It shows the version in `.env`, the running version and the newest release, which it always updates to, and asks y/n before changing anything; a database migration adds a second question about a fresh encrypted export. It refuses to go to an older version. It draws a small braille progress bar for each image pull and waits up to 180 seconds for the containers to be healthy; change `WAIT_SECONDS` in the script, or run `WAIT_SECONDS=300 ./update.sh --restart`, on a slow host.
 
