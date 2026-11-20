@@ -2,7 +2,7 @@
 # First-time setup of a release install: creates .env with fresh random secrets. Run ./install.sh --help.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.26"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.27"   # the release tag this file ships in; infra/check-script-version.sh checks it
 
 here="$(cd "$(dirname "$0")" && pwd)"
 cd "$here"
