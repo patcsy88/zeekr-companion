@@ -1,6 +1,6 @@
 # ADR-014: Push notifications for the geofence alert and the automatic Sentry send (proposal)
 
-Status: **Drafted 2026-11-20. The owner approved the design, the data model, the API contract and the new external service (the phone maker's push service) on 2026-11-20 ("Approve"). The Python sender library is not yet approved: its version, licence and advisories are checked first, before build step 2. Build step 1 (no new package, fake sender) is built and tested (2026-11-20); each step is approved before the next.**
+Status: **Drafted 2026-11-20. The owner approved the design, the data model, the API contract and the new external service (the phone maker's push service) on 2026-11-20 ("Approve"). The owner approved `pywebpush==2.5.0` (option A, 2026-11-20). Build steps 1 and 2 are built and tested (2026-11-20); each step is approved before the next.**
 
 ## Context
 
@@ -72,7 +72,7 @@ All need the bearer token, answer `Cache-Control: no-store`, and report a bad bo
 ## Build steps (each approved before the next)
 
 1. Migration `0019`, model, repository, config values, and the four endpoints with a fake sender and tests. Contract written into `api-contracts.md`.
-2. The sender behind a small interface, the hook in `run_once`, failure and clean-up rules, and tests.
+2. The sender behind a small interface, the hook in `run_once`, failure and clean-up rules, and tests. **Built.** Text mapping from the automatic-send result: toggle off or skipped = "Sentry is off"; sent or already on = "turned on automatically"; not confirmed, failed or refused, or error = "could not be turned on". The send runs on the geofence thread with a 5-second timeout per phone, and any error is swallowed with one log line.
 3. Custom service worker, the Geofence tab buttons and tests.
 4. Docs, deploy guide (generating the VAPID keys on the host, the host `.env` values), and a fresh encrypted export before deploying, because of the migration.
 

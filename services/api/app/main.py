@@ -48,7 +48,7 @@ from app.routers import (
 from app.services.auth import AuthService
 from app.services.daily_read import daily_read_lifespan
 from app.services.geofence import geofence_lifespan
-from app.services.push import NoSender
+from app.services.push import build_push_sender
 from app.services.reasoning import build_reasoning_model
 from app.services.sentry_state import SentryStateHub
 
@@ -165,7 +165,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.live_lock = threading.Lock()
     app.state.sentry_send_lock = threading.Lock()
     app.state.sentry_hub = SentryStateHub()
-    app.state.push_sender = NoSender()  # the real sender comes in build step 2
+    app.state.push_sender = build_push_sender(settings)
     app.state.sentry_sleep = time.sleep  # a test replaces it so nothing waits
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)

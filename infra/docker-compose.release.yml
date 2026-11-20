@@ -80,6 +80,9 @@ services:
       GEOFENCE_INTERVAL_MINUTES: ${GEOFENCE_INTERVAL_MINUTES:-5}
       GEOFENCE_STALE_MINUTES: ${GEOFENCE_STALE_MINUTES:-30}
       GEOFENCE_AUTO_SENTRY_ALLOWED: ${GEOFENCE_AUTO_SENTRY_ALLOWED:-false}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Only the proxy container is believed when it sets X-Forwarded-For (login rate limit key).
       # Never '*': the entrypoint refuses it.
       FORWARDED_ALLOW_IPS: ${WEB_PROXY_IP:-172.28.77.10}

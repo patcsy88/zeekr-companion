@@ -7,8 +7,11 @@ is, `NoSender` says every send failed. Nothing here logs or returns an endpoint 
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
-from typing import Protocol
+from typing import Any, Protocol
+
+from fastapi import FastAPI
 
 from app.config import Settings
 from app.errors import Conflict
@@ -47,6 +50,75 @@ class NoSender:
 
     def send(self, sub: SavedSubscription, text: str) -> str:
         return SendResult.FAILED
+
+
+SEND_TIMEOUT_S = 5.0
+
+ALERT_TEXT_OFF = "Car is away from home and Sentry is off."
+ALERT_TEXT_ON = "Car is away from home. Sentry was turned on automatically."
+ALERT_TEXT_FAILED = "Car is away from home. Sentry could not be turned on."
+
+
+def alert_text(auto_result: str | None) -> str:
+    """The fixed text for a new alert, from the automatic-send result (None = toggle off)."""
+    if auto_result in ("sent", "already on"):
+        return ALERT_TEXT_ON
+    if auto_result is None or auto_result.startswith("skipped"):
+        return ALERT_TEXT_OFF
+    return ALERT_TEXT_FAILED
+
+
+class WebPushSender:
+    """Sends through pywebpush with the host's VAPID values. The tap target is the Sentry tab."""
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+
+    def send(self, sub: SavedSubscription, text: str) -> str:
+        key = self._settings.vapid_private_key
+        subject = self._settings.vapid_subject
+        if key is None or subject is None:
+            return SendResult.FAILED
+        try:
+            from pywebpush import WebPushException, webpush
+        except Exception:
+            return SendResult.FAILED
+        payload = json.dumps({"body": text, "url": "/?tab=sentry"})
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                },
+                data=payload,
+                vapid_private_key=key.get_secret_value(),
+                vapid_claims={"sub": subject.get_secret_value()},
+                timeout=SEND_TIMEOUT_S,
+                ttl=3600,
+            )
+        except WebPushException as exc:
+            return SendResult.GONE if exc.status_code in (404, 410) else SendResult.FAILED
+        except Exception:
+            return SendResult.FAILED
+        return SendResult.OK
+
+
+def build_push_sender(settings: Settings) -> PushSender:
+    return WebPushSender(settings) if push_enabled(settings) else NoSender()
+
+
+def notify_alert(app: FastAPI, auto_result: str | None, now: dt.datetime) -> None:
+    """One notification for a new alert. Best effort: never raises, never stops the check."""
+    try:
+        state: Any = app.state
+        if not push_enabled(state.settings):
+            return
+        with state.session_factory() as session:
+            PushService(
+                PushSubscriptionRepository(session), state.settings, state.push_sender
+            ).send_all(alert_text(auto_result), now)
+    except Exception:
+        log.warning("Push: alert notification failed")
 
 
 def push_enabled(settings: Settings) -> bool:

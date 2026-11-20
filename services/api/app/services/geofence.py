@@ -38,6 +38,7 @@ from app.services.auto_sentry import AutoSentrySender
 from app.services.geofence_home import Fetch, HomePoint, HomeResolver
 from app.services.geofence_settings import ALLOWED_USAGE_CODES, DEFAULT_CODES, Effective, effective
 from app.services.live_vehicle import CLOCK_SKEW, LiveVehicleService
+from app.services.push import notify_alert
 
 CONDITION = "sentry_off_outside_geofence"
 EARTH_RADIUS_KM = 6371.0
@@ -186,6 +187,7 @@ class GeofenceCheck:
             if outcome == "alert opened":
                 # ADR-011: once, for this new alert only. None means the toggle is off.
                 sent = AutoSentrySender(app).after_alert_opened(moment)
+                notify_alert(app, sent, moment)  # ADR-014: best effort, never raises
                 if sent is not None:
                     return f"{outcome}; automatic send: {sent}"
             return outcome

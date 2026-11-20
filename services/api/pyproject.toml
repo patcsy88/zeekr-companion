@@ -23,6 +23,8 @@ dependencies = [
     "zeekr-ev-api==0.1.15",
     # ADR-013, owner-approved 2026-11-06, pinned exactly. Draws the setup QR in the terminal only.
     "segno==1.6.6",
+    # ADR-014, owner-approved 2026-11-20, pinned exactly. Sends the push notifications.
+    "pywebpush==2.5.0",
 ]
 
 [project.optional-dependencies]
@@ -61,6 +63,10 @@ strict = true
 warn_unreachable = true
 files = ["app"]
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pywebpush"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
