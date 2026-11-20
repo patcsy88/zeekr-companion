@@ -80,7 +80,7 @@ class GeofenceMapService:
                 office_out = GeofenceOfficeOut(
                     east_km=east_o,
                     north_km=north_o,
-                    radius_km=self._settings.geofence_office_radius_km,
+                    radius_km=current.office_radius_km,
                 )
         reading = self._provider.geofence_input
         if reading is None:
@@ -103,7 +103,7 @@ class GeofenceMapService:
         elif (
             office is not None
             and distance_km(office.latitude, office.longitude, reading.latitude, reading.longitude)
-            <= self._settings.geofence_office_radius_km
+            <= current.office_radius_km
         ):
             place = "office"
         outside = place is None

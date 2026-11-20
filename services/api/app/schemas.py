@@ -1024,13 +1024,14 @@ def _code_list(allowed: tuple[tuple[int, str, bool], ...]):  # type: ignore[no-u
 
 class GeofenceSettingsIn(_Input):
     radius_km: Annotated[float, Field(strict=True, gt=0, le=100, allow_inf_nan=False)]
+    office_radius_km: Annotated[float, Field(strict=True, gt=0, le=100, allow_inf_nan=False)]
     interval_minutes: Annotated[int, Field(strict=True, ge=5, le=1440)]
     stale_minutes: Annotated[int, Field(strict=True, ge=1, le=30)]
     usage_mode_codes: Annotated[
         list[Annotated[int, Field(strict=True)]], AfterValidator(_code_list(USAGE_MODE_OPTIONS))
     ]
 
-    @field_validator("radius_km", mode="after")
+    @field_validator("radius_km", "office_radius_km", mode="after")
     @classmethod
     def _two_decimals(cls, value: float) -> float:
         rounded = round(value, 2)
@@ -1041,6 +1042,7 @@ class GeofenceSettingsIn(_Input):
 
 class GeofenceValuesOut(BaseModel):
     radius_km: float
+    office_radius_km: float
     interval_minutes: int
     stale_minutes: int
     usage_mode_codes: list[int]
@@ -1048,6 +1050,7 @@ class GeofenceValuesOut(BaseModel):
 
 class GeofenceSourcesOut(BaseModel):
     radius_km: Literal["saved", "env"]
+    office_radius_km: Literal["saved", "env"]
     interval_minutes: Literal["saved", "env"]
     stale_minutes: Literal["saved", "env"]
     usage_mode_codes: Literal["saved", "env"]

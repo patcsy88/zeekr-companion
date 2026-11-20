@@ -16,6 +16,7 @@ function settings(
   return {
     settings: {
       radius_km: 5,
+      office_radius_km: 2,
       interval_minutes: 5,
       stale_minutes: 30,
       usage_mode_codes: [0],
@@ -23,6 +24,7 @@ function settings(
     },
     sources: {
       radius_km: origin,
+      office_radius_km: origin,
       interval_minutes: origin,
       stale_minutes: origin,
       usage_mode_codes: origin,
@@ -118,17 +120,44 @@ describe('geofence: the tab', () => {
     const radius = await screen.findByLabelText(/Radius/);
     await user.clear(radius);
     await user.type(radius, '8');
+    const office = screen.getByLabelText(/Office radius/);
+    await user.clear(office);
+    await user.type(office, '1.5');
     await user.click(screen.getByRole('checkbox', { name: 'Parked' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
     expect(puts).toEqual([
       {
         radius_km: 8,
+        office_radius_km: 1.5,
         interval_minutes: 5,
         stale_minutes: 30,
         usage_mode_codes: [0, 1],
       },
     ]);
+  });
+
+  it('refuses an office radius of 0 or above the limit without calling the server', async () => {
+    const puts: unknown[] = [];
+    server.use(
+      http.get('*/api/v1/geofence/settings', () => HttpResponse.json(settings())),
+      http.put('*/api/v1/geofence/settings', async ({ request: r }) => {
+        puts.push(await r.json());
+        return HttpResponse.json(settings({}, true));
+      }),
+    );
+    const user = open();
+    render(<App />);
+    const office = await screen.findByLabelText(/Office radius/);
+    for (const bad of ['0', '101']) {
+      await user.clear(office);
+      await user.type(office, bad);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText(/Office radius must be above 0 and at most 100 km/),
+      ).toBeInTheDocument();
+    }
+    expect(puts).toEqual([]);
   });
 
   it('refuses a stale limit above 30 without calling the server', async () => {
@@ -183,7 +212,13 @@ describe('geofence: the tab', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(/applies at the next check/)).toBeInTheDocument();
     expect(puts).toEqual([
-      { radius_km: 5, interval_minutes: 5, stale_minutes: 30, usage_mode_codes: [1] },
+      {
+        radius_km: 5,
+        office_radius_km: 2,
+        interval_minutes: 5,
+        stale_minutes: 30,
+        usage_mode_codes: [1],
+      },
     ]);
   });
 

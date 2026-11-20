@@ -40,6 +40,7 @@ def usage_codes(saved: list[int]) -> list[int]:
 @dataclass(frozen=True)
 class Effective:
     radius_km: float
+    office_radius_km: float
     interval_minutes: int
     stale_minutes: int
     usage_mode_codes: frozenset[str]
@@ -49,12 +50,16 @@ def effective(settings: Settings, saved: SavedGeofence | None) -> Effective:
     if saved is None:
         return Effective(
             settings.geofence_radius_km,
+            settings.geofence_office_radius_km,
             settings.geofence_interval_minutes,
             settings.geofence_stale_minutes,
             frozenset(str(c) for c in DEFAULT_CODES),
         )
     return Effective(
         saved.radius_km,
+        settings.geofence_office_radius_km
+        if saved.office_radius_km is None
+        else saved.office_radius_km,
         saved.interval_minutes,
         saved.stale_minutes,
         frozenset(str(c) for c in usage_codes(saved.usage_mode_codes)),
@@ -76,6 +81,7 @@ class GeofenceSettingsService:
         if saved is None:
             values = GeofenceValuesOut(
                 radius_km=env.geofence_radius_km,
+                office_radius_km=env.geofence_office_radius_km,
                 interval_minutes=env.geofence_interval_minutes,
                 stale_minutes=env.geofence_stale_minutes,
                 usage_mode_codes=list(DEFAULT_CODES),
@@ -84,6 +90,11 @@ class GeofenceSettingsService:
         else:
             values = GeofenceValuesOut(
                 radius_km=saved.radius_km,
+                office_radius_km=(
+                    env.geofence_office_radius_km
+                    if saved.office_radius_km is None
+                    else saved.office_radius_km
+                ),
                 interval_minutes=saved.interval_minutes,
                 stale_minutes=saved.stale_minutes,
                 usage_mode_codes=usage_codes(saved.usage_mode_codes),
@@ -93,6 +104,9 @@ class GeofenceSettingsService:
             settings=values,
             sources=GeofenceSourcesOut(
                 radius_km=origin,
+                office_radius_km=(
+                    "saved" if saved is not None and saved.office_radius_km is not None else "env"
+                ),
                 interval_minutes=origin,
                 stale_minutes=origin,
                 usage_mode_codes=origin,

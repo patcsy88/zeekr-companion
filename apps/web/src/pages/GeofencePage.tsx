@@ -11,6 +11,7 @@ import { GeofenceMapCard } from '../components/GeofenceMapCard';
 
 interface Form {
   radius: string;
+  officeRadius: string;
   interval: string;
   stale: string;
   usage: number[];
@@ -20,6 +21,7 @@ function toForm(g: GeofenceSettings): Form {
   const s = g.settings;
   return {
     radius: String(s.radius_km),
+    officeRadius: String(s.office_radius_km),
     interval: String(s.interval_minutes),
     stale: String(s.stale_minutes),
     usage: s.usage_mode_codes,
@@ -110,6 +112,9 @@ export function GeofencePage() {
     const radius = Number(f.radius);
     if (!(radius > 0 && radius <= limits.radius_km_max))
       return `Radius must be above 0 and at most ${limits.radius_km_max} km.`;
+    const officeRadius = Number(f.officeRadius);
+    if (!(officeRadius > 0 && officeRadius <= limits.radius_km_max))
+      return `Office radius must be above 0 and at most ${limits.radius_km_max} km.`;
     const interval = whole(f.interval);
     if (!(interval >= limits.interval_minutes_min && interval <= limits.interval_minutes_max))
       return `Interval must be ${limits.interval_minutes_min} to ${limits.interval_minutes_max} minutes.`;
@@ -137,6 +142,7 @@ export function GeofencePage() {
         path: '/geofence/settings',
         body: {
           radius_km: Number(form.radius),
+          office_radius_km: Number(form.officeRadius),
           interval_minutes: whole(form.interval),
           stale_minutes: whole(form.stale),
           usage_mode_codes: form.usage,
@@ -215,6 +221,15 @@ export function GeofencePage() {
             value={form.radius}
             onChange={(e) => {
               setForm({ ...form, radius: e.target.value });
+            }}
+          />
+          <TextField
+            id="geo-office-radius"
+            label="Office radius (km)"
+            inputMode="decimal"
+            value={form.officeRadius}
+            onChange={(e) => {
+              setForm({ ...form, officeRadius: e.target.value });
             }}
           />
           <TextField

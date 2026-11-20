@@ -1139,6 +1139,8 @@ export interface components {
         GeofenceSettingsIn: {
             /** Interval Minutes */
             interval_minutes: number;
+            /** Office Radius Km */
+            office_radius_km: number;
             /** Radius Km */
             radius_km: number;
             /** Stale Minutes */
@@ -1166,6 +1168,11 @@ export interface components {
              */
             interval_minutes: "saved" | "env";
             /**
+             * Office Radius Km
+             * @enum {string}
+             */
+            office_radius_km: "saved" | "env";
+            /**
              * Radius Km
              * @enum {string}
              */
@@ -1185,6 +1192,8 @@ export interface components {
         GeofenceValuesOut: {
             /** Interval Minutes */
             interval_minutes: number;
+            /** Office Radius Km */
+            office_radius_km: number;
             /** Radius Km */
             radius_km: number;
             /** Stale Minutes */

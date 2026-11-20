@@ -13,6 +13,7 @@ from app.models import GeofenceSettings
 @dataclass(frozen=True)
 class SavedGeofence:
     radius_km: float
+    office_radius_km: float | None
     interval_minutes: int
     stale_minutes: int
     gear_codes: list[int]
@@ -32,6 +33,9 @@ class GeofenceSettingsRepository:
             if row is None
             else SavedGeofence(
                 radius_km=float(row.radius_km),
+                office_radius_km=(
+                    None if row.office_radius_km is None else float(row.office_radius_km)
+                ),
                 interval_minutes=row.interval_minutes,
                 stale_minutes=row.stale_minutes,
                 gear_codes=list(row.gear_codes),

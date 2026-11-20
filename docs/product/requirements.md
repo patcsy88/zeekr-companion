@@ -244,6 +244,7 @@ Owner answers (2026-11-17): option A (an SVG diagram, not a street map); the car
 | AC-98 | The alert opens only when the car is outside the home radius and outside the office radius (or the office is not set); the other conditions are unchanged. An open alert closes when the car reaches the office, and no automatic Sentry send happens inside the office. |
 | AC-99 | A failed office lookup treats the office as not set, logs one line without the query, and leaves home working. The office result is saved in its own file with its own query hash. |
 | AC-100 | `GET /api/v1/geofence/map` returns `place` (`home`, `office` or `null`) and `office` (`{east_km, north_km, radius_km}` rounded to 0.1 km, or `null` when unset, unresolved or farther than 100 km from home); `outside` means outside every safe place; no coordinate appears. `GET /api/v1/geofence/settings` returns `office_set`. The Geofence tab draws the office as a second dashed circle and says where the car is. |
+| AC-101 | The office radius can be changed on the Geofence tab (always shown). `PUT /api/v1/geofence/settings` requires `office_radius_km` (above 0, at most 100, two decimals; `400` otherwise); `GET` returns it with its source (`saved` or `env`); the check and the map use the radius in force; "Use the host values" resets it. A row saved before migration `0018` uses the host value. |
 
 ## Open questions for the owner
 

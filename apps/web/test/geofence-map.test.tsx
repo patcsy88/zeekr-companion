@@ -28,9 +28,16 @@ function map(over: Partial<GeofenceMap> = {}): GeofenceMap {
 }
 
 const SETTINGS = {
-  settings: { radius_km: 5, interval_minutes: 5, stale_minutes: 30, usage_mode_codes: [0] },
+  settings: {
+    radius_km: 5,
+    office_radius_km: 2,
+    interval_minutes: 5,
+    stale_minutes: 30,
+    usage_mode_codes: [0],
+  },
   sources: {
     radius_km: 'env',
+    office_radius_km: 'env',
     interval_minutes: 'env',
     stale_minutes: 'env',
     usage_mode_codes: 'env',

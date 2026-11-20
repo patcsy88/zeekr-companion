@@ -582,6 +582,8 @@ class GeofenceSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     radius_km: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    # Null means the host GEOFENCE_OFFICE_RADIUS_KM applies (a row saved before migration 0018).
+    office_radius_km: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     stale_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     gear_codes: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger), nullable=False)
@@ -591,6 +593,10 @@ class GeofenceSettings(Base):
     __table_args__ = (
         CheckConstraint("id = 1", name="single_row"),
         CheckConstraint("radius_km > 0 AND radius_km <= 100", name="radius_valid"),
+        CheckConstraint(
+            "office_radius_km IS NULL OR (office_radius_km > 0 AND office_radius_km <= 100)",
+            name="office_radius_valid",
+        ),
         CheckConstraint("interval_minutes BETWEEN 5 AND 1440", name="interval_valid"),
         CheckConstraint("stale_minutes BETWEEN 1 AND 30", name="stale_valid"),
         CheckConstraint("cardinality(gear_codes) BETWEEN 1 AND 5", name="gear_codes_valid"),

@@ -211,7 +211,13 @@ def test_ac93_uses_the_saved_radius_and_stale_limit(
 ) -> None:
     seen = dt.datetime.now(dt.UTC) - dt.timedelta(minutes=25)
     setup(client, tmp_path, geo_input(observed_at=seen))
-    saved = {"radius_km": 8.5, "interval_minutes": 10, "stale_minutes": 20, "usage_mode_codes": [0]}
+    saved = {
+        "radius_km": 8.5,
+        "office_radius_km": 2.5,
+        "interval_minutes": 10,
+        "stale_minutes": 20,
+        "usage_mode_codes": [0],
+    }
     put = client.put("/api/v1/geofence/settings", json=saved, headers=auth_headers)
     assert put.status_code == 200
     body = get(client, auth_headers)
@@ -269,6 +275,7 @@ def test_ac94_outside_matches_the_alert_rule_at_the_boundary(
     class Row:
         def __init__(self, radius: float) -> None:
             self.radius_km = radius
+            self.office_radius_km = None
             self.interval_minutes = 5
             self.stale_minutes = 30
             self.usage_mode_codes = [0]

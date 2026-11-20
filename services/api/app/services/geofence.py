@@ -178,7 +178,7 @@ class GeofenceCheck:
             now=moment,
             usage_mode_codes=current.usage_mode_codes,
             office=self._office(),
-            office_radius_km=settings.geofence_office_radius_km,
+            office_radius_km=current.office_radius_km,
         )
         self.last_age_minutes = verdict.age_minutes
         if verdict.result in ("alert", "clear"):

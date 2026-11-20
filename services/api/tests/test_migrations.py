@@ -34,7 +34,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0017"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0018"
             )
     finally:
         engine.dispose()
@@ -491,6 +491,58 @@ def test_0014_geofence_settings_checks_and_downgrade(fresh_database_url: str) ->
         engine = create_engine(fresh_database_url)
         with engine.connect() as conn:
             assert conn.execute(text("SELECT to_regclass('geofence_settings')")).scalar() is None
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+
+
+def test_0018_office_radius_is_nullable_checked_and_downgrades(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, office: Any) -> None:
+        conn.execute(text("DELETE FROM geofence_settings"))
+        conn.execute(
+            text(
+                "INSERT INTO geofence_settings (id, radius_km, office_radius_km, interval_minutes, "
+                "stale_minutes, gear_codes, usage_mode_codes, updated_at) "
+                "VALUES (1, 5, :o, 5, 30, '{0}', '{0}', now())"
+            ),
+            {"o": office},
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    for good in (None, 0.01, 2, 100):
+        with engine.begin() as conn:
+            insert(conn, good)
+    for bad in (0, -1, 100.01):
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            insert(conn, bad)
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM geofence_settings"))
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0017")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            columns = conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'geofence_settings'"
+                )
+            ).scalars()
+            assert "office_radius_km" not in set(columns)
         engine.dispose()
     finally:
         os.environ.pop("DATABASE_URL", None)

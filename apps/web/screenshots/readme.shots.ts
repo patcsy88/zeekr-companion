@@ -134,9 +134,16 @@ const autoLog = [
 ];
 
 const geofence = {
-  settings: { radius_km: 8, interval_minutes: 10, stale_minutes: 20, usage_mode_codes: [1] },
+  settings: {
+    radius_km: 8,
+    office_radius_km: 2,
+    interval_minutes: 10,
+    stale_minutes: 20,
+    usage_mode_codes: [1],
+  },
   sources: {
     radius_km: 'saved',
+    office_radius_km: 'saved',
     interval_minutes: 'saved',
     stale_minutes: 'saved',
     usage_mode_codes: 'saved',

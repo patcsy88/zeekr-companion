@@ -17,6 +17,7 @@ from tests.test_geofence_check import HOME, NOW, geo_input
 URL = "/api/v1/geofence/settings"
 GOOD: dict[str, Any] = {
     "radius_km": 8.5,
+    "office_radius_km": 3.5,
     "interval_minutes": 10,
     "stale_minutes": 20,
     "usage_mode_codes": [1, 0],
@@ -38,6 +39,7 @@ def test_defaults_come_from_env_and_never_show_the_home(
     body = r.json()
     assert body["settings"] == {
         "radius_km": 5.0,
+        "office_radius_km": 2.0,
         "interval_minutes": 5,
         "stale_minutes": 30,
         "usage_mode_codes": [0],
@@ -65,12 +67,14 @@ def test_save_reads_back_and_reset_is_repeatable(
     assert r.json()["settings"]["usage_mode_codes"] == [0, 1]
     assert set(r.json()["sources"].values()) == {"saved"}
     assert client.get(URL, headers=auth_headers).json()["settings"]["radius_km"] == 8.5
+    assert r.json()["settings"]["office_radius_km"] == 3.5
     client.put(URL, json={**GOOD, "radius_km": 2}, headers=auth_headers)
     assert client.get(URL, headers=auth_headers).json()["settings"]["radius_km"] == 2.0
     for _ in range(2):
         d = client.delete(URL, headers=auth_headers)
         assert d.status_code == 200
         assert d.json()["settings"]["radius_km"] == 5.0
+        assert d.json()["settings"]["office_radius_km"] == 2.0
         assert set(d.json()["sources"].values()) == {"env"}
 
 
@@ -80,6 +84,11 @@ def test_save_reads_back_and_reset_is_repeatable(
         {"radius_km": 0},
         {"radius_km": 100.5},
         {"radius_km": "5"},
+        {"office_radius_km": 0},
+        {"office_radius_km": -1},
+        {"office_radius_km": 100.5},
+        {"office_radius_km": "2"},
+        {"office_radius_km": None},
         {"interval_minutes": 4},
         {"interval_minutes": 1441},
         {"stale_minutes": 0},
@@ -224,3 +233,32 @@ def test_interval_follows_the_saved_row(client: TestClient, auth_headers: dict[s
     assert check.interval_seconds == 900.0
     client.delete(URL, headers=auth_headers)
     assert check.interval_seconds == 300.0
+
+
+def test_the_office_radius_is_required_and_rounds_to_two_decimals(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    missing = {k: v for k, v in GOOD.items() if k != "office_radius_km"}
+    r = client.put(URL, json=missing, headers=auth_headers)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "validation_error"
+    r = client.put(URL, json={**GOOD, "office_radius_km": 1.234}, headers=auth_headers)
+    assert r.status_code == 200 and r.json()["settings"]["office_radius_km"] == 1.23
+    client.delete(URL, headers=auth_headers)
+
+
+def test_a_row_saved_before_the_office_radius_uses_the_host_value(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _write_row(client, [0], [0])
+    body = client.get(URL, headers=auth_headers).json()
+    assert body["settings"]["office_radius_km"] == 2.0
+    assert body["sources"]["office_radius_km"] == "env"
+    assert body["sources"]["radius_km"] == "saved"
+    check = _app_with_reading(client, geofence_office_radius_km=4.0)
+    assert check._effective().office_radius_km == 4.0
+    client.put(URL, json=GOOD, headers=auth_headers)
+    assert check._effective().office_radius_km == 3.5
+    body = client.get(URL, headers=auth_headers).json()
+    assert body["sources"]["office_radius_km"] == "saved"
+    client.delete(URL, headers=auth_headers)
+    assert check._effective().office_radius_km == 4.0

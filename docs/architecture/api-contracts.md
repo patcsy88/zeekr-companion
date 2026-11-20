@@ -1039,7 +1039,7 @@ Response:
 
 The owner approved one optional second place, "Office". Inside its radius there is no alert and no automatic Sentry-on, the same as at home. Nothing turns Sentry off. The data model has no change: no table, no column. Only two places exist.
 
-- **Host `.env` only** (never in the repo, docs, tests, logs or responses): `GEOFENCE_OFFICE_QUERY` (one Nominatim lookup, saved in `office.json` next to `home.json` with its own query hash), or both `GEOFENCE_OFFICE_LAT` and `GEOFENCE_OFFICE_LON` (skip the lookup; set together, in range). `GEOFENCE_OFFICE_RADIUS_KM` defaults to 2.0 (above 0, at most 100) and is not editable in the app. The office is optional; `GEOFENCE_ENABLED` still needs only home.
+- **Host `.env` only** (never in the repo, docs, tests, logs or responses): `GEOFENCE_OFFICE_QUERY` (one Nominatim lookup, saved in `office.json` next to `home.json` with its own query hash), or both `GEOFENCE_OFFICE_LAT` and `GEOFENCE_OFFICE_LON` (skip the lookup; set together, in range). `GEOFENCE_OFFICE_RADIUS_KM` defaults to 2.0 (above 0, at most 100) and is the default for the office radius, which can be changed in the app (see the amendment below). The office is optional; `GEOFENCE_ENABLED` still needs only home.
 - **Alert rule:** the alert opens only when the car is outside the home radius **and** outside the office radius (or the office is not set). The other conditions are unchanged. An open alert closes through the existing close path when the car reaches the office. Automatic Sentry still fires only when a new alert opens.
 - **Office lookup fails:** the office is treated as not set, with one log line (`Geofence office lookup gave no result`, no query). Home keeps working. The car alerts at the office until the lookup works.
 - **`GET /api/v1/geofence/map`** gains two fields and one changed meaning:
@@ -1055,7 +1055,7 @@ The owner approved one optional second place, "Office". Inside its radius there 
 - `office` is the office offset from home, rounded to 0.1 km, with its radius. It is `null` when the office is not set, its lookup has no saved result, or it is farther than 100 km from home (the flat projection is only accurate within about 100 km, so it is left off the map; the alert rule still uses it). It is the only new data; no coordinate appears.
 - `place` is the place the car is inside (`home` or `office`), or `null` when it is inside neither, or when `car` is `null`.
 - `outside` now means outside every safe place (the same rule as the alert). `radius_km` stays the home radius.
-- **`GET /api/v1/geofence/settings`** gains the boolean `office_set` next to `home_set`. `PUT` and `DELETE` are unchanged, and "Use the host values" leaves the office alone.
+- **`GET /api/v1/geofence/settings`** gains the boolean `office_set` next to `home_set`. See the office-radius amendment below for `PUT` and `DELETE`.
 - Web: the map draws the office as a second dashed circle, with the same four-radii edge arrow, and says "At home", "At the office" or "Outside home and the office". The status line says whether the office point is set.
 - Acceptance criteria: AC-97 to AC-100 in `docs/product/requirements.md`.
 
@@ -1119,3 +1119,11 @@ Response: `{ "items": [ ... ], "next_cursor": "string|null", "current_odometer":
 
 No link to expenses or service records: a tyre event never creates or changes an expense (owner, T1). No stored "current tyres" or "km since": the web app computes them from the list. No rotation interval: a rotation reminder is an ordinary Service reminder that the web app opens prefilled (owner, T2).
 
+### Amendment: office radius editable in the app (owner approved 2026-11-20; migration `0018`)
+
+- **Migration `0018`:** nullable `geofence_settings.office_radius_km numeric(6,2)`, check null or (above 0, at most 100). Null means the host `GEOFENCE_OFFICE_RADIUS_KM` applies (a row saved before the migration). Downgrade drops the column. No coordinate is stored.
+- **`PUT /api/v1/geofence/settings`** requires `office_radius_km` like the other fields: a strict number, above 0, at most `limits.radius_km_max` (100), rounded to two decimals. A missing or bad value is `400`, never `422`.
+- **`GET` and `PUT`/`DELETE` responses** return `settings.office_radius_km` and `sources.office_radius_km` (`saved` or `env`).
+- **The check and the map** use the radius in force (saved, else host).
+- **`DELETE` ("Use the host values")** resets the office radius to the host value along with the other settings.
+- Web: the Geofence form always shows "Office radius (km)", validated like the radius. A web app cached before this release sends no office radius and gets `400` on save until it reloads.
