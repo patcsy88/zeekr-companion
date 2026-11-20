@@ -4,7 +4,7 @@
 # A clone install that builds its own images is not supported: use deploy-guide.md section 7.
 set -euo pipefail
 
-SCRIPT_VERSION="v0.9.28"   # the release tag this file ships in; infra/check-script-version.sh checks it
+SCRIPT_VERSION="v0.9.29"   # the release tag this file ships in; infra/check-script-version.sh checks it
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
 BAR_WIDTH="${BAR_WIDTH:-6}"
 
