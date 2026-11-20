@@ -1099,8 +1099,11 @@ export interface components {
             car: components["schemas"]["GeofenceCarOffsetOut"] | null;
             /** Observed At */
             observed_at: string | null;
+            office: components["schemas"]["GeofenceOfficeOut"] | null;
             /** Outside */
             outside: boolean | null;
+            /** Place */
+            place: ("home" | "office") | null;
             /** Radius Km */
             radius_km: number;
             /** Stale */
@@ -1110,6 +1113,18 @@ export interface components {
              * @enum {string}
              */
             state: "ok" | "off" | "home_not_set" | "no_reading" | "incomplete" | "stale";
+        };
+        /**
+         * GeofenceOfficeOut
+         * @description The office offset from home in km, rounded to 0.1 km, and its radius. Never a coordinate.
+         */
+        GeofenceOfficeOut: {
+            /** East Km */
+            east_km: number;
+            /** North Km */
+            north_km: number;
+            /** Radius Km */
+            radius_km: number;
         };
         /** GeofenceOptionOut */
         GeofenceOptionOut: {
@@ -1138,6 +1153,8 @@ export interface components {
             /** Home Set */
             home_set: boolean;
             limits: components["schemas"]["GeofenceLimitsOut"];
+            /** Office Set */
+            office_set: boolean;
             settings: components["schemas"]["GeofenceValuesOut"];
             sources: components["schemas"]["GeofenceSourcesOut"];
         };

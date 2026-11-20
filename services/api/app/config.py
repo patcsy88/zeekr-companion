@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     geofence_home_lat: SecretStr | None = None
     geofence_home_lon: SecretStr | None = None
     geofence_radius_km: float = Field(default=5.0, gt=0, le=100)
+    # Optional second safe place (owner-approved 2026-11-20). Host `infra/.env` only, like home.
+    geofence_office_query: SecretStr | None = None
+    geofence_office_lat: SecretStr | None = None
+    geofence_office_lon: SecretStr | None = None
+    geofence_office_radius_km: float = Field(default=2.0, gt=0, le=100)
     geofence_interval_minutes: int = Field(default=5, ge=5, le=1440)
     geofence_stale_minutes: int = Field(default=30, ge=1, le=1440)
     # Second lock for automatic Sentry on (ADR-011). The toggle in the app does nothing unless this
@@ -107,6 +112,9 @@ class Settings(BaseSettings):
         "geofence_home_query",
         "geofence_home_lat",
         "geofence_home_lon",
+        "geofence_office_query",
+        "geofence_office_lat",
+        "geofence_office_lon",
         mode="before",
     )
     @classmethod
@@ -124,19 +132,25 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _geofence_needs_its_settings(self) -> Settings:
         lat, lon = self.geofence_home_lat, self.geofence_home_lon
-        if (lat is None) != (lon is None):
-            raise ValueError("GEOFENCE_HOME_LAT and GEOFENCE_HOME_LON must be set together")
-        if lat is not None and lon is not None:
-            for name, secret, limit in (
-                ("GEOFENCE_HOME_LAT", lat, 90.0),
-                ("GEOFENCE_HOME_LON", lon, 180.0),
-            ):
-                try:
-                    number = float(secret.get_secret_value())
-                except ValueError:
-                    raise ValueError(f"{name} must be a number") from None
-                if not -limit <= number <= limit:
-                    raise ValueError(f"{name} is out of range")
+        for place, plat, plon in (
+            ("HOME", lat, lon),
+            ("OFFICE", self.geofence_office_lat, self.geofence_office_lon),
+        ):
+            if (plat is None) != (plon is None):
+                raise ValueError(
+                    f"GEOFENCE_{place}_LAT and GEOFENCE_{place}_LON must be set together"
+                )
+            if plat is not None and plon is not None:
+                for name, secret, limit in (
+                    (f"GEOFENCE_{place}_LAT", plat, 90.0),
+                    (f"GEOFENCE_{place}_LON", plon, 180.0),
+                ):
+                    try:
+                        number = float(secret.get_secret_value())
+                    except ValueError:
+                        raise ValueError(f"{name} must be a number") from None
+                    if not -limit <= number <= limit:
+                        raise ValueError(f"{name} is out of range")
         if self.geofence_enabled:
             if not self.zeekr_live_enabled:
                 raise ValueError("GEOFENCE_ENABLED needs ZEEKR_LIVE_ENABLED to be true")

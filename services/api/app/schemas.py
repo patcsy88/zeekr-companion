@@ -1075,6 +1075,7 @@ class GeofenceSettingsOut(BaseModel):
     limits: GeofenceLimitsOut
     enabled: bool
     home_set: bool
+    office_set: bool
 
 
 class GeofenceCarOffsetOut(BaseModel):
@@ -1084,11 +1085,21 @@ class GeofenceCarOffsetOut(BaseModel):
     north_km: float
 
 
+class GeofenceOfficeOut(BaseModel):
+    """The office offset from home in km, rounded to 0.1 km, and its radius. Never a coordinate."""
+
+    east_km: float
+    north_km: float
+    radius_km: float
+
+
 class GeofenceMapOut(BaseModel):
     state: Literal["ok", "off", "home_not_set", "no_reading", "incomplete", "stale"]
     radius_km: float
     car: GeofenceCarOffsetOut | None
     outside: bool | None
+    place: Literal["home", "office"] | None
+    office: GeofenceOfficeOut | None
     observed_at: dt.datetime | None
     age_minutes: int | None
     stale: bool

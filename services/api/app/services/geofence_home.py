@@ -32,6 +32,7 @@ USER_AGENT = "ZeekrCompanion/0.1 (self-hosted personal app, one lookup)"
 TIMEOUT_S = 10.0
 MAX_REPLY_BYTES = 65_536
 FILE_NAME = "home.json"
+OFFICE_FILE_NAME = "office.json"
 _urlopen = urllib.request.urlopen  # looked up at call time, so a test can replace it
 
 
@@ -82,15 +83,17 @@ def _digest(query: str) -> str:
 
 
 class HomeResolver:
-    def __init__(self, settings: Settings, fetch: Fetch | None = None) -> None:
+    def __init__(self, settings: Settings, fetch: Fetch | None = None, place: str = "home") -> None:
         self._settings = settings
+        self._place = place
+        self._file = FILE_NAME if place == "home" else OFFICE_FILE_NAME
         self._fetch: Fetch = fetch if fetch is not None else nominatim_lookup
         self._point: HomePoint | None = None
         self._done = False
 
     @property
     def _path(self) -> Path:
-        return Path(self._settings.geofence_state_dir) / FILE_NAME
+        return Path(self._settings.geofence_state_dir) / self._file
 
     def resolve(self) -> HomePoint | None:
         if self._done:
@@ -105,14 +108,15 @@ class HomeResolver:
 
     def _find(self, *, lookup: bool = True) -> HomePoint | None:
         s = self._settings
-        if s.geofence_home_lat is not None and s.geofence_home_lon is not None:
-            manual = _valid(
-                s.geofence_home_lat.get_secret_value(), s.geofence_home_lon.get_secret_value()
-            )
+        lat_s = getattr(s, f"geofence_{self._place}_lat")
+        lon_s = getattr(s, f"geofence_{self._place}_lon")
+        query_s = getattr(s, f"geofence_{self._place}_query")
+        if lat_s is not None and lon_s is not None:
+            manual = _valid(lat_s.get_secret_value(), lon_s.get_secret_value())
             return HomePoint(*manual) if manual else None
-        if s.geofence_home_query is None:
+        if query_s is None:
             return None
-        query = s.geofence_home_query.get_secret_value().strip()
+        query = query_s.get_secret_value().strip()
         if not query:
             return None
         digest = _digest(query)
@@ -125,7 +129,7 @@ class HomeResolver:
             found = None
         checked = _valid(*found) if found else None
         if checked is None:
-            log.warning("Geofence home lookup gave no result")
+            log.warning("Geofence %s lookup gave no result", self._place)
             return None
         self._save(digest, checked)
         return HomePoint(*checked)
@@ -142,7 +146,7 @@ class HomeResolver:
 
     def _save(self, digest: str, point: tuple[float, float]) -> None:
         folder = self._path.parent
-        temp = folder / (FILE_NAME + ".tmp")
+        temp = folder / (self._file + ".tmp")
         try:
             folder.mkdir(mode=0o700, parents=True, exist_ok=True)
             payload = json.dumps(
@@ -153,4 +157,6 @@ class HomeResolver:
                 handle.write(payload)
             os.replace(temp, self._path)
         except OSError:
-            log.warning("Geofence home point could not be saved; it is kept in memory only")
+            log.warning(
+                "Geofence %s point could not be saved; it is kept in memory only", self._place
+            )

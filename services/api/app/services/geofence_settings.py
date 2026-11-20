@@ -108,6 +108,7 @@ class GeofenceSettingsService:
             ),
             enabled=env.geofence_enabled,
             home_set=env.geofence_home_query is not None or env.geofence_home_lat is not None,
+            office_set=env.geofence_office_query is not None or env.geofence_office_lat is not None,
         )
 
     def save(self, body: GeofenceSettingsIn) -> GeofenceSettingsOut:

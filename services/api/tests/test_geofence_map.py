@@ -88,6 +88,8 @@ def test_ac93_off_when_the_geofence_is_off(
         "radius_km": 5.0,
         "car": None,
         "outside": None,
+        "place": None,
+        "office": None,
         "observed_at": None,
         "age_minutes": None,
         "stale": False,

@@ -13,13 +13,15 @@ from typing import Any
 
 from app.config import Settings
 from app.repositories.geofence_settings import GeofenceSettingsRepository
-from app.schemas import GeofenceCarOffsetOut, GeofenceMapOut
+from app.schemas import GeofenceCarOffsetOut, GeofenceMapOut, GeofenceOfficeOut
 from app.services.geofence import EARTH_RADIUS_KM, distance_km
 from app.services.geofence_home import HomePoint, HomeResolver
 from app.services.geofence_settings import effective
 from app.services.live_vehicle import CLOCK_SKEW
 
 STEP_KM = 0.1
+# Beyond this the flat projection is no longer accurate, so a far office is left off the map.
+MAP_LIMIT_KM = 100.0
 
 
 def _rounded(km: float) -> float:
@@ -49,12 +51,16 @@ class GeofenceMapService:
         current = effective(self._settings, self._repo.get())
         radius = current.radius_km
 
+        office_out: GeofenceOfficeOut | None = None
+
         def empty(state: Any, **kw: Any) -> GeofenceMapOut:
             values: dict[str, Any] = {
                 "state": state,
                 "radius_km": radius,
                 "car": None,
                 "outside": None,
+                "place": None,
+                "office": office_out,
                 "observed_at": None,
                 "age_minutes": None,
                 "stale": False,
@@ -67,6 +73,15 @@ class GeofenceMapService:
         home = HomeResolver(self._settings).known()
         if home is None:
             return empty("home_not_set")
+        office = HomeResolver(self._settings, None, "office").known()
+        if office is not None:
+            east_o, north_o = offset_km(home, office.latitude, office.longitude)
+            if math.hypot(east_o, north_o) <= MAP_LIMIT_KM:
+                office_out = GeofenceOfficeOut(
+                    east_km=east_o,
+                    north_km=north_o,
+                    radius_km=self._settings.geofence_office_radius_km,
+                )
         reading = self._provider.geofence_input
         if reading is None:
             return empty("no_reading")
@@ -79,14 +94,26 @@ class GeofenceMapService:
             return empty("incomplete", observed_at=seen, age_minutes=age)
         east, north = offset_km(home, reading.latitude, reading.longitude)
         stale = moment - seen > dt.timedelta(minutes=current.stale_minutes)
-        outside = (
-            distance_km(home.latitude, home.longitude, reading.latitude, reading.longitude) > radius
-        )
+        place: str | None = None
+        if (
+            distance_km(home.latitude, home.longitude, reading.latitude, reading.longitude)
+            <= radius
+        ):
+            place = "home"
+        elif (
+            office is not None
+            and distance_km(office.latitude, office.longitude, reading.latitude, reading.longitude)
+            <= self._settings.geofence_office_radius_km
+        ):
+            place = "office"
+        outside = place is None
         return GeofenceMapOut(
             state="stale" if stale else "ok",
             radius_km=radius,
             car=GeofenceCarOffsetOut(east_km=east, north_km=north),
             outside=outside,
+            place=place,
+            office=office_out,
             observed_at=seen,
             age_minutes=age,
             stale=stale,

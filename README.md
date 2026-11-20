@@ -40,7 +40,7 @@ iPhone width (390 px), light and dark. Every value shown is synthetic (an RWD Lo
 | Sentry                                                                                                                                                    | Geofence                                                                                                                                                          |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/sentry-light.png" width="180" alt="Sentry, light"> <img src="docs/screenshots/sentry-dark.png" width="180" alt="Sentry, dark"> | <img src="docs/screenshots/geofence-light.png" width="180" alt="Geofence, light"> <img src="docs/screenshots/geofence-dark.png" width="180" alt="Geofence, dark"> |
-| A geofence notice and the Sentry switch, which asks before it sends                                                                                       | The map: home, the radius and the car's distance from home. No street map or coordinates.                                                                         |
+| A geofence notice and the Sentry switch, which asks before it sends                                                                                       | The map: home, an optional office, their radii and the car's distance from home. No street map or coordinates.                                                    |
 
 ## How it is built
 

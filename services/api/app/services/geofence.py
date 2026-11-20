@@ -5,7 +5,8 @@ The one exception is ADR-011: when a new alert opens and the owner has switched 
 
 Every `GEOFENCE_INTERVAL_MINUTES` the app takes one reading through the same provider, spacing,
 lock and login cap as the Vehicle card. An alert is open while all of these hold on a fresh
-reading: the car is farther than the radius from home, `gearAutoStatus` is '0' (P, always), and
+reading: the car is farther than the radius from home and from the office (when one is set),
+`gearAutoStatus` is '0' (P, always), and
 `usageMode` is one of the chosen states (Deep Sleep '0' and/or Parked '1', never any other), and
 Sentry reads off. It closes by itself when any stops holding. At most one is open.
 
@@ -72,6 +73,8 @@ def evaluate(
     stale_minutes: int,
     now: dt.datetime,
     usage_mode_codes: frozenset[str] = DEFAULT_STATES,
+    office: HomePoint | None = None,
+    office_radius_km: float = 0.0,
 ) -> Verdict:
     if home is None:
         return Verdict("no_home")
@@ -95,6 +98,11 @@ def evaluate(
     outside = distance_km(home.latitude, home.longitude, reading.latitude, reading.longitude) > (
         radius_km
     )
+    if office is not None and outside:
+        outside = (
+            distance_km(office.latitude, office.longitude, reading.latitude, reading.longitude)
+            > office_radius_km
+        )
     holds = (
         outside
         and reading.gear == GEAR_PARK
@@ -111,6 +119,7 @@ class GeofenceCheck:
         self._resolver_fetch = fetch
         self._resolver: HomeResolver | None = None
         self._resolver_settings: Any = None
+        self._office_resolver: HomeResolver | None = None
         self.last_age_minutes: int | None = None
 
     def _effective(self) -> Effective:
@@ -131,8 +140,16 @@ class GeofenceCheck:
         settings = self._app.state.settings
         if self._resolver is None or self._resolver_settings is not settings:
             self._resolver = HomeResolver(settings, self._resolver_fetch)
+            self._office_resolver = HomeResolver(settings, self._resolver_fetch, "office")
             self._resolver_settings = settings
         return self._resolver.resolve()
+
+    def _office(self) -> HomePoint | None:
+        """The optional office. A failed lookup means no office; home keeps working."""
+        self._home()
+        if self._office_resolver is None:
+            return None
+        return self._office_resolver.resolve()
 
     def run_once(self, now: dt.datetime | None = None) -> str:
         """One check. Returns the outcome in words (no position, no distance)."""
@@ -160,6 +177,8 @@ class GeofenceCheck:
             stale_minutes=current.stale_minutes,
             now=moment,
             usage_mode_codes=current.usage_mode_codes,
+            office=self._office(),
+            office_radius_km=settings.geofence_office_radius_km,
         )
         self.last_age_minutes = verdict.age_minutes
         if verdict.result in ("alert", "clear"):

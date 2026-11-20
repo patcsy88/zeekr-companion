@@ -41,6 +41,7 @@ function settings(
     },
     enabled: true,
     home_set: true,
+    office_set: true,
   };
 }
 
@@ -85,7 +86,9 @@ describe('geofence: the tab', () => {
     render(<App />);
     expect(await screen.findByLabelText(/Radius/)).toHaveValue('5');
     expect(screen.getByTestId('geo-status')).toHaveTextContent('Geofence: on');
-    expect(screen.getByTestId('geo-status')).toHaveTextContent('Home point: set');
+    expect(screen.getByTestId('geo-status')).toHaveTextContent(
+      'Home point: set. Office point: set',
+    );
     expect(screen.getByText(/never sends anything to the car/)).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Vehicle State(s)' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Deep Sleep' })).toBeChecked();

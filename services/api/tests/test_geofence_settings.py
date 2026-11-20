@@ -45,6 +45,7 @@ def test_defaults_come_from_env_and_never_show_the_home(
     assert set(body["sources"].values()) == {"env"}
     assert body["enabled"] is False
     assert body["home_set"] is False
+    assert body["office_set"] is False
     assert body["limits"]["stale_minutes_max"] == 30
     # Gear is not a setting, and only the two vehicle states can be picked (owner, 2026-11-08).
     assert "gear" not in r.text

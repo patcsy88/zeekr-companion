@@ -18,6 +18,8 @@ function map(over: Partial<GeofenceMap> = {}): GeofenceMap {
     radius_km: 5,
     car: { east_km: 3, north_km: 4 },
     outside: false,
+    place: 'home',
+    office: null,
     observed_at: '2026-11-17T02:15:00Z',
     age_minutes: 4,
     stale: false,
@@ -47,6 +49,7 @@ const SETTINGS = {
   },
   enabled: true,
   home_set: true,
+  office_set: false,
 };
 
 function serve(...bodies: GeofenceMap[]) {
@@ -110,6 +113,19 @@ describe('AC-96: geofence map, drawing maths', () => {
     expect(l.x).toBeLessThan(0);
   });
 
+  it('fits a near office inside the drawing and flags a far one', () => {
+    const near = layout(
+      map({ office: { east_km: 11, north_km: 0, radius_km: 2 }, car: { east_km: 3, north_km: 4 } }),
+    );
+    expect(near.officeBeyond).toBe(false);
+    expect(near.officeX).toBeGreaterThan(0);
+    expect(Math.abs(near.officeY)).toBeCloseTo(0);
+    expect(near.officeX + 2 * near.k).toBeLessThanOrEqual(100 + 0.001);
+    const far = layout(map({ office: { east_km: 0, north_km: -80, radius_km: 2 } }));
+    expect(far.officeBeyond).toBe(true);
+    expect(far.officeY).toBeGreaterThan(0);
+  });
+
   it('picks a round scale bar', () => {
     expect(scaleKm(6)).toBe(2);
     expect(scaleKm(24)).toBe(10);
@@ -133,6 +149,56 @@ describe('AC-96: geofence map on the tab', () => {
     expect(within(card).getByTestId('geo-map-age')).toHaveTextContent('Reading 4 minutes old.');
     expect(within(card).queryByTestId('geo-map-beyond')).not.toBeInTheDocument();
     expect(within(card).getByText(/never asks the car/)).toBeInTheDocument();
+  });
+
+  it('draws the office as a second circle and says where the car is', async () => {
+    serve(
+      map({
+        office: { east_km: 6, north_km: -2, radius_km: 2 },
+        car: { east_km: 6.5, north_km: -2 },
+        place: 'office',
+      }),
+    );
+    open();
+    render(<App />);
+    const card = await screen.findByTestId('geo-map');
+    expect(await within(card).findByTestId('geo-map-office')).toHaveTextContent('Office');
+    expect(within(card).getByRole('img')).toHaveAccessibleName(
+      'Car 6.8 km from home, inside the 5 km home radius and the 2 km office radius.',
+    );
+    expect(within(card).getByTestId('geo-map-summary')).toHaveTextContent('At the office.');
+    expect(within(card).queryByTestId('geo-map-office-beyond')).not.toBeInTheDocument();
+  });
+
+  it('says the car is outside home and the office, and flags an office too far to draw', async () => {
+    serve(
+      map({
+        office: { east_km: 0, north_km: 90, radius_km: 2 },
+        car: { east_km: 8, north_km: 0 },
+        outside: true,
+        place: null,
+      }),
+    );
+    open();
+    render(<App />);
+    const card = await screen.findByTestId('geo-map');
+    expect(await within(card).findByTestId('geo-map-office-beyond')).toBeInTheDocument();
+    expect(within(card).getByTestId('geo-map-summary')).toHaveTextContent(
+      'Outside home and the office.',
+    );
+    expect(within(card).getByTestId('geo-map-summary')).toHaveTextContent(
+      'The office is too far to draw to scale',
+    );
+  });
+
+  it('draws no office when none is set', async () => {
+    serve(map());
+    open();
+    render(<App />);
+    const card = await screen.findByTestId('geo-map');
+    await within(card).findByRole('img');
+    expect(within(card).queryByTestId('geo-map-office')).not.toBeInTheDocument();
+    expect(within(card).getByTestId('geo-map-summary')).not.toHaveTextContent('At home');
   });
 
   it('greys out a stale reading and says so', async () => {

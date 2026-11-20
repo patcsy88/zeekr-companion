@@ -30,10 +30,20 @@ export function layout(m: GeofenceMap) {
   const distance = car ? Math.hypot(car.east_km, car.north_km) : 0;
   const beyond = distance > m.radius_km * MAX_RADII;
   const shown = Math.min(distance, m.radius_km * MAX_RADII);
-  const extent = Math.max(m.radius_km, shown) * 1.2;
+  const office = m.office ?? null;
+  const officeDistance = office ? Math.hypot(office.east_km, office.north_km) : 0;
+  const officeBeyond = officeDistance > m.radius_km * MAX_RADII;
+  const officeShown = Math.min(officeDistance, m.radius_km * MAX_RADII);
+  const officeReach = office ? officeShown + office.radius_km : 0;
+  const extent = Math.max(m.radius_km, shown, officeReach) * 1.2;
   const k = HALF / extent;
   const angle = Math.atan2(car?.north_km ?? 0, car?.east_km ?? 0);
+  const officeAngle = Math.atan2(office?.north_km ?? 0, office?.east_km ?? 0);
   return {
+    officeBeyond,
+    officeX: Math.cos(officeAngle) * officeShown * k,
+    officeY: -Math.sin(officeAngle) * officeShown * k,
+    officeAngle,
     distance,
     beyond,
     extent,
@@ -117,11 +127,24 @@ function Drawing({ map }: { map: GeofenceMap }) {
   const r = map.radius_km * l.k;
   const bar = scaleKm(l.extent);
   const barW = bar * l.k;
+  const office = map.office ?? null;
   const where = map.outside ? 'outside' : 'inside';
-  const label = `Car ${l.distance.toFixed(1)} km from home, ${where} the ${map.radius_km} km radius${
+  const place = map.place ?? null;
+  const placeText = office
+    ? place === 'office'
+      ? 'At the office'
+      : place === 'home'
+        ? 'At home'
+        : 'Outside home and the office'
+    : null;
+  const radiusText = office
+    ? `the ${map.radius_km} km home radius and the ${office.radius_km} km office radius`
+    : `the ${map.radius_km} km radius`;
+  const label = `Car ${l.distance.toFixed(1)} km from home, ${where} ${radiusText}${
     stale ? ', reading stale' : ''
   }.`;
   const arrowDeg = (-l.angle * 180) / Math.PI;
+  const officeArrowDeg = (-l.officeAngle * 180) / Math.PI;
   return (
     <>
       <svg
@@ -152,6 +175,45 @@ function Drawing({ map }: { map: GeofenceMap }) {
         >
           N
         </text>
+        {office ? (
+          <g data-testid="geo-map-office">
+            <circle
+              cx={l.officeX}
+              cy={l.officeY}
+              r={office.radius_km * l.k}
+              fill="currentColor"
+              fillOpacity="0.06"
+              stroke="currentColor"
+              strokeOpacity="0.5"
+              strokeDasharray="4 3"
+            />
+            <rect
+              x={l.officeX - 4}
+              y={l.officeY - 4}
+              width="8"
+              height="8"
+              rx="2"
+              className="fill-primary"
+            />
+            <text
+              x={l.officeX}
+              y={l.officeY + 14}
+              textAnchor="middle"
+              fontSize="8"
+              fill="currentColor"
+            >
+              Office
+            </text>
+            {l.officeBeyond ? (
+              <path
+                d="M 0 -4 L 7 0 L 0 4 Z"
+                fill="currentColor"
+                transform={`translate(${l.officeX} ${l.officeY}) rotate(${officeArrowDeg}) translate(8 0)`}
+                data-testid="geo-map-office-beyond"
+              />
+            ) : null}
+          </g>
+        ) : null}
         <rect x="-5" y="-5" width="10" height="10" rx="2" className="fill-primary" />
         <text x="0" y="16" textAnchor="middle" fontSize="8" fill="currentColor">
           Home
@@ -188,8 +250,10 @@ function Drawing({ map }: { map: GeofenceMap }) {
         </g>
       </svg>
       <p className="m-0" data-testid="geo-map-summary">
-        {l.distance.toFixed(1)} km from home, {where} the {map.radius_km} km radius.
+        {placeText ? `${placeText}. ` : ''}
+        {l.distance.toFixed(1)} km from home, {where} {radiusText}.
         {l.beyond ? ' Too far to draw to scale: shown on the edge, in its direction.' : ''}
+        {l.officeBeyond ? ' The office is too far to draw to scale: shown on the edge.' : ''}
       </p>
       <p className={`m-0 ${SMALL}`} data-testid="geo-map-age">
         Reading {ago(map.age_minutes)}

@@ -186,8 +186,8 @@ export function GeofencePage() {
       {data ? (
         <p className={HINT} data-testid="geo-status">
           Geofence: {data.enabled ? 'on' : 'off'} (set on the host). Home point:{' '}
-          {data.home_set ? 'set' : 'not set'}. Values from:{' '}
-          {data.sources.radius_km === 'saved' ? 'saved settings' : 'the host'}.
+          {data.home_set ? 'set' : 'not set'}. Office point: {data.office_set ? 'set' : 'not set'}.
+          Values from: {data.sources.radius_km === 'saved' ? 'saved settings' : 'the host'}.
         </p>
       ) : null}
       {aboveLimit && limits ? (

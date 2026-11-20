@@ -1035,6 +1035,30 @@ Response:
 - Web: a "Map" card on the Geofence tab, online only, with a Refresh button. Nothing from it is saved in IndexedDB. A car further than four radii away is drawn on the edge in its direction, with an arrow.
 - Acceptance criteria: AC-92 to AC-96 in `docs/product/requirements.md`.
 
+### Amendment: office as a second safe place (owner approved 2026-11-20; no migration)
+
+The owner approved one optional second place, "Office". Inside its radius there is no alert and no automatic Sentry-on, the same as at home. Nothing turns Sentry off. The data model has no change: no table, no column. Only two places exist.
+
+- **Host `.env` only** (never in the repo, docs, tests, logs or responses): `GEOFENCE_OFFICE_QUERY` (one Nominatim lookup, saved in `office.json` next to `home.json` with its own query hash), or both `GEOFENCE_OFFICE_LAT` and `GEOFENCE_OFFICE_LON` (skip the lookup; set together, in range). `GEOFENCE_OFFICE_RADIUS_KM` defaults to 2.0 (above 0, at most 100) and is not editable in the app. The office is optional; `GEOFENCE_ENABLED` still needs only home.
+- **Alert rule:** the alert opens only when the car is outside the home radius **and** outside the office radius (or the office is not set). The other conditions are unchanged. An open alert closes through the existing close path when the car reaches the office. Automatic Sentry still fires only when a new alert opens.
+- **Office lookup fails:** the office is treated as not set, with one log line (`Geofence office lookup gave no result`, no query). Home keeps working. The car alerts at the office until the lookup works.
+- **`GET /api/v1/geofence/map`** gains two fields and one changed meaning:
+
+```json
+{
+  "outside": false,
+  "place": "home | office | null",
+  "office": { "east_km": 7.2, "north_km": -1.4, "radius_km": 2.0 }
+}
+```
+
+- `office` is the office offset from home, rounded to 0.1 km, with its radius. It is `null` when the office is not set, its lookup has no saved result, or it is farther than 100 km from home (the flat projection is only accurate within about 100 km, so it is left off the map; the alert rule still uses it). It is the only new data; no coordinate appears.
+- `place` is the place the car is inside (`home` or `office`), or `null` when it is inside neither, or when `car` is `null`.
+- `outside` now means outside every safe place (the same rule as the alert). `radius_km` stays the home radius.
+- **`GET /api/v1/geofence/settings`** gains the boolean `office_set` next to `home_set`. `PUT` and `DELETE` are unchanged, and "Use the host values" leaves the office alone.
+- Web: the map draws the office as a second dashed circle, with the same four-radii edge arrow, and says "At home", "At the office" or "Outside home and the office". The status line says whether the office point is set.
+- Acceptance criteria: AC-97 to AC-100 in `docs/product/requirements.md`.
+
 ## Tyre events (APPROVED by the owner, 2026-11-08)
 
 Covers FR-9 (AC-75 to AC-86 in `docs/product/requirements.md`). Reuses all Conventions above (`/api/v1`, `snake_case`, client UUIDs, Bearer token, `no-store`, 64 KiB body limit, error shape and codes, `currency` MYR only, `extra=forbid`, trimmed strings, no NUL). No new status code or error code. No approved part changes.

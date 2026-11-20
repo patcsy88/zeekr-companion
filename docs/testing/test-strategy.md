@@ -105,6 +105,7 @@ Image scan on GitHub (added by the owner 2026-11-09; not a local gate): `.github
 | AC-83 | `tyres.test.tsx` (Add reminder prefilled with Service, "Rotate tyres", odometer + N; nothing saved until Save; offered only on Rotate) |
 | AC-84 | `tyres.test.tsx` (current odometer, all four wheels, size from the tyre specification only when at most 50 characters) |
 | AC-85 | `test_tyre_events.py` (401 on every route, cap 1,000 with replay at the cap, concurrent creates at the cap, text stored verbatim); `tyres.test.tsx` (plain-text rendering) |
+| AC-97, AC-98, AC-99, AC-100 | `test_geofence_office.py` (28 tests: rule at home, office and both, office not set, bad or half-set values, own file and hash, lookup failure with home working, alert closing at the office, no automatic send, map `place`, `office` and `outside`, far office, `office_set`) and `geofence-map.test.tsx` (office circle, edge arrow, wording). Real-car check at the office: **deferred, not run** |
 | AC-87, AC-88, AC-89, AC-90 | `vehicle-profile.test.tsx` (variant and year lists, required fields, year appended, tyre default and override, drive follows the variant until changed, existing and older values kept; 10 of 11 fail on the old form) and Playwright `e2e/slice.spec.ts` (create and edit with the dropdowns). Manual iPhone check: **deferred, not run** |
 | AC-86 | `test_migrations.py` (migration `0017`: constraints, apply, re-run, downgrade to `0016`) and all gates. Manual iPhone check: **deferred, not run** |
 

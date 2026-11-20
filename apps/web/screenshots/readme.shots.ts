@@ -155,6 +155,7 @@ const geofence = {
   },
   enabled: true,
   home_set: true,
+  office_set: false,
 };
 
 // A made-up offset from home (km), never a coordinate: outside the sample 8 km radius.
@@ -163,6 +164,8 @@ const geofenceMap = {
   radius_km: 8,
   car: { east_km: 9.6, north_km: 4.1 },
   outside: true,
+  place: null,
+  office: null,
   observed_at: READ_AT,
   age_minutes: 5,
   stale: false,
