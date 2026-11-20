@@ -183,7 +183,7 @@ def test_the_real_sender_passes_the_vapid_values_and_a_short_timeout(
     assert seen["vapid_private_key"] == "private-made-up"
     assert seen["vapid_claims"] == {"sub": "mailto:owner@example.test"}
     assert seen["timeout"] == push_module.SEND_TIMEOUT_S <= 10
-    assert json.loads(seen["data"]) == {"body": "Hello", "url": "/?tab=sentry"}
+    assert json.loads(seen["data"]) == {"body": "Hello", "url": "/sentry"}
 
 
 class FakeResponse:

@@ -20,8 +20,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      // main.tsx only mounts <App />; it runs in the browser, not under jsdom.
-      exclude: ['src/main.tsx'],
+      // main.tsx only mounts <App />; sw.ts runs in the service worker. Neither runs under jsdom.
+      // The push logic lives in src/lib/pushHandlers.ts and is tested.
+      exclude: ['src/main.tsx', 'src/sw.ts'],
       reporter: ['text-summary', 'text'],
       // Floors just below the 2026-11-10 baseline (87.57 / 82.56 / 84.7 / 90.71). Raise them, never lower them.
       thresholds: { statements: 87, branches: 82, functions: 84, lines: 90 },

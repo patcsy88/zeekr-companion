@@ -68,6 +68,9 @@ export type CommandLog = Schemas["CommandLogOut"];
 export type CommandLogItem = Schemas["CommandLogItem"];
 export type AutoSentry = Schemas["AutoSentryOut"];
 export type AutoSentryInput = Schemas["AutoSentryIn"];
+export type PushConfig = Schemas["PushConfigOut"];
+export type PushDevices = Schemas["PushDevicesOut"];
+export type PushTest = Schemas["PushTestOut"];
 
 /** Error body returned for every non-2xx response under /api. */
 export type ApiErrorResponse = Schemas["ErrorResponse"];

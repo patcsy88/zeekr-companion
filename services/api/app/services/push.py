@@ -83,7 +83,7 @@ class WebPushSender:
             from pywebpush import WebPushException, webpush
         except Exception:
             return SendResult.FAILED
-        payload = json.dumps({"body": text, "url": "/?tab=sentry"})
+        payload = json.dumps({"body": text, "url": "/sentry"})
         try:
             webpush(
                 subscription_info={

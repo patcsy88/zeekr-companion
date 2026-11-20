@@ -13,6 +13,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt', // user-confirmed updates: "New version available, reload"
       injectRegister: false,
+      strategies: 'injectManifest', // our own src/sw.ts: app shell cache plus push (ADR-014)
+      srcDir: 'src',
+      filename: 'sw.ts',
       manifest: {
         name: 'Zeekr Companion',
         short_name: 'Zeekr',
@@ -28,19 +31,14 @@ export default defineConfig({
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // App shell only. No runtimeCaching, so nothing under /api is ever put in Cache Storage.
+      injectManifest: {
+        // App shell only. sw.ts has no runtime caching, so nothing under /api is ever cached.
         globPatterns: [
           '**/*.{js,css,html,svg,png,webmanifest}',
           '**/inter-latin-wght-normal-*.woff2',
         ],
         // The iPhone launch images are read by iOS when the app is added, not by the app.
         globIgnores: ['splash/**'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/health/],
-        cleanupOutdatedCaches: true,
-        clientsClaim: false,
-        skipWaiting: false,
       },
     }),
   ],

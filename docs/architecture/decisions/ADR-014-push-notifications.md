@@ -1,6 +1,6 @@
 # ADR-014: Push notifications for the geofence alert and the automatic Sentry send (proposal)
 
-Status: **Drafted 2026-11-20. The owner approved the design, the data model, the API contract and the new external service (the phone maker's push service) on 2026-11-20 ("Approve"). The owner approved `pywebpush==2.5.0` (option A, 2026-11-20). Build steps 1 and 2 are built and tested (2026-11-20); each step is approved before the next.**
+Status: **Drafted 2026-11-20. The owner approved the design, the data model, the API contract and the new external service (the phone maker's push service) on 2026-11-20 ("Approve"). The owner approved `pywebpush==2.5.0` (option A, 2026-11-20). Build steps 1 to 3 are built and tested (2026-11-20 and 2026-11-21); each step is approved before the next.**
 
 ## Context
 
@@ -73,7 +73,7 @@ All need the bearer token, answer `Cache-Control: no-store`, and report a bad bo
 
 1. Migration `0019`, model, repository, config values, and the four endpoints with a fake sender and tests. Contract written into `api-contracts.md`.
 2. The sender behind a small interface, the hook in `run_once`, failure and clean-up rules, and tests. **Built.** Text mapping from the automatic-send result: toggle off or skipped = "Sentry is off"; sent or already on = "turned on automatically"; not confirmed, failed or refused, or error = "could not be turned on". The send runs on the geofence thread with a 5-second timeout per phone, and any error is swallowed with one log line.
-3. Custom service worker, the Geofence tab buttons and tests.
+3. Custom service worker, the Geofence tab buttons and tests. **Built.** `vite-plugin-pwa` now uses `injectManifest` with `src/sw.ts` (same app-shell precache, same navigation fallback and `/api` denylist, no runtime caching, no `skipWaiting`, no `clientsClaim`). It adds `push` and `notificationclick` handlers; the logic is in `src/lib/pushHandlers.ts`. A tap opens only `/sentry` or `/geofence` (anything else falls back to `/sentry`). Three exact-pinned dev packages were added so the worker can import them directly: `workbox-core`, `workbox-precaching`, `workbox-routing` 7.4.1 (already in the tree through `workbox-build`). The card is `PushCard` on the Geofence tab: Turn on alerts, Send a test, Turn off alerts, with text for host-off, unsupported browser and blocked permission.
 4. Docs, deploy guide (generating the VAPID keys on the host, the host `.env` values), and a fresh encrypted export before deploying, because of the migration.
 
 ## Not in scope

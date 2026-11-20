@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { cn } from '../lib/cn';
 import { Checkbox } from '../components/ui/checkbox';
 import { GeofenceMapCard } from '../components/GeofenceMapCard';
+import { PushCard } from '../components/PushCard';
 
 interface Form {
   radius: string;
@@ -275,6 +276,7 @@ export function GeofencePage() {
           </div>
         </form>
       ) : null}
+      <PushCard />
     </section>
   );
 }

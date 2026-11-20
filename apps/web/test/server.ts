@@ -844,6 +844,9 @@ const liveHandlers = [
     }),
   ),
   http.get('*/api/v1/advisory/proposals', () => HttpResponse.json({ items: [] })),
+  http.get('*/api/v1/push/config', () =>
+    HttpResponse.json({ enabled: false, public_key: null, devices: 0, max_devices: 5 }),
+  ),
   http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
   http.get('*/api/v1/vehicle/sentry/auto', () =>
     HttpResponse.json({
