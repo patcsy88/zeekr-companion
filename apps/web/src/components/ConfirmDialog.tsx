@@ -8,10 +8,12 @@ import {
   AlertDialogTitle,
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
+import { useSheetDrag } from '../lib/sheetDrag';
 
 /**
  * Asks before something that cannot be undone. Cancel has the focus when it opens, Escape or
- * Cancel closes it, and a tap on the dimmed page does nothing.
+ * Cancel closes it, and a tap on the dimmed page does nothing. On a phone the grab bar at the top
+ * drags the sheet down to cancel; it is off while a request runs (`cancelDisabled`).
  */
 export function ConfirmDialog({
   open,
@@ -38,6 +40,7 @@ export function ConfirmDialog({
   descriptionTestId?: string;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dragHandlers = useSheetDrag(onCancel, cancelDisabled);
   return (
     <AlertDialog
       open={open}
@@ -46,6 +49,17 @@ export function ConfirmDialog({
       }}
     >
       <AlertDialogPopup initialFocus={cancelRef}>
+        <div
+          aria-hidden="true"
+          data-testid="sheet-grabber"
+          className="flex touch-none justify-center pt-3 sm:hidden"
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          {...dragHandlers}
+        >
+          <span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+        </div>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription data-testid={descriptionTestId}>
