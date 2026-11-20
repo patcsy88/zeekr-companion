@@ -1,6 +1,6 @@
 # ADR-014: Push notifications for the geofence alert and the automatic Sentry send (proposal)
 
-Status: **Proposal, drafted 2026-11-20. Not approved. Nothing is built.** It needs the owner's approval of the design, the data model, the API contract, a new dependency and a new external service (the phone maker's push service) before any code.
+Status: **Drafted 2026-11-20. The owner approved the design, the data model, the API contract and the new external service (the phone maker's push service) on 2026-11-20 ("Approve"). The Python sender library is not yet approved: its version, licence and advisories are checked first, before build step 2. Build step 1 (no new package, fake sender) is built and tested (2026-11-20); each step is approved before the next.**
 
 ## Context
 

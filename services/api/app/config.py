@@ -93,6 +93,11 @@ class Settings(BaseSettings):
     # Second lock for automatic Sentry on (ADR-011). The toggle in the app does nothing unless this
     # is true. Off by default; the first real use waits for the owner's watched trial.
     geofence_auto_sentry_allowed: bool = False
+    # Push notifications (ADR-014, owner-approved 2026-11-20). Host `infra/.env` only. Push is on
+    # only when all three are set; the subject is a contact address and is never logged.
+    vapid_private_key: SecretStr | None = None
+    vapid_public_key: str | None = Field(default=None, max_length=200)
+    vapid_subject: SecretStr | None = None
     # Where the one-time lookup result is kept. A writable volume on the host (see compose).
     geofence_state_dir: str = Field(default="/var/lib/zeekr-geofence", max_length=200)
 

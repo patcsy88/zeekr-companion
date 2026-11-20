@@ -1106,3 +1106,46 @@ class GeofenceMapOut(BaseModel):
     observed_at: dt.datetime | None
     age_minutes: int | None
     stale: bool
+
+
+PUSH_MAX_DEVICES = 5
+
+
+class PushKeysIn(_Input):
+    p256dh: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
+    auth: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
+
+
+def _https_url(value: str) -> str:
+    if not value.startswith("https://") or len(value) <= len("https://"):
+        raise ValueError("must be an https address")
+    if any(ch.isspace() for ch in value):
+        raise ValueError("must not contain spaces")
+    return value
+
+
+class PushSubscribeIn(_Input):
+    endpoint: Annotated[
+        str, Field(strict=True, min_length=1, max_length=2048), AfterValidator(_https_url)
+    ]
+    keys: PushKeysIn
+
+
+class PushUnsubscribeIn(_Input):
+    endpoint: Annotated[str, Field(strict=True, min_length=1, max_length=2048)]
+
+
+class PushConfigOut(BaseModel):
+    enabled: bool
+    public_key: str | None
+    devices: int
+    max_devices: int
+
+
+class PushDevicesOut(BaseModel):
+    devices: int
+
+
+class PushTestOut(BaseModel):
+    sent: int
+    failed: int

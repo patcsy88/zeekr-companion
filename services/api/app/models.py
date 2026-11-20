@@ -606,6 +606,32 @@ class GeofenceSettings(Base):
     )
 
 
+class PushSubscription(Base):
+    """One phone that turned alerts on (ADR-014). The endpoint and keys are sensitive: never
+    logged or returned. No position, home, office or vehicle data."""
+
+    __tablename__ = "push_subscription"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(Text, nullable=False)
+    auth: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_success_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    failure_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+
+    __table_args__ = (
+        CheckConstraint("char_length(endpoint) BETWEEN 1 AND 2048", name="endpoint_valid"),
+        CheckConstraint(
+            "char_length(p256dh) BETWEEN 1 AND 256 AND char_length(auth) BETWEEN 1 AND 256",
+            name="keys_valid",
+        ),
+        CheckConstraint("failure_count BETWEEN 0 AND 5", name="failures_valid"),
+    )
+
+
 class AutoSentrySettings(Base):
     """The automatic Sentry on toggle and its quiet period (ADR-011). One row at most. No row
     means off and 60 minutes. Kept apart from geofence_settings on purpose."""

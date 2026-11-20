@@ -13,6 +13,7 @@ from app.repositories.car_command_log import CarCommandLogRepository
 from app.repositories.expenses import ExpenseRepository
 from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
+from app.repositories.push_subscriptions import PushSubscriptionRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
 from app.repositories.tyre_events import TyreEventRepository
@@ -25,6 +26,7 @@ from app.services.expenses import ExpenseService
 from app.services.geofence_map import GeofenceMapService
 from app.services.geofence_settings import GeofenceSettingsService
 from app.services.live_vehicle import LiveVehicleService
+from app.services.push import PushService
 from app.services.reminders import ReminderService
 from app.services.sentry_command import SentryCommandService
 from app.services.service_records import ServiceRecordService
@@ -130,6 +132,11 @@ def get_geofence_map_service(request: Request, session: SessionDep) -> GeofenceM
     )
 
 
+def get_push_service(request: Request, session: SessionDep) -> PushService:
+    state = request.app.state
+    return PushService(PushSubscriptionRepository(session), state.settings, state.push_sender)
+
+
 def get_auto_sentry_settings_service(
     request: Request, session: SessionDep
 ) -> AutoSentrySettingsService:
@@ -154,6 +161,7 @@ GeofenceSettingsServiceDep = Annotated[
     GeofenceSettingsService, Depends(get_geofence_settings_service)
 ]
 GeofenceMapServiceDep = Annotated[GeofenceMapService, Depends(get_geofence_map_service)]
+PushServiceDep = Annotated[PushService, Depends(get_push_service)]
 AutoSentrySettingsServiceDep = Annotated[
     AutoSentrySettingsService, Depends(get_auto_sentry_settings_service)
 ]

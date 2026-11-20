@@ -1127,3 +1127,18 @@ No link to expenses or service records: a tyre event never creates or changes an
 - **The check and the map** use the radius in force (saved, else host).
 - **`DELETE` ("Use the host values")** resets the office radius to the host value along with the other settings.
 - Web: the Geofence form always shows "Office radius (km)", validated like the radius. A web app cached before this release sends no office radius and gets `400` on save until it reloads.
+
+### Push notifications, build step 1 (ADR-014; owner approved 2026-11-20; migration `0019`)
+
+Four endpoints, all behind the bearer token, all `Cache-Control: no-store`. A bad body is `400` (`validation_error`), never `422`. A phone's address and keys are never returned or logged.
+
+| Method and path | Body | Response |
+| --- | --- | --- |
+| `GET /api/v1/push/config` | none | `{ "enabled": bool, "public_key": string or null, "devices": int, "max_devices": 5 }`. `enabled` is true only when `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` are all set on the host. `public_key` is null when push is off. |
+| `POST /api/v1/push/subscriptions` | `{ "endpoint": https URL up to 2048 characters, "keys": { "p256dh": 1 to 256 characters, "auth": 1 to 256 characters } }` | `201 { "devices": int }` for a new phone; `200` when the same endpoint is saved again (keys replaced, failure count reset); `409 conflict` for a sixth phone (the five stay). |
+| `DELETE /api/v1/push/subscriptions` | `{ "endpoint": string }` | `200 { "devices": int }`. An unknown endpoint is also `200`, so it is safe to repeat. |
+| `POST /api/v1/push/test` | none | `200 { "sent": int, "failed": int }`; `409 conflict` when push is not set up. Sends the fixed text "Test from Zeekr Companion." to every saved phone. |
+
+- **Table `push_subscription`** (migration `0019`): `id` uuid, `endpoint` text unique (1 to 2048), `p256dh` and `auth` text (1 to 256 each), `created_at` and `last_success_at` timestamptz (UTC), `failure_count` smallint 0 to 5. Downgrade drops the table.
+- **Sending rules:** a `404` or `410` from the push service removes the phone at once. Any other failure adds one to `failure_count`; at 5 in a row the phone is removed; a success resets it. One failing phone never stops the others. A failed send logs one line with counts only.
+- **Build step 1 has no real sender.** The default sender fails every send, so `POST /push/test` reports `failed` until step 2 adds the approved library. The hook in the geofence check is also step 2.

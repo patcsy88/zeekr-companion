@@ -34,7 +34,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0018"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0019"
             )
     finally:
         engine.dispose()
@@ -543,6 +543,66 @@ def test_0018_office_radius_is_nullable_checked_and_downgrades(fresh_database_ur
                 )
             ).scalars()
             assert "office_radius_km" not in set(columns)
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+
+
+def test_0019_push_subscription_checks_and_downgrade(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {
+            "id": uuid.uuid4(),
+            "e": "https://push.example.test/a",
+            "p": "k",
+            "a": "s",
+            "f": 0,
+        }
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO push_subscription (id, endpoint, p256dh, auth, created_at, "
+                "failure_count) VALUES (:id, :e, :p, :a, now(), :f)"
+            ),
+            values,
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        insert(conn)
+        insert(conn, e="https://push.example.test/b", f=5)
+    bad: list[dict[str, Any]] = [
+        {"e": "https://push.example.test/a"},
+        {"e": ""},
+        {"e": "https://x.test/" + "a" * 2048},
+        {"e": "https://x.test/c", "p": ""},
+        {"e": "https://x.test/d", "a": ""},
+        {"e": "https://x.test/e", "p": "k" * 257},
+        {"e": "https://x.test/f", "f": 6},
+        {"e": "https://x.test/g", "f": -1},
+    ]
+    for over in bad:
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            insert(conn, **over)
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0018")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT to_regclass('push_subscription')")).scalar() is None
         engine.dispose()
     finally:
         os.environ.pop("DATABASE_URL", None)
