@@ -31,14 +31,24 @@ export function BasisNote({ basis }: { basis: OdometerBasis | null }) {
 
 export function StatusBadge({
   coverage,
+  wrap = false,
 }: {
   coverage: Pick<WarrantyCoverage, 'status' | 'expired_by'>;
+  /** Let a long label break onto more lines instead of widening the badge (the list card). */
+  wrap?: boolean;
 }) {
   const variant = (
     { active: 'success', expiring_soon: 'warning', not_started: 'info', expired: 'error' } as const
   )[coverage.status];
   return (
-    <Badge variant={variant} size="lg" data-testid="warranty-status">
+    <Badge
+      variant={variant}
+      size="lg"
+      data-testid="warranty-status"
+      className={
+        wrap ? 'h-auto min-h-6.5 whitespace-normal py-0.5 text-start sm:h-auto' : undefined
+      }
+    >
       {statusLabel(coverage)}
     </Badge>
   );
@@ -81,7 +91,7 @@ export function SourceLines({ coverage }: { coverage: WarrantyCoverage }) {
 export function CoverageItem({ view, basis }: { view: CoverageView; basis: OdometerBasis | null }) {
   const c = view.coverage;
   return (
-    <ItemCard>
+    <ItemCard className="flex-col items-stretch gap-0 pe-0">
       <Link to={`/warranty/${c.id}`} className={ITEM_BODY}>
         <span className={TITLE}>{c.name}</span>
         <span className={META}>{datesText(c)}</span>
@@ -91,8 +101,10 @@ export function CoverageItem({ view, basis }: { view: CoverageView; basis: Odome
           {c.claim_count} {c.claim_count === 1 ? 'claim' : 'claims'}
         </span>
       </Link>
-      <StatusBadge coverage={c} />
-      <SyncBadge sync={view.sync} />
+      <div className="flex flex-wrap items-start gap-2 px-3 pb-3" data-testid="coverage-badges">
+        <StatusBadge coverage={c} wrap />
+        <SyncBadge sync={view.sync} />
+      </div>
     </ItemCard>
   );
 }
