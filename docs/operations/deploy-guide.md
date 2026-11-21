@@ -138,7 +138,9 @@ docker compose run --rm --no-deps --entrypoint python api -c 'import base64 as a
 3. **Restart the API:** `docker compose up -d --wait`. Until all three are set, Setup, Notifications says alerts are not set up on the host.
 4. **On each iPhone** (iOS 16.4 or later): open the app in Safari, Share, Add to Home Screen, then open it **from the Home Screen icon**. Web push does not work in a Safari tab. Open the Setup tab, then Notifications, tap **Turn on alerts**, allow notifications, then tap **Send a test**.
 
-Changing `VAPID_PUBLIC_KEY` later makes every phone turn alerts on again. A phone is removed automatically when the push service says it is gone, or after 5 failed sends in a row. The update that adds this runs a database migration (`0019`), so take a fresh encrypted export first (section 7). **Not verified:** a real notification on an iPhone has not been received yet.
+Changing `VAPID_PUBLIC_KEY` later makes every phone turn alerts on again. A phone is removed automatically when the push service says it is gone, or after 5 failed sends in a row. The update that adds this runs a database migration (`0019`), so take a fresh encrypted export first (section 7). **Verified (owner-reported, 2026-11-21):** on an iPhone, Turn on alerts and Send a test worked, and the test notification arrived, using keys made with the command above. **Not verified:** a live geofence alert or automatic-send notification, and how late a notification can arrive.
+
+If Turn on alerts shows "The string contains invalid characters", the `VAPID_PUBLIC_KEY` line in the host `.env` has a stray character (a space, a line break, a quote or one extra letter). A good key is 87 characters of `A-Z a-z 0-9 - _`. This read-only check is **proposed, not found in the repo**; it prints a length and a verdict, never the key: `grep '^VAPID_PUBLIC_KEY=' .env | cut -d= -f2- | awk '{print length($0), ($0 ~ /^[A-Za-z0-9_-]+$/ ? "valid characters" : "INVALID characters")}'`. Fix the line, then `docker compose up -d --wait`.
 
 ## 5. Check it
 
