@@ -174,13 +174,14 @@ describe('AC-79 / AC-80: list and Current tyres', () => {
     expect(container.querySelector('b')).toBeNull();
   });
 
-  it('is linked from the Vehicle page Tyres group', async () => {
+  it('is a Maintenance sub-tab', async () => {
     seedVehicle(null);
-    open('/vehicle');
+    open('/vehicle/tyres');
     render(<App />);
-    expect(await screen.findByRole('link', { name: 'Tyre changes and rotations' })).toHaveAttribute(
-      'href',
-      '/vehicle/tyres',
+    const row = await screen.findByRole('navigation', { name: 'Maintenance pages' });
+    expect(within(row).getByRole('link', { name: 'Tyres' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
   });
 });

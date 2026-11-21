@@ -69,7 +69,7 @@ describe('AC-91: service intervals on the Service tab', () => {
     await waitFor(() => {
       expect(within(card).getByRole('link', { name: 'vehicle profile' })).toHaveAttribute(
         'href',
-        '/vehicle',
+        '/setup',
       );
     });
     const items = within(within(card).getByRole('list')).getAllByRole('listitem');

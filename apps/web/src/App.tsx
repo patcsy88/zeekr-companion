@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { Logo } from './components/Logo';
 import { SignIn } from './components/SignIn';
 import { SyncBar } from './components/SyncBar';
+import { SubTabs } from './components/SubTabs';
 import { TabIcon } from './components/TabIcon';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession } from './data/hooks';
@@ -34,11 +35,16 @@ import {
 import { WarrantyPage } from './pages/WarrantyPage';
 import { WarrantyTemplatePage } from './pages/WarrantyTemplatePage';
 import { VehicleEditPage, VehiclePage } from './pages/VehiclePage';
+import { DrivingPage } from './pages/DrivingPage';
+import { EnergyPage } from './pages/EnergyPage';
+import { NotificationsPage, SetupPage } from './pages/SetupPages';
 import { AccountMenu } from './components/AccountMenu';
 import { ThemePicker } from './components/ThemePicker';
 import { probeApi } from './api/health';
 import { getSession } from './auth/session';
+import { cn } from './lib/cn';
 import { watchBrowserConnectivity } from './lib/connectivity';
+import { MAIN_TABS, tabFor } from './lib/nav';
 import { startSyncTriggers, syncAll } from './sync/engine';
 
 function Layout() {
@@ -86,40 +92,47 @@ function Layout() {
             }
           />
         ) : (
-          <Routes>
-            <Route path="/" element={<RecordsPage />} />
-            <Route path="/records/new" element={<NewRecordPage />} />
-            <Route path="/records/:id" element={<RecordDetailPage />} />
-            <Route path="/records/:id/edit" element={<EditRecordPage />} />
-            <Route path="/sentry" element={<SentryPage />} />
-            <Route path="/geofence" element={<GeofencePage />} />
-            <Route path="/reminders" element={<RemindersPage />} />
-            <Route path="/reminders/new" element={<NewReminderPage />} />
-            <Route path="/reminders/template" element={<ReminderTemplatePage />} />
-            <Route path="/reminders/:id" element={<ReminderDetailPage />} />
-            <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
-            <Route path="/reminders/:id/complete" element={<CompleteServicePage />} />
-            <Route path="/expenses" element={<ExpensesPage />} />
-            <Route path="/expenses/new" element={<NewExpensePage />} />
-            <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
-            <Route path="/expenses/:id/edit" element={<EditExpensePage />} />
-            <Route path="/warranty" element={<WarrantyPage />} />
-            <Route path="/warranty/new" element={<NewCoveragePage />} />
-            <Route path="/warranty/template" element={<WarrantyTemplatePage />} />
-            <Route path="/warranty/claims/:claimId/edit" element={<EditClaimPage />} />
-            <Route path="/warranty/:id" element={<CoverageDetailPage />} />
-            <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
-            <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
-            <Route path="/advisory" element={<AdvisoryPage />} />
-            <Route path="/vehicle" element={<VehiclePage />} />
-            <Route path="/vehicle/live" element={<LiveHistoryPage />} />
-            <Route path="/vehicle/edit" element={<VehicleEditPage />} />
-            <Route path="/vehicle/tyres" element={<TyresPage />} />
-            <Route path="/vehicle/tyres/new" element={<NewTyreEventPage />} />
-            <Route path="/vehicle/tyres/:id" element={<TyreEventDetailPage />} />
-            <Route path="/vehicle/tyres/:id/edit" element={<EditTyreEventPage />} />
-            <Route path="*" element={<p className="my-4">Page not found.</p>} />
-          </Routes>
+          <>
+            <SubTabs />
+            <Routes>
+              <Route path="/" element={<RecordsPage />} />
+              <Route path="/records/new" element={<NewRecordPage />} />
+              <Route path="/records/:id" element={<RecordDetailPage />} />
+              <Route path="/records/:id/edit" element={<EditRecordPage />} />
+              <Route path="/sentry" element={<SentryPage />} />
+              <Route path="/geofence" element={<GeofencePage />} />
+              <Route path="/reminders" element={<RemindersPage />} />
+              <Route path="/reminders/new" element={<NewReminderPage />} />
+              <Route path="/reminders/template" element={<ReminderTemplatePage />} />
+              <Route path="/reminders/:id" element={<ReminderDetailPage />} />
+              <Route path="/reminders/:id/edit" element={<EditReminderPage />} />
+              <Route path="/reminders/:id/complete" element={<CompleteServicePage />} />
+              <Route path="/expenses" element={<ExpensesPage />} />
+              <Route path="/expenses/new" element={<NewExpensePage />} />
+              <Route path="/expenses/:id" element={<ExpenseDetailPage />} />
+              <Route path="/expenses/:id/edit" element={<EditExpensePage />} />
+              <Route path="/warranty" element={<WarrantyPage />} />
+              <Route path="/warranty/new" element={<NewCoveragePage />} />
+              <Route path="/warranty/template" element={<WarrantyTemplatePage />} />
+              <Route path="/warranty/claims/:claimId/edit" element={<EditClaimPage />} />
+              <Route path="/warranty/:id" element={<CoverageDetailPage />} />
+              <Route path="/warranty/:id/edit" element={<EditCoveragePage />} />
+              <Route path="/warranty/:id/claims/new" element={<NewClaimPage />} />
+              <Route path="/advisory" element={<AdvisoryPage />} />
+              <Route path="/vehicle" element={<VehiclePage />} />
+              <Route path="/driving" element={<DrivingPage />} />
+              <Route path="/energy" element={<EnergyPage />} />
+              <Route path="/setup" element={<SetupPage />} />
+              <Route path="/setup/notifications" element={<NotificationsPage />} />
+              <Route path="/vehicle/live" element={<LiveHistoryPage />} />
+              <Route path="/vehicle/edit" element={<VehicleEditPage />} />
+              <Route path="/vehicle/tyres" element={<TyresPage />} />
+              <Route path="/vehicle/tyres/new" element={<NewTyreEventPage />} />
+              <Route path="/vehicle/tyres/:id" element={<TyreEventDetailPage />} />
+              <Route path="/vehicle/tyres/:id/edit" element={<EditTyreEventPage />} />
+              <Route path="*" element={<p className="my-4">Page not found.</p>} />
+            </Routes>
+          </>
         )}
       </main>
       {session.signedIn ? <TabBar /> : null}
@@ -127,44 +140,29 @@ function Layout() {
   );
 }
 
-/** One tab: icon over a label, sized so all seven fit on a 320 px screen. The current tab is tinted. */
+/** One tab: icon over a label, sized so all six fit on a 320 px screen. The current tab is tinted. */
 const TAB =
-  'flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 pt-2 pb-2 text-center font-semibold text-[0.5rem] text-muted-foreground no-underline min-[22.5rem]:text-[0.56rem] min-[26rem]:text-[0.7rem] min-[30rem]:text-[0.85rem] sm:p-3.5 sm:text-base [&.active]:bg-accent [&.active]:text-foreground';
+  'flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-xl px-0 pt-2 pb-2 text-center font-semibold text-[0.5rem] text-muted-foreground no-underline min-[22.5rem]:text-[0.58rem] min-[26rem]:text-[0.68rem] min-[30rem]:text-[0.85rem] sm:p-3.5 sm:text-base [&.active]:bg-accent [&.active]:text-foreground';
 
 function TabBar() {
+  const { pathname } = useLocation();
+  const current = tabFor(pathname);
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-background/82 px-0.5 pt-0.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg backdrop-saturate-180"
       aria-label="Main"
     >
-      <NavLink className={TAB} to="/" end>
-        <TabIcon name="service" />
-        <span>Service</span>
-      </NavLink>
-      <NavLink className={TAB} to="/reminders">
-        <TabIcon name="reminders" />
-        <span>Reminders</span>
-      </NavLink>
-      <NavLink className={TAB} to="/expenses">
-        <TabIcon name="expenses" />
-        <span>Expenses</span>
-      </NavLink>
-      <NavLink className={TAB} to="/warranty">
-        <TabIcon name="warranty" />
-        <span>Warranty</span>
-      </NavLink>
-      <NavLink className={TAB} to="/sentry">
-        <TabIcon name="sentry" />
-        <span>Sentry</span>
-      </NavLink>
-      <NavLink className={TAB} to="/geofence">
-        <TabIcon name="geofence" />
-        <span>Geofence</span>
-      </NavLink>
-      <NavLink className={TAB} to="/vehicle">
-        <TabIcon name="vehicle" />
-        <span>Vehicle</span>
-      </NavLink>
+      {MAIN_TABS.map((t) => (
+        <Link
+          key={t.key}
+          className={cn(TAB, current === t && 'active')}
+          to={t.to}
+          aria-current={current === t ? 'page' : undefined}
+        >
+          <TabIcon name={t.key} />
+          <span>{t.label}</span>
+        </Link>
+      ))}
     </nav>
   );
 }

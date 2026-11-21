@@ -233,6 +233,8 @@ async function mockApi(page: Page): Promise<void> {
 
 const SCREENS = [
   { name: 'vehicle', path: '/vehicle', ready: 'live-readings' },
+  { name: 'driving', path: '/driving', ready: 'live-readings' },
+  { name: 'energy', path: '/energy', ready: 'live-readings' },
   { name: 'service-history', path: '/', ready: null },
   { name: 'reminders', path: '/reminders', ready: null },
   { name: 'sentry', path: '/sentry', ready: 'geofence-alert' },

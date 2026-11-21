@@ -12,7 +12,7 @@ test('ADR-009: the card says live readings are off, the history is empty, nothin
   await expect(page.getByTestId('live-off')).toHaveText('Live readings are off.');
   await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByTestId('live-card').getByRole('link', { name: 'History' }).click();
   await expect(page.getByTestId('live-history-empty')).toBeVisible();
   await expect(page.getByRole('button', { name: /Delete all/ })).toHaveCount(0);
 

@@ -135,8 +135,8 @@ docker compose run --rm --no-deps --entrypoint python api -c 'import base64 as a
 ```
 
 2. **Put them in the host `.env`.** Paste the two lines as printed, and add `VAPID_SUBJECT=mailto:` followed by a contact address you control. Keep all three in the host `.env` only: never commit them, paste them into chat or save them in a log. The private key is one long line with no spaces or quotes.
-3. **Restart the API:** `docker compose up -d --wait`. Until all three are set, the Geofence tab says alerts are not set up on the host.
-4. **On each iPhone** (iOS 16.4 or later): open the app in Safari, Share, Add to Home Screen, then open it **from the Home Screen icon**. Web push does not work in a Safari tab. Open the Geofence tab, tap **Turn on alerts**, allow notifications, then tap **Send a test**.
+3. **Restart the API:** `docker compose up -d --wait`. Until all three are set, Setup, Notifications says alerts are not set up on the host.
+4. **On each iPhone** (iOS 16.4 or later): open the app in Safari, Share, Add to Home Screen, then open it **from the Home Screen icon**. Web push does not work in a Safari tab. Open the Setup tab, then Notifications, tap **Turn on alerts**, allow notifications, then tap **Send a test**.
 
 Changing `VAPID_PUBLIC_KEY` later makes every phone turn alerts on again. A phone is removed automatically when the push service says it is gone, or after 5 failed sends in a row. The update that adds this runs a database migration (`0019`), so take a fresh encrypted export first (section 7). **Not verified:** a real notification on an iPhone has not been received yet.
 

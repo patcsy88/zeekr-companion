@@ -34,15 +34,30 @@ const GROUP_TITLE =
 
 export function VehiclePage() {
   const snap = useVehicle();
+  return (
+    <section aria-labelledby="vehicle-title">
+      <h1 id="vehicle-title">Vehicle</h1>
+      <LiveVehicleCard />
+      {snap !== undefined && snap.view === null ? (
+        <p className={MUTED}>
+          No vehicle profile yet. Add it in <Link to="/setup">Setup</Link>.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** The vehicle profile, view only, with an Edit button. It lives on the Setup tab. */
+export function VehicleProfile() {
+  const snap = useVehicle();
   if (snap === undefined) return <Skeleton />;
   const view = snap.view;
   return (
-    <section aria-labelledby="vehicle-title">
+    <section aria-labelledby="profile-title">
       <div className={HEAD}>
-        <h1 id="vehicle-title">Vehicle</h1>
+        <h2 id="profile-title">Vehicle profile</h2>
         {view ? <SyncBadge sync={view.sync} /> : null}
       </div>
-      <LiveVehicleCard />
       {view === null ? (
         <>
           <p className={MUTED}>
@@ -110,9 +125,6 @@ export function VehiclePage() {
           <Group>
             <Row label="Tyre specification" value={view.vehicle.tyre_spec} />
           </Group>
-          <p>
-            <Link to="/vehicle/tyres">Tyre changes and rotations</Link>
-          </p>
           <Button variant="outline" size="lg" render={<Link to="/vehicle/edit" />}>
             Edit
           </Button>
@@ -162,7 +174,7 @@ export function VehicleEditPage() {
   const snap = useVehicle();
   const nav = useNavigate();
   if (snap === undefined) return <Skeleton />;
-  return <VehicleForm initial={snap.view?.vehicle ?? null} onDone={() => void nav('/vehicle')} />;
+  return <VehicleForm initial={snap.view?.vehicle ?? null} onDone={() => void nav('/setup')} />;
 }
 
 function VehicleForm({ initial, onDone }: { initial: Vehicle | null; onDone: () => void }) {

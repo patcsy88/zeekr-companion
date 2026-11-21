@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 import { cn } from '../lib/cn';
 import { Checkbox } from '../components/ui/checkbox';
 import { GeofenceMapCard } from '../components/GeofenceMapCard';
-import { PushCard } from '../components/PushCard';
+import { Link } from 'react-router-dom';
 
 interface Form {
   radius: string;
@@ -276,7 +276,9 @@ export function GeofencePage() {
           </div>
         </form>
       ) : null}
-      <PushCard />
+      <p className={HINT}>
+        Phone alerts are in <Link to="/setup/notifications">Setup, Notifications</Link>.
+      </p>
     </section>
   );
 }

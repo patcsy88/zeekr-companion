@@ -35,7 +35,7 @@ test('token and password are not in web storage', async ({ page }) => {
 });
 
 test('vehicle profile: create, view, edit (FR-1)', async ({ page }) => {
-  await page.goto('/vehicle');
+  await page.goto('/setup');
   await signIn(page);
   await page.getByRole('link', { name: /Create vehicle profile|Create or edit anyway/ }).click();
   await page.getByLabel('Variant').selectOption('AWD Performance');
@@ -44,7 +44,7 @@ test('vehicle profile: create, view, edit (FR-1)', async ({ page }) => {
   await page.getByLabel('VIN').fill('TESTVIN1234567890'); // 17 characters, not a real VIN
   await page.getByLabel('Purchase price (MYR)').fill('250000.00');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('heading', { name: 'Vehicle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Setup' })).toBeVisible();
   await expect(page.getByText('RM 250,000.00')).toBeVisible();
   await expect(page.getByText('AWD Performance (2025)')).toBeVisible();
   await expect(page.getByText('265/45 R20')).toBeVisible();
@@ -106,7 +106,7 @@ test('AC-7 (amended 2026-11-07): cold start offline shows only the sign-in form,
   await context.setOffline(false);
   await signIn(page);
   await expect(page.getByRole('link', { name: new RegExp(description) })).toBeVisible();
-  await page.getByRole('link', { name: 'Vehicle' }).click();
+  await page.getByRole('link', { name: 'Setup' }).click();
   await expect(page.getByText('RWD Long Range (2026)')).toBeVisible(); // saved by the FR-1 test
 });
 

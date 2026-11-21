@@ -33,8 +33,7 @@ export function ServiceIntervalsCard() {
       <p className={`mt-3 mb-0 ${SMALL}`}>
         {purchase === null ? (
           <>
-            Add the purchase date in the <Link to="/vehicle">vehicle profile</Link> to see due
-            dates.
+            Add the purchase date in the <Link to="/setup">vehicle profile</Link> to see due dates.
           </>
         ) : (
           <>Due dates count from the purchase date, {formatDate(purchase)}.</>

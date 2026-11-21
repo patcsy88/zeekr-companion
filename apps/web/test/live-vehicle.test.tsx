@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -148,20 +148,36 @@ describe('live vehicle: the card', () => {
     render(<App />);
     expect(await screen.findByTestId('live-off')).toHaveTextContent('Live readings are off.');
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/vehicle/live');
+    expect(
+      within(screen.getByTestId('live-card')).getByRole('link', { name: 'History' }),
+    ).toHaveAttribute('href', '/vehicle/live');
   });
 
-  it('shows readings with units and the time in KL', async () => {
+  it('shows the driving readings with units on the Driving page, and the time in KL', async () => {
     serveCard(card());
-    open();
+    open('/driving');
     render(<App />);
     const list = await screen.findByTestId('live-readings');
-    expect(list).toHaveTextContent('64.0%');
     expect(list).toHaveTextContent('349 km');
     expect(list).toHaveTextContent('4,321 km');
     expect(list).toHaveTextContent('236 kPa');
     expect(list).toHaveTextContent('35,000 km, 200 days');
+    expect(list).not.toHaveTextContent('64.0%');
+    expect(list).not.toHaveTextContent('13.1 V');
     expect(screen.getByTestId('live-asof')).toHaveTextContent('31 Oct 2026, 10:00 (KL)');
+  });
+
+  it('shows the battery level on the Energy page, with a link to charging expenses', async () => {
+    serveCard(card());
+    open('/energy');
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    expect(list).toHaveTextContent('64.0%');
+    expect(list).not.toHaveTextContent('4,321 km');
+    expect(screen.getByRole('link', { name: 'Charging expenses' })).toHaveAttribute(
+      'href',
+      '/expenses',
+    );
   });
 
   it.each([
@@ -178,14 +194,22 @@ describe('live vehicle: the card', () => {
     expect(screen.queryByRole('button', { name: /lock/i })).toBeNull();
   });
 
-  it('shows 12 V, tyre temperatures and read-only on/off indicators', async () => {
+  it('shows tyre temperatures on the Driving page', async () => {
+    serveCard(card());
+    open('/driving');
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    expect(list).toHaveTextContent('236 kPa, 43 °C');
+    expect(list).toHaveTextContent('233 kPa, 46 °C');
+  });
+
+  it('shows 12 V and read-only on/off indicators on the Vehicle page', async () => {
     serveCard(card());
     open();
     render(<App />);
     const list = await screen.findByTestId('live-readings');
     expect(list).toHaveTextContent('13.1 V');
-    expect(list).toHaveTextContent('236 kPa, 43 °C');
-    expect(list).toHaveTextContent('233 kPa, 46 °C');
+    expect(list).not.toHaveTextContent('236 kPa');
     const ind = screen.getByTestId('live-indicators');
     expect(ind).toHaveTextContent('Fragrance');
     const fragrance = screen.getByRole('switch', { name: 'Fragrance: on' });
@@ -276,7 +300,7 @@ describe('live vehicle: the card', () => {
         observed_at: OBSERVED,
       }),
     );
-    open();
+    open('/driving');
     render(<App />);
     const list = await screen.findByTestId('live-readings');
     expect(list).toHaveTextContent('no reading');
@@ -292,7 +316,7 @@ describe('live vehicle: the card', () => {
 
   it('shows the last reading with a notice when unavailable', async () => {
     serveCard(card({ status: 'unavailable' }));
-    open();
+    open('/driving');
     render(<App />);
     expect(await screen.findByTestId('live-unavailable')).toHaveTextContent(
       'Showing the last one stored',
@@ -536,22 +560,29 @@ describe('live vehicle: the history screen', () => {
 });
 
 describe('live vehicle: dashboard layout', () => {
-  it('shows a battery bar and puts the driver side on the right (right hand drive)', async () => {
+  it('shows a battery bar with the plug and charge state on the Energy page', async () => {
     serveCard(card());
-    open();
+    open('/energy');
     render(<App />);
     const list = await screen.findByTestId('live-readings');
     const bar = screen.getByRole('progressbar', { name: 'Battery level' });
     expect(bar).toHaveAttribute('aria-valuenow', '64');
-    const labels = Array.from(list.querySelectorAll('.tyre .dash-label')).map((e) => e.textContent);
-    expect(labels).toEqual(['Passenger front', 'Driver front', 'Passenger rear', 'Driver rear']);
     expect(list).toHaveTextContent('Plugged in: Yes');
     expect(list).toHaveTextContent('Charging: No');
   });
 
+  it('puts the driver side on the right on the Driving page (right hand drive)', async () => {
+    serveCard(card());
+    open('/driving');
+    render(<App />);
+    const list = await screen.findByTestId('live-readings');
+    const labels = Array.from(list.querySelectorAll('.tyre .dash-label')).map((e) => e.textContent);
+    expect(labels).toEqual(['Passenger front', 'Driver front', 'Passenger rear', 'Driver rear']);
+  });
+
   it('draws no bar when the battery has no reading', async () => {
     serveCard(card({ readings: { ...card().readings, battery_percent: null } }));
-    open();
+    open('/energy');
     render(<App />);
     const list = await screen.findByTestId('live-readings');
     expect(list).toHaveTextContent('no reading');
@@ -563,7 +594,7 @@ describe('live vehicle: overdue service', () => {
   it('shows a negative number with overdue wording', async () => {
     const c = card();
     serveCard({ ...c, readings: { ...c.readings, service_days: -5, service_distance_km: -1200 } });
-    open();
+    open('/driving');
     render(<App />);
     const list = await screen.findByTestId('live-readings');
     expect(list).toHaveTextContent('overdue by 1,200 km, overdue by 5 days');

@@ -178,7 +178,7 @@ describe('AC-90: an existing profile is read back without losing values', () => 
     expect(screen.queryByRole('combobox', { name: 'Model year' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Vehicle' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Setup' })).toBeInTheDocument();
     });
     expect(fake.vehicle?.variant).toBe('Old text');
     expect(fake.vehicle?.tyre_spec).toBe('999/99 R99 test');

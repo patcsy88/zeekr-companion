@@ -68,9 +68,6 @@ export function TyresPage() {
 
   return (
     <section aria-labelledby="tyres-title">
-      <p>
-        <Link to="/vehicle">Back to vehicle</Link>
-      </p>
       <div className={HEAD}>
         <h1 id="tyres-title">Tyres</h1>
         <Button size="lg" render={<Link to="/vehicle/tyres/new" />}>

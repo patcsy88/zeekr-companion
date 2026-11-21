@@ -37,7 +37,7 @@ test('using the whole app raises no CSP violation', async ({ page }) => {
   await page.getByRole('link', { name: 'Vehicle' }).click();
   await expect(page.getByRole('heading', { name: 'Vehicle' })).toBeVisible();
   const description = unique('CSP');
-  await page.getByRole('link', { name: 'Service' }).click();
+  await page.getByRole('link', { name: 'Maintenance' }).click();
   const intervals = page.getByTestId('service-intervals');
   await intervals.getByText(/^Service intervals: every 40,000 km/).click();
   await expect(intervals.getByTestId('intervals-source')).toContainText('retrieved 2026-11-16');

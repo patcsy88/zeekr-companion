@@ -31,12 +31,14 @@ const LABEL = 'm-0 text-muted-foreground text-xs';
 const GROUP_TITLE =
   'mx-1 mt-5 mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider';
 
+/** Which readings a page shows: each reading appears on one page only. */
+export type LivePart = 'vehicle' | 'driving' | 'energy';
 /**
  * Read-only live readings from the car (ADR-009). Online only: nothing here is stored on the
  * device or cached. The page asks on a timer while it is visible; the server spaces real reads.
  * Text from the server is never shown, only fixed wording.
  */
-export function LiveVehicleCard() {
+export function LiveVehicleCard({ part = 'vehicle' }: { part?: LivePart }) {
   const session = useSession();
   const { online } = useConnectivity();
   const [card, setCard] = useState<LiveCard | null>(null);
@@ -118,7 +120,7 @@ export function LiveVehicleCard() {
         ) : null}
       </div>
       <p className={SMALL}>
-        Readings only. Nothing here is sent to the car. The Sentry switch is on the Sentry tab.
+        Readings only. Nothing here is sent to the car. The Sentry switch is on the Security tab.
       </p>
       {!session.signedIn || !online ? (
         <p className={MUTED} data-testid="live-offline">
@@ -131,7 +133,7 @@ export function LiveVehicleCard() {
           <Skeleton lines={4} />
         )
       ) : (
-        <CardBody card={card} failed={failed} note={note} />
+        <CardBody card={card} failed={failed} note={note} part={part} />
       )}
     </Card>
   );
@@ -141,10 +143,12 @@ function CardBody({
   card,
   failed,
   note,
+  part,
 }: {
   card: LiveCard;
   failed: boolean;
   note: string | null;
+  part: LivePart;
 }) {
   if (card.status === 'off') {
     return (
@@ -152,9 +156,11 @@ function CardBody({
         <p className={MUTED} data-testid="live-off">
           Live readings are off.
         </p>
-        <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
-          History
-        </Button>
+        {part === 'vehicle' ? (
+          <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
+            History
+          </Button>
+        ) : null}
       </>
     );
   }
@@ -202,79 +208,102 @@ function CardBody({
         </p>
       )}
       <div data-testid="live-readings">
-        <div className="pt-1 pb-2">
-          <p className={cn(LABEL, 'dash-label')}>Battery</p>
-          <p className="m-0 font-bold text-[2.6rem] tabular-nums leading-[1.1] tracking-tight">
-            {percent(r.battery_percent)}
-          </p>
-          {r.battery_percent !== null ? (
-            <div
-              className="my-1.5 h-2.5 overflow-hidden rounded-full bg-muted"
-              role="progressbar"
-              aria-label="Battery level"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(r.battery_percent)}
-            >
+        {part === 'energy' ? (
+          <div className="pt-1 pb-2">
+            <p className={cn(LABEL, 'dash-label')}>Battery</p>
+            <p className="m-0 font-bold text-[2.6rem] tabular-nums leading-[1.1] tracking-tight">
+              {percent(r.battery_percent)}
+            </p>
+            {r.battery_percent !== null ? (
               <div
-                className={cn(
-                  'h-full transition-[width] duration-400',
-                  r.battery_percent <= 20 ? 'bg-destructive' : 'bg-primary',
-                )}
-                style={{ width: `${Math.min(100, Math.max(0, r.battery_percent))}%` }}
-              />
+                className="my-1.5 h-2.5 overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-label="Battery level"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(r.battery_percent)}
+              >
+                <div
+                  className={cn(
+                    'h-full transition-[width] duration-400',
+                    r.battery_percent <= 20 ? 'bg-destructive' : 'bg-primary',
+                  )}
+                  style={{ width: `${Math.min(100, Math.max(0, r.battery_percent))}%` }}
+                />
+              </div>
+            ) : null}
+            <p className="m-0 mt-2 flex flex-wrap gap-1.5">
+              <Flagged label="Plugged in" value={r.plugged_in} />
+              <Flagged label="Charging" value={r.charging} />
+            </p>
+          </div>
+        ) : null}
+        {part === 'driving' ? (
+          <dl className="m-0 my-3 grid grid-cols-2 gap-2">
+            <Stat label="Range" value={km(r.range_km)} />
+            <Stat label="Odometer" value={km(r.odometer_km)} />
+            <Stat
+              className="col-span-2"
+              label="Next service in"
+              value={`${serviceKm(r.service_distance_km)}, ${days(r.service_days)}`}
+            />
+          </dl>
+        ) : null}
+        {part === 'vehicle' ? (
+          <dl className="m-0 my-3 grid grid-cols-2 gap-2">
+            <Stat label="12 V battery" value={volts(r.battery_12v_volts)} />
+            <Stat
+              label="Central locking"
+              value={lockState(card.central_locking)}
+              testId="live-central-locking"
+            />
+          </dl>
+        ) : null}
+        {part === 'driving' ? (
+          <>
+            <h3 className={GROUP_TITLE}>Tyres</h3>
+            <div className="my-2 grid grid-cols-[1fr_minmax(3rem,4.5rem)_1fr] grid-rows-[auto_auto] items-center gap-2">
+              <Tyre label="Passenger front" kpaValue={t.passenger_front} c={tc.passenger_front} />
+              <CarOutline />
+              <Tyre label="Driver front" kpaValue={t.driver_front} c={tc.driver_front} />
+              <Tyre label="Passenger rear" kpaValue={t.passenger_rear} c={tc.passenger_rear} />
+              <Tyre label="Driver rear" kpaValue={t.driver_rear} c={tc.driver_rear} />
             </div>
-          ) : null}
-          <p className="m-0 mt-2 flex flex-wrap gap-1.5">
-            <Flagged label="Plugged in" value={r.plugged_in} />
-            <Flagged label="Charging" value={r.charging} />
-          </p>
-        </div>
-        <dl className="m-0 my-3 grid grid-cols-2 gap-2">
-          <Stat label="Range" value={km(r.range_km)} />
-          <Stat label="Odometer" value={km(r.odometer_km)} />
-          <Stat label="12 V battery" value={volts(r.battery_12v_volts)} />
-          <Stat
-            label="Next service in"
-            value={`${serviceKm(r.service_distance_km)}, ${days(r.service_days)}`}
-          />
-          <Stat
-            className="col-span-2"
-            label="Central locking"
-            value={lockState(card.central_locking)}
-            testId="live-central-locking"
-          />
-        </dl>
-        <h3 className={GROUP_TITLE}>Tyres</h3>
-        <div className="my-2 grid grid-cols-[1fr_minmax(3rem,4.5rem)_1fr] grid-rows-[auto_auto] items-center gap-2">
-          <Tyre label="Passenger front" kpaValue={t.passenger_front} c={tc.passenger_front} />
-          <CarOutline />
-          <Tyre label="Driver front" kpaValue={t.driver_front} c={tc.driver_front} />
-          <Tyre label="Passenger rear" kpaValue={t.passenger_rear} c={tc.passenger_rear} />
-          <Tyre label="Driver rear" kpaValue={t.driver_rear} c={tc.driver_rear} />
-        </div>
+          </>
+        ) : null}
       </div>
-      <h3 className={GROUP_TITLE}>Reported on / off</h3>
-      <dl
-        className="m-0 mb-3 overflow-hidden rounded-2xl border bg-muted [&>div]:flex [&>div]:min-h-11 [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-4 [&>div]:py-2 [&>div+div]:border-t [&_dd]:m-0 [&_dd]:text-right [&_dd]:text-muted-foreground"
-        data-testid="live-indicators"
-      >
-        <Flag label="Pre-climate" value={ind.pre_climate_active} />
-        <Flag label="Fragrance" value={ind.fragrance_active} />
-        <Flag label="Overheat protection" value={ind.overheat_protection_active} />
-        <Flag label="VTM TS" value={ind.vtm_ts_active} />
-        <Flag label="Engine enable running" value={ind.engine_enable_running} />
-      </dl>
-      <p className={SMALL}>
-        These are the car's own reported flags. Their exact meanings are not verified, and this page
-        cannot change any of them.
-      </p>
+      {part === 'vehicle' ? (
+        <>
+          <h3 className={GROUP_TITLE}>Reported on / off</h3>
+          <dl
+            className="m-0 mb-3 overflow-hidden rounded-2xl border bg-muted [&>div]:flex [&>div]:min-h-11 [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-4 [&>div]:py-2 [&>div+div]:border-t [&_dd]:m-0 [&_dd]:text-right [&_dd]:text-muted-foreground"
+            data-testid="live-indicators"
+          >
+            <Flag label="Pre-climate" value={ind.pre_climate_active} />
+            <Flag label="Fragrance" value={ind.fragrance_active} />
+            <Flag label="Overheat protection" value={ind.overheat_protection_active} />
+            <Flag label="VTM TS" value={ind.vtm_ts_active} />
+            <Flag label="Engine enable running" value={ind.engine_enable_running} />
+          </dl>
+          <p className={SMALL}>
+            These are the car's own reported flags. Their exact meanings are not verified, and this
+            page cannot change any of them.
+          </p>
+        </>
+      ) : null}
       <p className={SMALL}>
         Updates about every {card.interval_minutes} minutes while this page is open.
       </p>
-      <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
-        History
-      </Button>
+      {part === 'vehicle' ? (
+        <Button variant="outline" size="lg" render={<Link to="/vehicle/live" />}>
+          History
+        </Button>
+      ) : null}
+      {part === 'energy' ? (
+        <Button variant="outline" size="lg" render={<Link to="/expenses" />}>
+          Charging expenses
+        </Button>
+      ) : null}
     </>
   );
 }

@@ -136,7 +136,7 @@ describe('push: the key', () => {
   });
 });
 
-// --- the card on the Geofence tab ---------------------------------------------------------------
+// --- the card on the Setup tab ---------------------------------------------------------------
 
 interface FakeSub {
   endpoint: string;
@@ -193,16 +193,8 @@ function config(over: Partial<{ enabled: boolean; devices: number }> = {}) {
 }
 
 function open(cfg = config()) {
-  server.use(
-    http.get('*/api/v1/push/config', () => HttpResponse.json(cfg)),
-    http.get('*/api/v1/geofence/settings', () =>
-      HttpResponse.json(
-        { error: { code: 'internal_error', message: 'Settings are not loaded.', details: [] } },
-        { status: 500 },
-      ),
-    ),
-  );
-  window.history.pushState(null, '', '/geofence');
+  server.use(http.get('*/api/v1/push/config', () => HttpResponse.json(cfg)));
+  window.history.pushState(null, '', '/setup/notifications');
   setToken('tok-test', 3600);
   return userEvent.setup();
 }
@@ -214,7 +206,7 @@ async function cardAlert() {
   return within(card).findByRole('alert');
 }
 
-describe('push: the Geofence tab card', () => {
+describe('push: the Setup notifications card', () => {
   it('says so when push is not set up on the host', async () => {
     fakeBrowser({});
     open(config({ enabled: false }));

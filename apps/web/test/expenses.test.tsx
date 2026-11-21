@@ -67,13 +67,18 @@ describe('AC-35: the list', () => {
     expect(items[1]).toHaveTextContent('2026');
   });
 
-  it('has an Expenses tab in the main navigation', async () => {
-    open('/');
+  it('has an Expenses page in the Maintenance sub-tabs', async () => {
+    open('/expenses');
     render(<App />);
-    const nav = await screen.findByRole('navigation', { name: 'Main' });
-    expect(within(nav).getByRole('link', { name: 'Expenses' })).toHaveAttribute(
-      'href',
-      '/expenses',
+    const row = await screen.findByRole('navigation', { name: 'Maintenance pages' });
+    expect(within(row).getByRole('link', { name: 'Expenses' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const main = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(main).getByRole('link', { name: 'Maintenance' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
   });
 

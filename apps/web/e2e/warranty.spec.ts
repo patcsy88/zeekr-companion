@@ -85,6 +85,7 @@ test('AC-48/57: a coverage and a claim are stored on the server and visible from
     .toBe(true);
   await page.reload();
   await signIn(page);
+  await page.getByRole('link', { name: 'Maintenance' }).click();
   await page.getByRole('link', { name: 'Warranty', exact: true }).click();
   await expect(page.getByRole('link', { name: new RegExp(name) })).toBeVisible();
 

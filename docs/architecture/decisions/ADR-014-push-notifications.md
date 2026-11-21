@@ -23,9 +23,9 @@ One notification per new alert, never two, so the phone buzzes once. The text ca
 1. **Server sends, best effort.** The send happens after the alert is saved, with a short timeout. A failed send logs one line (no endpoint, no keys) and never stops the geofence loop or the automatic send.
 2. **One owner, a few phones.** At most 5 saved devices. Subscribing is per device and means "both events". Turning it off on a device removes its row.
 3. **Dead subscriptions clean themselves.** A `404` or `410` from the push service deletes that row.
-4. **Keys live on the host only.** `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` in the host `.env`. The subject is a contact address, so it is never committed. If they are unset, push is off and the Geofence tab says so. Everything else works as today.
+4. **Keys live on the host only.** `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` in the host `.env`. The subject is a contact address, so it is never committed. If they are unset, push is off and the Notifications page says so. Everything else works as today.
 5. **Custom service worker.** The generated worker moves to `injectManifest` so it can handle `push` and `notificationclick`. Caching stays app shell only, with nothing under `/api` cached, and updates stay user-confirmed (`registerType: 'prompt'`).
-6. **Permission flow.** A button on the Geofence tab, "Turn on alerts", asks for permission only after a tap, and says it needs the Home Screen app. A "Send a test" button sends one fixed test message.
+6. **Permission flow.** A button on the Setup tab's Notifications page (moved there from the Geofence tab on 2026-11-21, AC-107), "Turn on alerts", asks for permission only after a tap, and says it needs the Home Screen app. A "Send a test" button sends one fixed test message.
 
 ## Data model (needs approval)
 
