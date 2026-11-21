@@ -201,6 +201,28 @@ def map_central_lock(status: object) -> bool | None:
     return None
 
 
+# `basicVehicleStatus.engineStatus` (owner approved 2026-11-21). The labels are the public Home
+# Assistant integration's, so all four are `unverified` on the owner's car. Two sources disagree on
+# the spelling (hyphen or underscore), so the value is normalised before it is looked up.
+ENGINE_STATUS_PATH = ("basicVehicleStatus", "engineStatus")
+ENGINE_STATUS_LABELS: dict[str, str] = {
+    "engine-off": "Parked",
+    "engine-running": "Driving",
+    "ready": "Ready",
+    "charging": "Charging",
+}
+
+
+def map_engine_status(status: object) -> str | None:
+    """The normalised engine status ("engine-off", "engine-running", "ready" or "charging"), or
+    None. The value is trimmed, lowercased and `_` becomes `-`. Anything else is no reading."""
+    value = _dig(status, ENGINE_STATUS_PATH)
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower().replace("_", "-")
+    return key if key in ENGINE_STATUS_LABELS else None
+
+
 _CODE = re.compile(r"\d{1,2}")
 
 

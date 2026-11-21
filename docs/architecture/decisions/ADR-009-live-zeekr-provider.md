@@ -271,3 +271,13 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **Shown:** the card's top-level `central_locking` field (`locked`, `unlocked` or `null`; see `api-contracts.md`). It is set only when `status` is `ok` and it comes from the same read as the row shown. The card shows "no reading" after any failed read, while paused, after an API restart and when live readings are off.
 - **Unchanged:** read-only calls only, no command is sent to the car, and the app still cannot lock or unlock it.
 - **Limits:** the lock state is only as fresh as the last read (every `interval_minutes` while the page is open). Codes other than `"1"` and `"0"` have not been seen.
+
+## Amendment (APPROVED by the owner, 2026-11-21): `engineStatus` mapping, not yet wired in
+
+- **Owner decision:** map `basicVehicleStatus.engineStatus` for use by the planned notification rules. The owner approved the mapping and said no dump is needed first.
+- **Values (`unverified`):** `engine-off` Parked, `engine-running` Driving, `ready` Ready, `charging` Charging. The labels are the public Home Assistant integration's. Anything else is no reading.
+- **Spelling:** that integration expects hyphens, while evcc traces from another Geely-group car show underscores. The value is trimmed, lowercased and `_` becomes `-` before the lookup. Which form the owner's car sends has not been seen.
+- **Not seen on the owner's car.** No reading of this field is recorded.
+- **Code:** `map_engine_status` and `ENGINE_STATUS_LABELS` in `app/adapters/zeekr_live.py`; tests in `tests/test_zeekr_live.py`. The code tables are in `docs/architecture/vehicle-status-codes.md`.
+- **Not wired in:** nothing calls the function yet. It is not in `Snapshot` or `GeofenceInput`, is not stored, logged or shown, and adds no column, no API field and no migration. Using it in a rule still needs the rules data model and API contract to be approved.
+- **Unchanged:** read-only calls only, and no command is sent to the car.

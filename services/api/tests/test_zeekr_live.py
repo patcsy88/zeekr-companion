@@ -124,6 +124,39 @@ def test_central_lock_reads_only_the_two_known_codes(code: object, expected: obj
     assert zeekr_live.map_central_lock({}) is None
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("engine-off", "engine-off"),
+        ("engine_off", "engine-off"),
+        (" Engine_Running ", "engine-running"),
+        ("ENGINE-RUNNING", "engine-running"),
+        ("ready", "ready"),
+        ("charging", "charging"),
+        ("engine off", None),
+        ("sleep", None),
+        ("", None),
+        (1, None),
+        (True, None),
+        (None, None),
+    ],
+)
+def test_engine_status_is_normalised_and_limited_to_four_values(
+    raw: object, expected: object
+) -> None:
+    assert zeekr_live.map_engine_status({"basicVehicleStatus": {"engineStatus": raw}}) == expected
+    assert zeekr_live.map_engine_status({}) is None
+
+
+def test_engine_status_labels_cover_exactly_the_four_values() -> None:
+    assert zeekr_live.ENGINE_STATUS_LABELS == {
+        "engine-off": "Parked",
+        "engine-running": "Driving",
+        "ready": "Ready",
+        "charging": "Charging",
+    }
+
+
 def test_central_lock_is_kept_in_memory_and_cleared_by_a_failure() -> None:
     replies: list[Any] = [lock_status("1"), ZeekrReadError("x")]
     now = [0.0]

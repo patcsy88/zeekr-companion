@@ -112,6 +112,8 @@ Only these two keys are recorded. No other reading is copied into the repo. The 
 | `'4'`       | Ready to Go           | no                      |
 | `'13'`      | Active                | yes, 2 dumps            |
 
+Current code tables for these keys, with later readings, are in `docs/architecture/vehicle-status-codes.md`. The table above records what was read at the time.
+
 **Read together** (the only readings that have both keys):
 
 | Reading             | `usageMode` | `gearAutoStatus` |
