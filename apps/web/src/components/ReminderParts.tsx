@@ -3,7 +3,7 @@ import type { OdometerBasis } from '../data/reminders';
 import type { ReminderView } from '../data/reminderOverlay';
 import { formatDate } from '../lib/dates';
 import { isDueSoon } from '../lib/reminderStatus';
-import { dateText, KIND_CONTEXT, KIND_LABELS, kmText } from '../lib/reminderText';
+import { dateText, KIND_CONTEXT, KIND_LABELS, kmText, renewalSummary } from '../lib/reminderText';
 import { ITEM_BODY, ItemCard, META, SMALL, TITLE } from './ListParts';
 import { SyncBadge } from './SyncBadge';
 import { Badge } from './ui/badge';
@@ -77,6 +77,7 @@ export function ReminderItem({
   const r = view.reminder;
   const when = dateText(r, today);
   const km = kmText(r, basis?.km ?? null);
+  const renewal = renewalSummary(r);
   return (
     <ItemCard>
       <Link to={`/reminders/${r.id}`} className={ITEM_BODY}>
@@ -85,6 +86,7 @@ export function ReminderItem({
           {KIND_LABELS[r.kind]}
           {KIND_CONTEXT[r.kind] ? ` · ${KIND_CONTEXT[r.kind] ?? ''}` : ''}
         </span>
+        {renewal ? <span className={META}>{renewal}</span> : null}
         {when ? <span className={META}>{when}</span> : null}
         {km ? <span className={META}>{km}</span> : null}
         {r.due_odometer !== null && r.completed_on === null ? (

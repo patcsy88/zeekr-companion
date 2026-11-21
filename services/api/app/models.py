@@ -166,6 +166,11 @@ class Reminder(Base):
     notes: Mapped[str | None] = mapped_column(Text)
     completed_on: Mapped[dt.date | None] = mapped_column(Date)
     template_ref: Mapped[str | None] = mapped_column(String(100))
+    insurer: Mapped[str | None] = mapped_column(String(200))
+    cover_type: Mapped[str | None] = mapped_column(String(30))
+    premium_minor: Mapped[int | None] = mapped_column(BigInteger)
+    insurer_phone: Mapped[str | None] = mapped_column(String(30))
+    amount_minor: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -176,6 +181,26 @@ class Reminder(Base):
     __table_args__ = (
         CheckConstraint(
             "kind IN ('service', 'insurance_renewal', 'road_tax_renewal')", name="kind_valid"
+        ),
+        CheckConstraint(
+            "cover_type IS NULL OR cover_type IN ('comprehensive', 'third_party',"
+            " 'third_party_fire_theft')",
+            name="cover_type_valid",
+        ),
+        CheckConstraint(
+            "premium_minor IS NULL OR premium_minor BETWEEN 0 AND 100000000",
+            name="premium_range",
+        ),
+        CheckConstraint(
+            "amount_minor IS NULL OR amount_minor BETWEEN 0 AND 100000000", name="amount_range"
+        ),
+        CheckConstraint(
+            "insurer IS NULL AND cover_type IS NULL AND premium_minor IS NULL"
+            " AND insurer_phone IS NULL OR kind = 'insurance_renewal'",
+            name="insurance_fields_insurance_only",
+        ),
+        CheckConstraint(
+            "amount_minor IS NULL OR kind = 'road_tax_renewal'", name="amount_road_tax_only"
         ),
         CheckConstraint("char_length(title) BETWEEN 1 AND 200", name="title_length"),
         CheckConstraint("due_date IS NOT NULL OR due_odometer IS NOT NULL", name="has_due_field"),

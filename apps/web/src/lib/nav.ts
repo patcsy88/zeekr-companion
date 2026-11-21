@@ -69,6 +69,7 @@ export const MAIN_TABS: MainTab[] = [
     owns: (p) => under(p, '/setup') || p === '/vehicle/edit',
     subs: [
       { to: '/setup', label: 'Profile' },
+      { to: '/setup/renewals', label: 'Renewals' },
       { to: '/setup/notifications', label: 'Notifications' },
     ],
   },

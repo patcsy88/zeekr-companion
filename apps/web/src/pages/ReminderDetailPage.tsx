@@ -6,7 +6,8 @@ import { SyncBadge } from '../components/SyncBadge';
 import { useConnectivity, useReminder } from '../data/hooks';
 import { removeReminder, saveReminderEdit } from '../data/mutations';
 import { formatDate, formatTimestamp } from '../lib/dates';
-import { dateText, KIND_CONTEXT, KIND_LABELS, kmText } from '../lib/reminderText';
+import { formatMyr } from '../lib/money';
+import { COVER_LABELS, dateText, KIND_CONTEXT, KIND_LABELS, kmText } from '../lib/reminderText';
 import { isUuid } from '../lib/uuid';
 import { discardFailed, retryFailed } from '../storage/queue';
 import { syncAll } from '../sync/engine';
@@ -120,6 +121,26 @@ function ReminderDetail({ id }: { id: string }) {
         <dd>{when ?? '—'}</dd>
         <dt>Due odometer</dt>
         <dd>{km ?? '—'}</dd>
+        {r.kind === 'insurance_renewal' ? (
+          <>
+            <dt>Insurer</dt>
+            <dd>{r.insurer ?? '—'}</dd>
+            <dt>Cover type</dt>
+            <dd>{r.cover_type ? COVER_LABELS[r.cover_type] : '—'}</dd>
+            <dt>Premium</dt>
+            <dd>{r.premium_minor !== null ? formatMyr(r.premium_minor) : '—'}</dd>
+            <dt>Insurer phone</dt>
+            <dd>
+              {r.insurer_phone ? <a href={`tel:${r.insurer_phone}`}>{r.insurer_phone}</a> : '—'}
+            </dd>
+          </>
+        ) : null}
+        {r.kind === 'road_tax_renewal' ? (
+          <>
+            <dt>Amount</dt>
+            <dd>{r.amount_minor !== null ? formatMyr(r.amount_minor) : '—'}</dd>
+          </>
+        ) : null}
         <dt>Completed</dt>
         <dd>
           {r.completed_on ? (

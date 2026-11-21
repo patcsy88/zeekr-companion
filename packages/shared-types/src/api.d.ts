@@ -1427,6 +1427,10 @@ export interface components {
         };
         /** ReminderCreate */
         ReminderCreate: {
+            /** Amount Minor */
+            amount_minor?: number | null;
+            /** Cover Type */
+            cover_type?: ("comprehensive" | "third_party" | "third_party_fire_theft") | null;
             /** Due Date */
             due_date?: string | null;
             /** Due Odometer */
@@ -1436,6 +1440,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Insurer */
+            insurer?: string | null;
+            /** Insurer Phone */
+            insurer_phone?: string | null;
             /**
              * Kind
              * @enum {string}
@@ -1443,6 +1451,8 @@ export interface components {
             kind: "service" | "insurance_renewal" | "road_tax_renewal";
             /** Notes */
             notes?: string | null;
+            /** Premium Minor */
+            premium_minor?: number | null;
             /** Template Ref */
             template_ref?: string | null;
             /** Title */
@@ -1456,8 +1466,12 @@ export interface components {
         };
         /** ReminderOut */
         ReminderOut: {
+            /** Amount Minor */
+            amount_minor: number | null;
             /** Completed On */
             completed_on: string | null;
+            /** Cover Type */
+            cover_type: ("comprehensive" | "third_party" | "third_party_fire_theft") | null;
             /**
              * Created At
              * Format: date-time
@@ -1472,6 +1486,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Insurer */
+            insurer: string | null;
+            /** Insurer Phone */
+            insurer_phone: string | null;
             /**
              * Kind
              * @enum {string}
@@ -1481,6 +1499,8 @@ export interface components {
             notes: string | null;
             /** Overdue By */
             overdue_by: ("date" | "odometer")[];
+            /** Premium Minor */
+            premium_minor: number | null;
             /**
              * Status
              * @enum {string}
@@ -1503,16 +1523,26 @@ export interface components {
          *     `status`, `overdue_by` and `template_ref` are not accepted (extra=forbid).
          */
         ReminderPatch: {
+            /** Amount Minor */
+            amount_minor?: number | null;
             /** Completed On */
             completed_on?: string | null;
+            /** Cover Type */
+            cover_type?: ("comprehensive" | "third_party" | "third_party_fire_theft") | null;
             /** Due Date */
             due_date?: string | null;
             /** Due Odometer */
             due_odometer?: number | null;
+            /** Insurer */
+            insurer?: string | null;
+            /** Insurer Phone */
+            insurer_phone?: string | null;
             /** Kind */
             kind?: ("service" | "insurance_renewal" | "road_tax_renewal") | null;
             /** Notes */
             notes?: string | null;
+            /** Premium Minor */
+            premium_minor?: number | null;
             /** Title */
             title?: string | null;
         };

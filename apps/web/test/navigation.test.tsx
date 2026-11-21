@@ -40,6 +40,7 @@ describe('AC-107: six main tabs', () => {
     ['/vehicle/tyres/new', 'Maintenance'],
     ['/advisory', 'Maintenance'],
     ['/setup', 'Setup'],
+    ['/setup/renewals', 'Setup'],
     ['/setup/notifications', 'Setup'],
     ['/vehicle/edit', 'Setup'],
   ])('%s keeps %s highlighted', async (path, label) => {

@@ -51,6 +51,11 @@ const reminder = (n: number, over: Record<string, unknown>) => ({
   notes: null,
   completed_on: null,
   template_ref: null,
+  insurer: null,
+  cover_type: null,
+  premium_minor: null,
+  insurer_phone: null,
+  amount_minor: null,
   status: 'upcoming',
   overdue_by: [],
   created_at: STAMP,
@@ -64,9 +69,17 @@ const reminders = [
     due_date: '2030-06-01',
     status: 'overdue',
     overdue_by: ['date'],
+    amount_minor: 9000,
   }),
   reminder(2, { title: 'Sample: 60,000 km service', due_date: '2031-05-10', due_odometer: 60000 }),
-  reminder(3, { kind: 'insurance_renewal', title: 'Insurance renewal', due_date: '2030-09-01' }),
+  reminder(3, {
+    kind: 'insurance_renewal',
+    title: 'Insurance renewal',
+    due_date: '2030-09-01',
+    insurer: 'Sample Insurer',
+    cover_type: 'comprehensive',
+    premium_minor: 120000,
+  }),
   reminder(4, { title: 'Sample: tyre rotation', due_odometer: 50000 }),
 ];
 
@@ -237,6 +250,7 @@ const SCREENS = [
   { name: 'energy', path: '/energy', ready: 'live-readings' },
   { name: 'service-history', path: '/', ready: null },
   { name: 'reminders', path: '/reminders', ready: null },
+  { name: 'renewals', path: '/setup/renewals', ready: null },
   { name: 'sentry', path: '/sentry', ready: 'geofence-alert' },
   { name: 'geofence', path: '/geofence', ready: 'geo-map-car' },
 ] as const;

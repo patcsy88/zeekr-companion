@@ -14,6 +14,7 @@ The app works fully from manual records. Live car data is optional and off by de
 
 - **Service:** service records with date, odometer, provider, description and cost. A collapsed "Service intervals" card shows the official maintenance schedule, with due dates worked out from the purchase date in the vehicle profile.
 - **Reminders:** service reminders by date and odometer, a completion flow that records the service, and a template for the maintenance schedule.
+- **Renewals:** road tax and insurance reminders, with the insurer, cover type, premium and phone for insurance and the amount for road tax. No policy number, plate or VIN is stored.
 - **Expenses:** costs by category, with monthly totals and an optional energy (kWh) figure for charging.
 - **Warranty:** coverages and claims, with a template of the standard coverage items.
 - **Vehicle:** the vehicle's details, plus a live card and a history page when live readings are on. The card shows battery, range, odometer, charging, tyre pressures and temperatures, 12 V battery voltage, central locking and other indicators.
@@ -41,6 +42,11 @@ iPhone width (390 px), light and dark. Every value shown is synthetic (an RWD Lo
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/service-history-light.png" width="180" alt="Service history, light"> <img src="docs/screenshots/service-history-dark.png" width="180" alt="Service history, dark"> | <img src="docs/screenshots/reminders-light.png" width="180" alt="Reminders, light"> <img src="docs/screenshots/reminders-dark.png" width="180" alt="Reminders, dark"> |
 | Service records, newest first                                                                                                                                                                 | Overdue and upcoming, by date and odometer                                                                                                                            |
+
+| Setup: Renewals                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/renewals-light.png" width="180" alt="Renewals, light"> <img src="docs/screenshots/renewals-dark.png" width="180" alt="Renewals, dark"> |
+| Road tax and insurance, with the details you entered                                                                                                              |
 
 | Security: Sentry                                                                                                                                          | Security: Geofence                                                                                                                                                |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

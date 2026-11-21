@@ -34,7 +34,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0019"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0020"
             )
     finally:
         engine.dispose()
@@ -604,6 +604,61 @@ def test_0019_push_subscription_checks_and_downgrade(fresh_database_url: str) ->
         with engine.connect() as conn:
             assert conn.execute(text("SELECT to_regclass('push_subscription')")).scalar() is None
         engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)
+
+
+def test_0020_renewal_details_checks_and_downgrade(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    ins = (
+        "INSERT INTO reminder (id, kind, title, due_date, {col}) "
+        "VALUES (gen_random_uuid(), '{kind}', 't', DATE '2027-01-01', {val})"
+    )
+    with engine.begin() as conn:
+        conn.execute(text(ins.format(col="insurer", kind="insurance_renewal", val="'Example'")))
+        conn.execute(text(ins.format(col="amount_minor", kind="road_tax_renewal", val="5")))
+    for col, kind, val in [
+        ("insurer", "road_tax_renewal", "'x'"),
+        ("insurer_phone", "service", "'1'"),
+        ("amount_minor", "insurance_renewal", "5"),
+        ("cover_type", "insurance_renewal", "'bad'"),
+        ("premium_minor", "insurance_renewal", "-1"),
+        ("amount_minor", "road_tax_renewal", "100000001"),
+    ]:
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            conn.execute(text(ins.format(col=col, kind=kind, val=val)))
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0019")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            columns = {
+                r[0]
+                for r in conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'reminder'"
+                    )
+                )
+            }
+        engine.dispose()
+        assert columns.isdisjoint(
+            {"insurer", "cover_type", "premium_minor", "insurer_phone", "amount_minor"}
+        )
     finally:
         os.environ.pop("DATABASE_URL", None)
     run_migrations(fresh_database_url)

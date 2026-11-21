@@ -1,9 +1,17 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
-import type { Reminder, ReminderKind } from '../api/types';
+import type { CoverType, Reminder, ReminderKind } from '../api/types';
 import { isIsoDate } from '../lib/dates';
 import { issuesByField } from '../lib/forms';
-import { KIND_CONTEXT, KIND_LABELS, KINDS } from '../lib/reminderText';
+import { parseMyrToSen, senToInput } from '../lib/money';
+import {
+  COVER_LABELS,
+  COVER_TYPES,
+  KIND_CONTEXT,
+  KIND_LABELS,
+  KINDS,
+  RENEWAL_PRIVACY,
+} from '../lib/reminderText';
 import { ACTIONS, ERROR, FORM, HINT, SelectField, TextArea, TextField } from './Field';
 import { Button } from './ui/button';
 
@@ -13,7 +21,14 @@ export interface ReminderFormValues {
   due_date: string | null;
   due_odometer: number | null;
   notes: string | null;
+  insurer: string | null;
+  cover_type: CoverType | null;
+  premium_minor: number | null;
+  insurer_phone: string | null;
+  amount_minor: number | null;
 }
+
+const MAX_RENEWAL_MINOR = 100_000_000;
 
 interface Props {
   initial?: Reminder;
@@ -25,8 +40,28 @@ interface Props {
 }
 
 type Errors = Partial<
-  Record<'title' | 'due_date' | 'due_odometer' | 'notes' | 'due' | 'form', string>
+  Record<
+    | 'title'
+    | 'due_date'
+    | 'due_odometer'
+    | 'notes'
+    | 'due'
+    | 'form'
+    | 'insurer'
+    | 'insurer_phone'
+    | 'premium'
+    | 'amount',
+    string
+  >
 >;
+
+function checkMoney(input: string): string | undefined {
+  if (input.trim() === '') return undefined;
+  const p = parseMyrToSen(input);
+  if (!p.ok) return p.error;
+  if (p.minor > MAX_RENEWAL_MINOR) return 'At most RM 1,000,000.00.';
+  return undefined;
+}
 
 /** Checks the same rules as the server so most mistakes never leave the device. */
 export function validateReminder(v: {
@@ -35,8 +70,19 @@ export function validateReminder(v: {
   due_date: string;
   due_odometer: string;
   notes: string;
+  insurer?: string;
+  insurer_phone?: string;
+  premium?: string;
+  amount?: string;
 }): Errors {
   const e: Errors = {};
+  if (v.kind === 'insurance_renewal') {
+    if ((v.insurer ?? '').trim().length > 200) e.insurer = 'At most 200 characters.';
+    if ((v.insurer_phone ?? '').trim().length > 30) e.insurer_phone = 'At most 30 characters.';
+    e.premium = checkMoney(v.premium ?? '');
+  }
+  if (v.kind === 'road_tax_renewal') e.amount = checkMoney(v.amount ?? '');
+  for (const k of ['premium', 'amount'] as const) if (e[k] === undefined) delete e[k];
   const title = v.title.trim();
   if (title.length < 1 || title.length > 200) e.title = 'Enter 1 to 200 characters.';
   if (
@@ -68,17 +114,46 @@ export function ReminderForm({
   const startKm = initial?.due_odometer ?? prefill?.due_odometer ?? null;
   const [dueKm, setDueKm] = useState(startKm != null ? String(startKm) : '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [insurer, setInsurer] = useState(initial?.insurer ?? '');
+  const [cover, setCover] = useState<CoverType | ''>(initial?.cover_type ?? '');
+  const [premium, setPremium] = useState(
+    initial?.premium_minor != null ? senToInput(initial.premium_minor) : '',
+  );
+  const [phone, setPhone] = useState(initial?.insurer_phone ?? '');
+  const [amount, setAmount] = useState(
+    initial?.amount_minor != null ? senToInput(initial.amount_minor) : '',
+  );
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const next = validateReminder({ kind, title, due_date: dueDate, due_odometer: dueKm, notes });
+    const next = validateReminder({
+      kind,
+      title,
+      due_date: dueDate,
+      due_odometer: dueKm,
+      notes,
+      insurer,
+      insurer_phone: phone,
+      premium,
+      amount,
+    });
     setErrors(next);
     if (Object.keys(next).length > 0) return;
+    const insurance = kind === 'insurance_renewal';
+    const money = (text: string): number | null => {
+      const p = text.trim() === '' ? null : parseMyrToSen(text);
+      return p?.ok ? p.minor : null;
+    };
     setBusy(true);
     try {
       await onSubmit({
+        insurer: insurance && insurer.trim() !== '' ? insurer.trim() : null,
+        cover_type: insurance && cover !== '' ? cover : null,
+        premium_minor: insurance ? money(premium) : null,
+        insurer_phone: insurance && phone.trim() !== '' ? phone.trim() : null,
+        amount_minor: kind === 'road_tax_renewal' ? money(amount) : null,
         kind,
         title: title.trim(),
         due_date: dueDate === '' ? null : dueDate,
@@ -93,6 +168,10 @@ export function ReminderForm({
           due_date: i.due_date,
           due_odometer: i.due_odometer,
           notes: i.notes,
+          insurer: i.insurer,
+          insurer_phone: i.insurer_phone,
+          premium: i.premium_minor,
+          amount: i.amount_minor,
           form: err.message,
         });
       } else setErrors({ form: err instanceof Error ? err.message : 'Could not save.' });
@@ -165,6 +244,75 @@ export function ReminderForm({
           }}
           error={errors.due_odometer ?? si.due_odometer}
         />
+      ) : null}
+      {kind === 'insurance_renewal' ? (
+        <>
+          <TextField
+            id="insurer"
+            label="Insurer"
+            autoComplete="off"
+            value={insurer}
+            onChange={(e) => {
+              setInsurer(e.target.value);
+            }}
+            error={errors.insurer ?? si.insurer}
+          />
+          <SelectField
+            id="cover_type"
+            label="Cover type"
+            value={cover}
+            onChange={(e) => {
+              setCover(e.target.value as CoverType | '');
+            }}
+          >
+            <option value="">Not set</option>
+            {COVER_TYPES.map((c) => (
+              <option key={c} value={c}>
+                {COVER_LABELS[c]}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            id="premium"
+            label="Premium (MYR)"
+            inputMode="decimal"
+            autoComplete="off"
+            value={premium}
+            onChange={(e) => {
+              setPremium(e.target.value);
+            }}
+            error={errors.premium ?? si.premium_minor}
+          />
+          <TextField
+            id="insurer_phone"
+            label="Insurer phone"
+            type="tel"
+            autoComplete="off"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+            }}
+            error={errors.insurer_phone ?? si.insurer_phone}
+          />
+        </>
+      ) : null}
+      {kind === 'road_tax_renewal' ? (
+        <TextField
+          id="amount"
+          label="Amount (MYR)"
+          inputMode="decimal"
+          autoComplete="off"
+          value={amount}
+          onChange={(e) => {
+            setAmount(e.target.value);
+          }}
+          error={errors.amount ?? si.amount_minor}
+        />
+      ) : null}
+      {kind !== 'service' ? (
+        <p className={HINT} data-testid="renewal-privacy">
+          {RENEWAL_PRIVACY}
+        </p>
       ) : null}
       <TextArea
         id="notes"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+from collections.abc import Mapping
 
 from sqlalchemy.exc import IntegrityError
 
@@ -27,7 +28,17 @@ from app.services.odometer import read_reminder_odometer
 from app.services.reminder_status import compute_status
 from app.services.reminder_templates import STEP_KM, STEP_MONTHS, TEMPLATE_ID
 
-_CONTENT_FIELDS = ("kind", "title", "due_date", "due_odometer", "notes", "template_ref")
+_INSURANCE_FIELDS = ("insurer", "cover_type", "premium_minor", "insurer_phone")
+_CONTENT_FIELDS = (
+    "kind",
+    "title",
+    "due_date",
+    "due_odometer",
+    "notes",
+    "template_ref",
+    *_INSURANCE_FIELDS,
+    "amount_minor",
+)
 _RANK = {"overdue": 0, "upcoming": 1, "completed": 2}
 _FAR = dt.date.max
 
@@ -46,6 +57,20 @@ def check_due_rules(
         )
     if due_odometer is not None and kind != "service":
         issues.append(FieldIssue("due_odometer", "is only allowed for service reminders"))
+    return issues
+
+
+def check_renewal_fields(kind: str, values: Mapping[str, object]) -> list[FieldIssue]:
+    """Renewal details belong to one kind each (owner approved 2026-11-21)."""
+    issues: list[FieldIssue] = []
+    if kind != "insurance_renewal":
+        issues.extend(
+            FieldIssue(f, "is only allowed for insurance reminders")
+            for f in _INSURANCE_FIELDS
+            if values.get(f) is not None
+        )
+    if kind != "road_tax_renewal" and values.get("amount_minor") is not None:
+        issues.append(FieldIssue("amount_minor", "is only allowed for road tax reminders"))
     return issues
 
 
@@ -81,6 +106,11 @@ class ReminderService:
             notes=row.notes,
             completed_on=row.completed_on,
             template_ref=row.template_ref,
+            insurer=row.insurer,
+            cover_type=row.cover_type,
+            premium_minor=row.premium_minor,
+            insurer_phone=row.insurer_phone,
+            amount_minor=row.amount_minor,
             status=status,
             overdue_by=overdue_by,
             created_at=row.created_at,
@@ -93,9 +123,10 @@ class ReminderService:
 
     def create(self, data: ReminderCreate) -> tuple[ReminderOut, bool]:
         issues = check_due_rules(data.kind, data.due_date, data.due_odometer)
+        values = data.model_dump()
+        issues += check_renewal_fields(data.kind, values)
         if issues:
             raise InvalidInput("Request failed validation.", issues)
-        values = data.model_dump()
         for _ in range(2):
             existing = self._repo.get(data.id)
             if existing is not None:
@@ -150,6 +181,8 @@ class ReminderService:
         due_date = changes.get("due_date", row.due_date)
         due_odometer = changes.get("due_odometer", row.due_odometer)
         issues = check_due_rules(kind, due_date, due_odometer)
+        merged = {f: changes.get(f, getattr(row, f)) for f in (*_INSURANCE_FIELDS, "amount_minor")}
+        issues += check_renewal_fields(kind, merged)
         if issues:
             self._repo.release()
             raise InvalidInput("Request failed validation.", issues)
@@ -280,7 +313,9 @@ class ReminderService:
         if next_values is None:
             return True
         nxt = self._repo.existing_in_tx(Reminder, next_values["id"])  # type: ignore[arg-type]
-        return nxt is not None and all(getattr(nxt, f) == next_values[f] for f in _CONTENT_FIELDS)
+        return nxt is not None and all(
+            getattr(nxt, f) == next_values.get(f) for f in _CONTENT_FIELDS
+        )
 
     def _result(
         self, row: Reminder, record: ServiceRecord, next_values: dict[str, object] | None

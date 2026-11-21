@@ -162,7 +162,13 @@ export interface ReminderEdit {
   due_odometer?: number | null;
   notes?: string | null;
   completed_on?: string | null;
+  insurer?: string | null;
+  cover_type?: CoverType | null;
+  premium_minor?: number | null;
+  insurer_phone?: string | null;
+  amount_minor?: number | null;
 }
+export type CoverType = 'comprehensive' | 'third_party' | 'third_party_fire_theft';
 
 type Schemas = components['schemas'];
 export type WarrantyCoverage = Schemas['WarrantyCoverageOut'];

@@ -1,4 +1,5 @@
-import type { Reminder, ReminderKind } from '../api/types';
+import type { CoverType, Reminder, ReminderKind } from '../api/types';
+import { formatMyr } from './money';
 import { formatDate } from './dates';
 import { daysBetween } from './reminderStatus';
 
@@ -12,6 +13,33 @@ export const KIND_LABELS: Record<ReminderKind, string> = {
 export const KIND_CONTEXT: Partial<Record<ReminderKind, string>> = {
   road_tax_renewal: 'Road tax (JPJ)',
 };
+
+export const COVER_LABELS: Record<CoverType, string> = {
+  comprehensive: 'Comprehensive',
+  third_party: 'Third party',
+  third_party_fire_theft: 'Third party, fire and theft',
+};
+
+export const COVER_TYPES: CoverType[] = ['comprehensive', 'third_party', 'third_party_fire_theft'];
+
+/** The privacy line next to the renewal fields: the phone cache is not encrypted. */
+export const RENEWAL_PRIVACY =
+  'These details are saved unencrypted on this phone, like the rest of the cached data. Do not enter a policy number, plate or VIN.';
+
+/** One line for a list: "Example Insurer · Comprehensive · RM 1,234.56", or the road tax amount. */
+export function renewalSummary(
+  r: Pick<Reminder, 'kind' | 'insurer' | 'cover_type' | 'premium_minor' | 'amount_minor'>,
+): string | null {
+  const parts: string[] = [];
+  if (r.kind === 'insurance_renewal') {
+    if (r.insurer) parts.push(r.insurer);
+    if (r.cover_type) parts.push(COVER_LABELS[r.cover_type]);
+    if (r.premium_minor !== null) parts.push(formatMyr(r.premium_minor));
+  } else if (r.kind === 'road_tax_renewal' && r.amount_minor !== null) {
+    parts.push(formatMyr(r.amount_minor));
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
 
 export const KINDS: ReminderKind[] = ['service', 'insurance_renewal', 'road_tax_renewal'];
 

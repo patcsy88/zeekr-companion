@@ -162,6 +162,11 @@ There is no "apply template" endpoint. Accepting a template means the client sen
   "notes": "string|null",
   "completed_on": "YYYY-MM-DD|null",
   "template_ref": "string|null",
+  "insurer": "string|null",
+  "cover_type": "comprehensive | third_party | third_party_fire_theft | null",
+  "premium_minor": 0,
+  "insurer_phone": "string|null",
+  "amount_minor": 0,
   "status": "upcoming | overdue | completed",
   "overdue_by": ["date", "odometer"],
   "created_at": "timestamp",
@@ -169,13 +174,13 @@ There is no "apply template" endpoint. Accepting a template means the client sen
 }
 ```
 
-`due_odometer` is an integer in kilometres, or `null`. `status` and `overdue_by` are computed by the server on read and are never stored or accepted in a request. `overdue_by` is empty unless `status` is `overdue`.
+`due_odometer` is an integer in kilometres, or `null`. The five renewal fields (owner approved 2026-11-21, migration `0020`) are always present and are `null` when unset: `insurer`, `cover_type`, `premium_minor` and `insurer_phone` belong to insurance reminders, `amount_minor` (integer sen) to road tax reminders. There is no policy number, plate or VIN and no document. `status` and `overdue_by` are computed by the server on read and are never stored or accepted in a request. `overdue_by` is empty unless `status` is `overdue`.
 
 ### Create and update
 
-`POST` body: `id`, `kind`, `title`, `due_date`, `due_odometer`, `notes`, `template_ref`. `completed_on` is not accepted on create. Unknown fields are rejected (`extra=forbid`, as for service records).
+`POST` body: `id`, `kind`, `title`, `due_date`, `due_odometer`, `notes`, `template_ref`, and optionally the five renewal fields. `completed_on` is not accepted on create. Unknown fields are rejected (`extra=forbid`, as for service records).
 
-`PATCH` body: any of `kind`, `title`, `due_date`, `due_odometer`, `notes`, `completed_on`. Omitted fields are unchanged. `due_date`, `due_odometer`, `notes` and `completed_on` may be set to `null`. `kind` and `title` may not be null. `template_ref` cannot be changed after create.
+`PATCH` body: any of `kind`, `title`, `due_date`, `due_odometer`, `notes`, `completed_on` and the five renewal fields. Omitted fields are unchanged. `due_date`, `due_odometer`, `notes`, `completed_on` and the five renewal fields may be set to `null`. `kind` and `title` may not be null. `template_ref` cannot be changed after create.
 
 Validation (violations return `400 validation_error` with field details):
 
@@ -187,10 +192,12 @@ Validation (violations return `400 validation_error` with field details):
 - `due_date` is a valid date. Past dates are accepted (proposal, Q8). No upper bound other than a valid date from 2000-01-01 to 2200-12-31.
 - `completed_on` is not in the future, judged against the current date in Asia/Kuala_Lumpur (UTC+8), the same rule as service-record dates after the owner decision of 2026-10-22 (this changes the earlier service-record rule, see "Changes to approved parts").
 - `notes` is at most 5,000 characters. `template_ref` is at most 100 characters.
+- `insurer` is 1 to 200 characters and `insurer_phone` 1 to 30 (send `null`, not an empty string, to leave them blank). `cover_type` is one of `comprehensive`, `third_party`, `third_party_fire_theft`. `premium_minor` and `amount_minor` are strict integers from 0 to 100,000,000 (RM 1,000,000.00).
+- `insurer`, `cover_type`, `premium_minor` and `insurer_phone` must be null unless `kind` is `insurance_renewal`. `amount_minor` must be null unless `kind` is `road_tax_renewal`. A mismatch is `400` on the field. Changing `kind` while old-kind fields stay set is `400`. The database has matching check constraints.
 - No NUL characters in any string (existing rule).
 - At most 500 reminders in total; a create beyond that returns `400 validation_error` on field `body` (proposed bound, keeps the list unpaginated).
 
-Idempotent replay compares the content fields `kind`, `title`, `due_date`, `due_odometer`, `notes` and `template_ref`.
+Idempotent replay compares the content fields `kind`, `title`, `due_date`, `due_odometer`, `notes`, `template_ref` and the five renewal fields.
 
 ### List and status
 

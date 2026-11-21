@@ -26,6 +26,11 @@ function applyEdit(r: Reminder, patch: ReminderEdit): Reminder {
   if (patch.due_odometer !== undefined) out.due_odometer = patch.due_odometer;
   if (patch.notes !== undefined) out.notes = patch.notes;
   if (patch.completed_on !== undefined) out.completed_on = patch.completed_on;
+  if (patch.insurer !== undefined) out.insurer = patch.insurer;
+  if (patch.cover_type !== undefined) out.cover_type = patch.cover_type;
+  if (patch.premium_minor !== undefined) out.premium_minor = patch.premium_minor;
+  if (patch.insurer_phone !== undefined) out.insurer_phone = patch.insurer_phone;
+  if (patch.amount_minor !== undefined) out.amount_minor = patch.amount_minor;
   return out;
 }
 
@@ -73,6 +78,11 @@ export function overlayReminders(
             notes: body.notes ?? null,
             completed_on: null,
             template_ref: body.template_ref ?? null,
+            insurer: body.insurer ?? null,
+            cover_type: body.cover_type ?? null,
+            premium_minor: body.premium_minor ?? null,
+            insurer_phone: body.insurer_phone ?? null,
+            amount_minor: body.amount_minor ?? null,
             status: 'upcoming',
             overdue_by: [],
             created_at: e.created_at,

@@ -37,7 +37,7 @@ import { WarrantyTemplatePage } from './pages/WarrantyTemplatePage';
 import { VehicleEditPage, VehiclePage } from './pages/VehiclePage';
 import { DrivingPage } from './pages/DrivingPage';
 import { EnergyPage } from './pages/EnergyPage';
-import { NotificationsPage, SetupPage } from './pages/SetupPages';
+import { NotificationsPage, RenewalsPage, SetupPage } from './pages/SetupPages';
 import { AccountMenu } from './components/AccountMenu';
 import { ThemePicker } from './components/ThemePicker';
 import { probeApi } from './api/health';
@@ -123,6 +123,7 @@ function Layout() {
               <Route path="/driving" element={<DrivingPage />} />
               <Route path="/energy" element={<EnergyPage />} />
               <Route path="/setup" element={<SetupPage />} />
+              <Route path="/setup/renewals" element={<RenewalsPage />} />
               <Route path="/setup/notifications" element={<NotificationsPage />} />
               <Route path="/vehicle/live" element={<LiveHistoryPage />} />
               <Route path="/vehicle/edit" element={<VehicleEditPage />} />

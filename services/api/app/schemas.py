@@ -243,6 +243,11 @@ def _page_limit_range(value: int) -> int:
 PageLimit = Annotated[int, BeforeValidator(_digits_only), AfterValidator(_page_limit_range)]
 
 
+MAX_RENEWAL_MINOR = 100_000_000
+RenewalMoney = Annotated[int, Field(strict=True, ge=0, le=MAX_RENEWAL_MINOR)]
+CoverType = Literal["comprehensive", "third_party", "third_party_fire_theft"]
+
+
 class ReminderCreate(_Input):
     id: uuid.UUID
     kind: ReminderKind
@@ -251,6 +256,11 @@ class ReminderCreate(_Input):
     due_odometer: Distance | None = None
     notes: str | None = Field(default=None, max_length=5000)
     template_ref: str | None = Field(default=None, max_length=100)
+    insurer: str | None = Field(default=None, min_length=1, max_length=200)
+    cover_type: CoverType | None = None
+    premium_minor: RenewalMoney | None = None
+    insurer_phone: str | None = Field(default=None, min_length=1, max_length=30)
+    amount_minor: RenewalMoney | None = None
 
     _check_due_date = field_validator("due_date")(_due_date_in_range)
 
@@ -267,6 +277,11 @@ class ReminderPatch(_Input):
     due_odometer: Distance | None = None
     notes: str | None = Field(default=None, max_length=5000)
     completed_on: StrictDate | None = None
+    insurer: str | None = Field(default=None, min_length=1, max_length=200)
+    cover_type: CoverType | None = None
+    premium_minor: RenewalMoney | None = None
+    insurer_phone: str | None = Field(default=None, min_length=1, max_length=30)
+    amount_minor: RenewalMoney | None = None
 
     _check_due_date = field_validator("due_date")(_due_date_in_range)
     _check_completed_on = field_validator("completed_on")(_not_in_future)
@@ -303,6 +318,11 @@ class ReminderOut(BaseModel):
     notes: str | None
     completed_on: dt.date | None
     template_ref: str | None
+    insurer: str | None
+    cover_type: CoverType | None
+    premium_minor: int | None
+    insurer_phone: str | None
+    amount_minor: int | None
     status: Literal["upcoming", "overdue", "completed"]
     overdue_by: list[Literal["date", "odometer"]]
     created_at: UtcDateTime
