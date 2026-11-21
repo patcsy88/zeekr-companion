@@ -657,6 +657,52 @@ class PushSubscription(Base):
     )
 
 
+RULE_RESULTS: tuple[str, ...] = (
+    "matched, sent",
+    "matched, held by cooldown",
+    "not matched",
+    "no reading",
+    "reading too old",
+    "home not set",
+    "push not set up",
+)
+
+
+class NotificationRule(Base):
+    """An owner-defined notification rule (ADR-015). Only the last true/false result, one fixed
+    phrase and the last send time are kept: never a reading, position, distance or place."""
+
+    __tablename__ = "notification_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    match: Mapped[str] = mapped_column(Text, nullable=False, server_default="all")
+    conditions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    cooldown_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="10")
+    last_matched: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_sent_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("char_length(name) BETWEEN 1 AND 60", name="name_valid"),
+        CheckConstraint("match IN ('all', 'any')", name="match_valid"),
+        CheckConstraint(
+            "jsonb_typeof(conditions) = 'array' AND jsonb_array_length(conditions) BETWEEN 1 AND 4",
+            name="conditions_valid",
+        ),
+        CheckConstraint("cooldown_minutes BETWEEN 0 AND 1440", name="cooldown_valid"),
+        CheckConstraint(
+            "last_result IS NULL OR last_result IN ("
+            + ", ".join(f"'{r}'" for r in RULE_RESULTS)
+            + ")",
+            name="result_valid",
+        ),
+    )
+
+
 class AutoSentrySettings(Base):
     """The automatic Sentry on toggle and its quiet period (ADR-011). One row at most. No row
     means off and 60 minutes. Kept apart from geofence_settings on purpose."""

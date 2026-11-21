@@ -34,7 +34,7 @@ def test_ac2_migrations_apply_and_rerun_cleanly(fresh_database_url: str) -> None
         with engine.connect() as conn:
             assert conn.execute(text("SELECT count(*) FROM alembic_version")).scalar_one() == 1
             assert (
-                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0020"
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0021"
             )
     finally:
         engine.dispose()
@@ -879,3 +879,67 @@ def test_ac86_tyre_event_migration_constraints_downgrade_and_reapply(
     engine = create_engine(fresh_database_url)
     assert "tyre_event" in inspect(engine).get_table_names()
     engine.dispose()
+
+
+def test_0021_notification_rules_checks_and_downgrade(fresh_database_url: str) -> None:
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy.exc import IntegrityError
+
+    from tests.conftest import API_ROOT
+
+    def insert(conn: Any, **over: Any) -> None:
+        values: dict[str, Any] = {
+            "id": uuid.uuid4(),
+            "n": "Rule",
+            "m": "all",
+            "c": '[{"field": "gear", "codes": ["0"]}]',
+            "cd": 10,
+            "r": None,
+        }
+        values.update(over)
+        conn.execute(
+            text(
+                "INSERT INTO notification_rules (id, name, match, conditions, cooldown_minutes, "
+                "last_result, created_at, updated_at) "
+                "VALUES (:id, :n, :m, CAST(:c AS jsonb), :cd, :r, now(), now())"
+            ),
+            values,
+        )
+
+    run_migrations(fresh_database_url)
+    engine = create_engine(fresh_database_url)
+    with engine.begin() as conn:
+        insert(conn)
+        insert(conn, cd=0, r="matched, sent")
+        insert(conn, cd=1440, m="any", n="x" * 60)
+    bad: list[dict[str, Any]] = [
+        {"n": ""},
+        {"n": "x" * 61},
+        {"m": "some"},
+        {"c": "[]"},
+        {"c": "{}"},
+        {"c": '[{"a":1},{"a":1},{"a":1},{"a":1},{"a":1}]'},
+        {"cd": -1},
+        {"cd": 1441},
+        {"r": "at the office"},
+    ]
+    for over in bad:
+        with pytest.raises(IntegrityError), engine.begin() as conn:
+            insert(conn, **over)
+    engine.dispose()
+
+    cfg = Config(str(API_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(API_ROOT / "alembic"))
+    os.environ["DATABASE_URL"] = fresh_database_url
+    try:
+        command.downgrade(cfg, "0020")
+        engine = create_engine(fresh_database_url)
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT to_regclass('notification_rules')")).scalar() is None
+        engine.dispose()
+    finally:
+        os.environ.pop("DATABASE_URL", None)
+    run_migrations(fresh_database_url)

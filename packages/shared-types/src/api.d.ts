@@ -259,6 +259,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notification-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_api_v1_notification_rules_get"];
+        put?: never;
+        /**
+         * Create Rule
+         * @description Saves a rule (201). 409 when 5 rules already exist.
+         */
+        post: operations["create_rule_api_v1_notification_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-rules/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Options
+         * @description The fields, codes, labels and limits the screen offers, and whether push is set up.
+         */
+        get: operations["get_options_api_v1_notification_rules_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Rule */
+        put: operations["replace_rule_api_v1_notification_rules__rule_id__put"];
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_api_v1_notification_rules__rule_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/push/config": {
         parameters: {
             query?: never;
@@ -976,6 +1035,16 @@ export interface components {
              */
             source: "latest_service_record" | "live_reading";
         };
+        /** EngineStatusCondition */
+        EngineStatusCondition: {
+            /** Codes */
+            codes: ("engine-off" | "engine-running" | "ready" | "charging")[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            field: "engine_status";
+        };
         /** ErrorBody */
         ErrorBody: {
             /**
@@ -1129,6 +1198,16 @@ export interface components {
             currency: "MYR";
             /** Total Minor */
             total_minor: number;
+        };
+        /** GearCondition */
+        GearCondition: {
+            /** Codes */
+            codes: ("0" | "1" | "2" | "3")[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            field: "gear";
         };
         /**
          * GeofenceCarOffsetOut
@@ -1384,6 +1463,84 @@ export interface components {
             /** Passenger Rear */
             passenger_rear: number | null;
         };
+        /** LocationCondition */
+        LocationCondition: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            field: "location";
+            /** Radius Km */
+            radius_km: number;
+            /**
+             * Where
+             * @enum {string}
+             */
+            where: "outside" | "inside";
+        };
+        /** NotificationRuleIn */
+        NotificationRuleIn: {
+            /** Conditions */
+            conditions: (components["schemas"]["VehicleStatusCondition"] | components["schemas"]["EngineStatusCondition"] | components["schemas"]["GearCondition"] | components["schemas"]["LocationCondition"])[];
+            /**
+             * Cooldown Minutes
+             * @default 10
+             */
+            cooldown_minutes?: number;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled?: boolean;
+            /**
+             * Match
+             * @default all
+             * @enum {string}
+             */
+            match?: "all" | "any";
+            /** Name */
+            name: string;
+        };
+        /** NotificationRuleOptionsOut */
+        NotificationRuleOptionsOut: {
+            /** Fields */
+            fields: components["schemas"]["RuleFieldOut"][];
+            limits: components["schemas"]["RuleLimitsOut"];
+            /** Match */
+            match: components["schemas"]["RuleOptionOut"][];
+            /** Push Ready */
+            push_ready: boolean;
+        };
+        /** NotificationRuleOut */
+        NotificationRuleOut: {
+            /** Conditions */
+            conditions: (components["schemas"]["VehicleStatusCondition"] | components["schemas"]["EngineStatusCondition"] | components["schemas"]["GearCondition"] | components["schemas"]["LocationCondition"])[];
+            /** Cooldown Minutes */
+            cooldown_minutes: number;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Last Matched */
+            last_matched: boolean | null;
+            /**
+             * Last Result
+             * @enum {string}
+             */
+            last_result: "matched, sent" | "matched, held by cooldown" | "not matched" | "no reading" | "reading too old" | "home not set" | "push not set up" | "not checked yet";
+            /** Last Sent At */
+            last_sent_at: string | null;
+            /**
+             * Match
+             * @enum {string}
+             */
+            match: "all" | "any";
+            /** Name */
+            name: string;
+        };
         /** PushConfigOut */
         PushConfigOut: {
             /** Devices */
@@ -1572,6 +1729,39 @@ export interface components {
         ReminderTemplateList: {
             /** Items */
             items: components["schemas"]["ReminderTemplate"][];
+        };
+        /** RuleFieldOut */
+        RuleFieldOut: {
+            /** Field */
+            field: string;
+            /** Name */
+            name: string;
+            /** Options */
+            options: components["schemas"]["RuleOptionOut"][];
+        };
+        /** RuleLimitsOut */
+        RuleLimitsOut: {
+            /** Cooldown Minutes Default */
+            cooldown_minutes_default: number;
+            /** Cooldown Minutes Max */
+            cooldown_minutes_max: number;
+            /** Cooldown Minutes Min */
+            cooldown_minutes_min: number;
+            /** Max Conditions */
+            max_conditions: number;
+            /** Max Rules */
+            max_rules: number;
+            /** Radius Km Max */
+            radius_km_max: number;
+        };
+        /** RuleOptionOut */
+        RuleOptionOut: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Verified */
+            verified: boolean;
         };
         /** SentryCommandIn */
         SentryCommandIn: {
@@ -1981,6 +2171,16 @@ export interface components {
             variant: string;
             /** Vin */
             vin: string | null;
+        };
+        /** VehicleStatusCondition */
+        VehicleStatusCondition: {
+            /** Codes */
+            codes: ("0" | "1" | "2" | "3" | "4" | "13")[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            field: "vehicle_status";
         };
         /** WarrantyClaimCreate */
         WarrantyClaimCreate: {
@@ -3303,6 +3503,260 @@ export interface operations {
             };
             /** @description unauthenticated: missing or invalid token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_rules_api_v1_notification_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleOut"][];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_rule_api_v1_notification_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationRuleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description conflict: same id with different content */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_options_api_v1_notification_rules_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleOptionsOut"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replace_rule_api_v1_notification_rules__rule_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationRuleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRuleOut"];
+                };
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description internal_error: unexpected server error; details is empty */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_rule_api_v1_notification_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description validation_error: body or parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unauthenticated: missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_found: resource does not exist */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

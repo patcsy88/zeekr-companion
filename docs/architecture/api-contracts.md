@@ -1178,7 +1178,7 @@ All paths are under `/api/v1` and need the owner login. Rules never send a comma
 | `cooldown_minutes` | integer, 0 to 1440        | Default 10. 0 means none.                                         |
 | `last_matched`     | boolean or null           | Read only.                                                        |
 | `last_sent_at`     | timestamp (UTC) or null   | Read only.                                                        |
-| `last_result`      | string or null            | Read only. One of the phrases below.                              |
+| `last_result`      | string                    | Read only. One of the phrases below. Stored as null until the first check, and returned as "not checked yet". |
 
 Conditions:
 
@@ -1189,7 +1189,7 @@ Conditions:
 
 `codes` has 1 to 6 distinct values. Unknown fields, codes or extra keys get a `400`.
 
-`last_result` phrases: "matched, sent", "matched, held by cooldown", "not matched", "no reading", "reading too old", "home not set", "push not set up", "not checked yet". Never a reading, a position or a place.
+Editing `match` or `conditions` resets `last_matched` and the stored `last_result`. `last_result` phrases: "matched, sent", "matched, held by cooldown", "not matched", "no reading", "reading too old", "home not set", "push not set up", "not checked yet". Never a reading, a position or a place.
 
 ### Options (`GET /notification-rules/options`)
 

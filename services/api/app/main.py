@@ -37,6 +37,7 @@ from app.routers import (
     expenses,
     geofence,
     live_vehicle,
+    notification_rules,
     push,
     reminders,
     sentry,
@@ -215,6 +216,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         sentry.router,
         geofence.router,
         push.router,
+        notification_rules.router,
     ):
         app.include_router(router, prefix="/api/v1")
     return app

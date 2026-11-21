@@ -1169,3 +1169,124 @@ class PushDevicesOut(BaseModel):
 class PushTestOut(BaseModel):
     sent: int
     failed: int
+
+
+# Notification rules (ADR-015, approved 2026-11-21). The codes are fixed lists; the labels are in
+# `app/services/notification_rules.py`. A rule holds only choices, never a reading.
+RULE_MAX = 5
+RULE_MAX_CONDITIONS = 4
+RULE_COOLDOWN_MAX = 1440
+RULE_COOLDOWN_DEFAULT = 10
+RULE_RADIUS_MAX_KM = 100.0
+
+VehicleStatusCode = Literal["0", "1", "2", "3", "4", "13"]
+EngineStatusCode = Literal["engine-off", "engine-running", "ready", "charging"]
+GearCode = Literal["0", "1", "2", "3"]
+RuleMatch = Literal["all", "any"]
+RuleResult = Literal[
+    "matched, sent",
+    "matched, held by cooldown",
+    "not matched",
+    "no reading",
+    "reading too old",
+    "home not set",
+    "push not set up",
+    "not checked yet",
+]
+
+
+def _distinct(value: list[Any]) -> list[Any]:
+    if len(set(value)) != len(value):
+        raise ValueError("codes must not repeat")
+    return value
+
+
+class VehicleStatusCondition(_Input):
+    field: Literal["vehicle_status"]
+    codes: Annotated[
+        list[VehicleStatusCode], Field(min_length=1, max_length=6), AfterValidator(_distinct)
+    ]
+
+
+class EngineStatusCondition(_Input):
+    field: Literal["engine_status"]
+    codes: Annotated[
+        list[EngineStatusCode], Field(min_length=1, max_length=4), AfterValidator(_distinct)
+    ]
+
+
+class GearCondition(_Input):
+    field: Literal["gear"]
+    codes: Annotated[list[GearCode], Field(min_length=1, max_length=4), AfterValidator(_distinct)]
+
+
+class LocationCondition(_Input):
+    field: Literal["location"]
+    where: Literal["outside", "inside"]
+    radius_km: Annotated[
+        float, Field(strict=True, gt=0, le=RULE_RADIUS_MAX_KM, allow_inf_nan=False)
+    ]
+
+
+RuleCondition = Annotated[
+    VehicleStatusCondition | EngineStatusCondition | GearCondition | LocationCondition,
+    Field(discriminator="field"),
+]
+
+
+class NotificationRuleIn(_Input):
+    name: Annotated[str, Field(strict=True, min_length=1, max_length=60)]
+    enabled: Annotated[bool, Field(strict=True)] = True
+    match: RuleMatch = "all"
+    conditions: Annotated[list[RuleCondition], Field(min_length=1, max_length=RULE_MAX_CONDITIONS)]
+    cooldown_minutes: Annotated[int, Field(strict=True, ge=0, le=RULE_COOLDOWN_MAX)] = (
+        RULE_COOLDOWN_DEFAULT
+    )
+
+    @field_validator("conditions", mode="after")
+    @classmethod
+    def _each_field_once(cls, value: list[Any]) -> list[Any]:
+        fields = [c.field for c in value]
+        if len(set(fields)) != len(fields):
+            raise ValueError("each field may appear once")
+        return value
+
+
+class NotificationRuleOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    enabled: bool
+    match: RuleMatch
+    conditions: list[RuleCondition]
+    cooldown_minutes: int
+    last_matched: bool | None
+    last_sent_at: UtcDateTime | None
+    last_result: RuleResult
+
+
+class RuleOptionOut(BaseModel):
+    code: str
+    label: str
+    verified: bool
+
+
+class RuleFieldOut(BaseModel):
+    field: str
+    name: str
+    options: list[RuleOptionOut]
+
+
+class RuleLimitsOut(BaseModel):
+    max_rules: int
+    max_conditions: int
+    cooldown_minutes_min: int
+    cooldown_minutes_max: int
+    cooldown_minutes_default: int
+    radius_km_max: float
+
+
+class NotificationRuleOptionsOut(BaseModel):
+    fields: list[RuleFieldOut]
+    match: list[RuleOptionOut]
+    limits: RuleLimitsOut
+    push_ready: bool

@@ -33,9 +33,10 @@ The code tables are in `docs/architecture/vehicle-status-codes.md`. All labels t
 
    Not evaluated means the stored state stays as it was and nothing is sent.
 
-6. **Once when first observed.** A push is sent when the result goes from not true (or never evaluated) to matched. While it stays matched, nothing more is sent. When it turns not matched, `last_matched` becomes false, so a later match sends again. A new rule whose conditions already hold sends once.
-7. **Cooldown.** `cooldown_minutes` is 0 to 1440, default 10, and 0 means none. A send less than that long after `last_sent_at` is held back, and `last_matched` is not set to true. If the conditions still hold at a later check after the cooldown, it sends then.
-8. **Message.** The Central locking label only in v1, fixed text with no place, distance, reading age or rule name:
+6. **Editing.** A change to `match` or `conditions` resets `last_matched` and `last_result` to null, so the edited rule can send once. A change to the name, `enabled` or the cooldown keeps them. `last_sent_at` is kept.
+7. **Once when first observed.** A push is sent when the result goes from not true (or never evaluated) to matched. While it stays matched, nothing more is sent. When it turns not matched, `last_matched` becomes false, so a later match sends again. A new rule whose conditions already hold sends once.
+8. **Cooldown.** `cooldown_minutes` is 0 to 1440, default 10, and 0 means none. A send less than that long after `last_sent_at` is held back, and `last_matched` is not set to true. If the conditions still hold at a later check after the cooldown, it sends then.
+9. **Message.** The Central locking label only in v1, fixed text with no place, distance, reading age or rule name:
 
    | Central locking code | Text                           |
    | -------------------- | ------------------------------ |
@@ -45,25 +46,26 @@ The code tables are in `docs/architecture/vehicle-status-codes.md`. All labels t
 
    The tap target is the Vehicle tab. Geofence pushes keep opening the Sentry tab.
 
-9. **Memory only.** Vehicle status, engine status, gear, central locking, position and distance are read in memory, used for the check and dropped. Only `last_matched` and `last_sent_at` are stored. Nothing is logged or sent to the model.
-10. **Rules only notify.** Nothing here sends a command to the car (ADR-008).
-11. **Push not set up.** Rules can be saved. The screen says nothing will be sent. No send is attempted.
+10. **Memory only.** Vehicle status, engine status, gear, central locking, position and distance are read in memory, used for the check and dropped. Only `last_matched`, `last_result` and `last_sent_at` are stored. Nothing is logged or sent to the model.
+11. **Rules only notify.** Nothing here sends a command to the car (ADR-008).
+12. **Push not set up.** Rules can be saved. The screen says nothing will be sent. No send is attempted.
 
 ## Data model (approved 2026-11-21)
 
 Table `notification_rules`, migration `0021`:
 
-| Column                     | Type                     | Note                                                 |
-| -------------------------- | ------------------------ | ---------------------------------------------------- |
-| `id`                       | UUID                     |                                                      |
-| `name`                     | text, 1 to 60 characters | The owner's label. Never sent in a push.             |
-| `enabled`                  | boolean                  |                                                      |
-| `match`                    | `all` or `any`           | Default `all`.                                       |
-| `conditions`               | JSON list, 1 to 4 items  | Checked on save against the fixed lists above.       |
-| `cooldown_minutes`         | integer, 0 to 1440       | Default 10.                                          |
-| `last_matched`             | boolean or null          | Only the last true or false result. Never a reading. |
-| `last_sent_at`             | timestamp (UTC) or null  |                                                      |
-| `created_at`, `updated_at` | timestamp (UTC)          |                                                      |
+| Column                     | Type                     | Note                                                                                                                                                  |
+| -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                       | UUID                     |                                                                                                                                                       |
+| `name`                     | text, 1 to 60 characters | The owner's label. Never sent in a push.                                                                                                              |
+| `enabled`                  | boolean                  |                                                                                                                                                       |
+| `match`                    | `all` or `any`           | Default `all`.                                                                                                                                        |
+| `conditions`               | JSON list, 1 to 4 items  | Checked on save against the fixed lists above.                                                                                                        |
+| `cooldown_minutes`         | integer, 0 to 1440       | Default 10.                                                                                                                                           |
+| `last_matched`             | boolean or null          | Only the last true or false result. Never a reading.                                                                                                  |
+| `last_result`              | text or null             | One fixed phrase (see the API contract), chosen by a check constraint. Added on the owner's approval, 2026-11-21. Never a reading, position or place. |
+| `last_sent_at`             | timestamp (UTC) or null  |                                                                                                                                                       |
+| `created_at`, `updated_at` | timestamp (UTC)          |                                                                                                                                                       |
 
 At most 5 rows. A fresh encrypted export is taken before deploying the migration.
 
@@ -87,7 +89,7 @@ Written in `docs/architecture/api-contracts.md`, section "Notification rules".
 
 ## Build steps (each approved before the next)
 
-1. Migration `0021`, model, repository, options and the four endpoints, and the evaluation function with tests. No loop yet.
+1. **Built 2026-11-21, not released.** Migration `0021`, model, repository, options and the four endpoints, and the evaluation function with tests. No loop yet.
 2. The loop, the shared read, the send and the cooldown, with a fake sender and tests.
 3. The Setup, Notifications, Rules screen, the drop-down tick lists and tests.
 4. Docs, deploy notes, and a fresh encrypted export before deploying.

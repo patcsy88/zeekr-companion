@@ -13,6 +13,7 @@ from app.repositories.car_command_log import CarCommandLogRepository
 from app.repositories.expenses import ExpenseRepository
 from app.repositories.geofence_settings import GeofenceSettingsRepository
 from app.repositories.live_readings import LiveReadingRepository
+from app.repositories.notification_rules import NotificationRuleRepository
 from app.repositories.push_subscriptions import PushSubscriptionRepository
 from app.repositories.reminders import ReminderRepository
 from app.repositories.service_records import ServiceRecordRepository
@@ -26,6 +27,7 @@ from app.services.expenses import ExpenseService
 from app.services.geofence_map import GeofenceMapService
 from app.services.geofence_settings import GeofenceSettingsService
 from app.services.live_vehicle import LiveVehicleService
+from app.services.notification_rules import NotificationRuleService
 from app.services.push import PushService
 from app.services.reminders import ReminderService
 from app.services.sentry_command import SentryCommandService
@@ -137,6 +139,10 @@ def get_push_service(request: Request, session: SessionDep) -> PushService:
     return PushService(PushSubscriptionRepository(session), state.settings, state.push_sender)
 
 
+def get_notification_rule_service(request: Request, session: SessionDep) -> NotificationRuleService:
+    return NotificationRuleService(NotificationRuleRepository(session), request.app.state.settings)
+
+
 def get_auto_sentry_settings_service(
     request: Request, session: SessionDep
 ) -> AutoSentrySettingsService:
@@ -162,6 +168,9 @@ GeofenceSettingsServiceDep = Annotated[
 ]
 GeofenceMapServiceDep = Annotated[GeofenceMapService, Depends(get_geofence_map_service)]
 PushServiceDep = Annotated[PushService, Depends(get_push_service)]
+NotificationRuleServiceDep = Annotated[
+    NotificationRuleService, Depends(get_notification_rule_service)
+]
 AutoSentrySettingsServiceDep = Annotated[
     AutoSentrySettingsService, Depends(get_auto_sentry_settings_service)
 ]
