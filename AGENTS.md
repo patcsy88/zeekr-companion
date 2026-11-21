@@ -63,6 +63,7 @@ Stop and ask the product owner before:
 - Units: kilometres and MYR (both confirmed by the owner on 2026-10-11). Store money as integer minor units (sen) with a `currency` field that defaults to MYR, and distances as integers in kilometres.
 - Timestamps: UTC in storage, local time in the UI. Calendar dates ("today", "not in the future") are judged in Asia/Kuala_Lumpur, UTC+8 (owner decision 2026-10-22).
 - Documents under `docs/` are the shared source of truth. Update them in the same change as the code.
+- Third-party components are listed in `docs/third-party/`. When a change adds, removes, upgrades or re-pins a library, image or CI action, update those tables in the same change.
 - Label vehicle claims as `confirmed`, `proposed` or `unverified`.
 
 ## Repository layout
