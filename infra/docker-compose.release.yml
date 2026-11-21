@@ -1,3 +1,4 @@
+# File version: v0.9.32 (the release tag this file ships in; infra/check-script-version.sh checks it)
 # Zeekr Companion, release install: PostgreSQL + API + web from published images (ADR-012).
 # This is the one file to download. No clone and no build. Put a .env next to it (see
 # .env.example in the repository), then:  docker compose up -d --wait

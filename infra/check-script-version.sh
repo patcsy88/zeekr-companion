@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Fails unless SCRIPT_VERSION in install.sh and update.sh equals the release tag.
+# Fails unless SCRIPT_VERSION in install.sh and update.sh, and the "File version" line at the top of
+# docker-compose.release.yml and .env.example, equal the release tag.
 #   infra/check-script-version.sh v0.9.21      (or set GITHUB_REF_NAME, as the release workflow does)
 # Run it before tagging: a tag cannot hold its own number, so the number is bumped in a commit first.
 set -euo pipefail
@@ -16,4 +17,13 @@ for f in install.sh update.sh; do
     bad=1
   fi
 done
-[ "$bad" -eq 0 ] || { echo "Set SCRIPT_VERSION in both scripts to $tag, commit, and tag that commit." >&2; exit 1; }
+for f in docker-compose.release.yml .env.example; do
+  found="$(sed -n 's/^# File version: \(v[0-9.]*\) .*/\1/p' "$here/$f" | head -n 1)"
+  if [ "$found" = "$tag" ]; then
+    echo "$f: File version $found matches $tag"
+  else
+    echo "$f: the File version line is '${found:-missing}' but the tag is $tag" >&2
+    bad=1
+  fi
+done
+[ "$bad" -eq 0 ] || { echo "Set SCRIPT_VERSION in both scripts and the File version line in both files to $tag, commit, and tag that commit." >&2; exit 1; }
