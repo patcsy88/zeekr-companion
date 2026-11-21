@@ -49,7 +49,8 @@ Safety:
     only if you say a fresh encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
     It cannot check that you took it.
   - It refuses to go to a version older than the running one.
-  - It never writes to .env except ZEEKR_VERSION, and never prints a value from it.
+  - It never writes to .env except ZEEKR_VERSION, and never prints a value from it. On y it saves
+    the newest .env.example beside .env (the old one, if different, as .env.example.<old tag>).
   - It never prints .env, removes containers, volumes or images, or runs prune.
 EOF
 }
@@ -136,6 +137,14 @@ $new_names
 EOF3
   echo
   echo "Most are optional. Add one to .env only if you want that feature; update.sh will not edit .env."
+}
+
+env_keep() { # env_keep <new file> <old tag>: put the new example in place, keeping a different old one
+  if [ -f .env.example ] && ! cmp -s .env.example "$1"; then
+    cp -p .env.example ".env.example.$2"
+  fi
+  mv "$1" .env.example
+  chmod 644 .env.example
 }
 # <<< env-compare
 
@@ -282,7 +291,7 @@ pull_with_bar "web $latest (2 of 2)" "$image_web:$latest" || die "web image $lat
 
 # --- 2. Download the compose file(s) for the new tag and check them --------------------------
 new_compose="$(mktemp docker-compose.new.XXXXXX)"
-trap 'rm -f "$new_compose" "${new_lowmem:-}" "${new_env:-}"' EXIT
+trap 'rm -f "$new_compose" "${new_lowmem:-}" "${new_env:-}" "${new_example:-}"' EXIT
 curl -fsSL --max-time 30 "$raw_url/$latest/infra/docker-compose.release.yml" -o "$new_compose" \
   || die "could not download the $latest compose file; nothing was changed"
 grep -q 'ZEEKR_VERSION' "$new_compose" || die "the downloaded compose file looks wrong; nothing was changed"
@@ -296,12 +305,26 @@ if [ -f docker-compose.lowmem.yml ]; then
     || die "could not download the $latest low-memory overlay; nothing was changed"
 fi
 
+new_example="$(mktemp .env.example.new.XXXXXX)"
+if ! curl -fsSL --max-time 30 "$raw_url/$latest/infra/.env.example" -o "$new_example" \
+   || ! grep -q 'POSTGRES_PASSWORD' "$new_example"; then
+  rm -f "$new_example"; new_example=""
+  echo "Note: could not download .env.example for $latest; it will not be saved."
+fi
+
 # --- 3. Swap the files: keep the old ones next to them for going back ------------------------
 cp -p docker-compose.yml "docker-compose.yml.$current"
 mv "$new_compose" docker-compose.yml
 if [ -n "$new_lowmem" ]; then
   cp -p docker-compose.lowmem.yml "docker-compose.lowmem.yml.$current"
   mv "$new_lowmem" docker-compose.lowmem.yml
+fi
+
+if [ -n "$new_example" ]; then
+  env_keep "$new_example" "$current"
+  new_example=""
+  echo "Saved .env.example for $latest next to .env. Compare it with .env and add any new NAME you want."
+  [ ! -f ".env.example.$current" ] || echo "The previous one is kept as .env.example.$current (diff the two to see what changed)."
 fi
 
 new_env="$(mktemp .env.new.XXXXXX)"

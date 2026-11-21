@@ -11,7 +11,8 @@ usage() {
   cat <<EOF
 install.sh $SCRIPT_VERSION
 First-time setup of a release install: creates .env with fresh random secrets.
-Run it in the folder that holds docker-compose.yml (and .env.example).
+Run it in the folder that holds docker-compose.yml. If .env.example is missing on a release install,
+it downloads the copy for the chosen tag and saves it there.
 
 Usage: ./install.sh <flag> [<flag>]       (first install)
        ./install.sh <maintenance flag>    (after install; one flag, nothing else)
@@ -363,6 +364,19 @@ if grep -q 'ZEEKR_VERSION' docker-compose.yml 2>/dev/null && [ -z "$version" ]; 
     y|Y) version="$latest" ;;
     *) echo "Nothing was changed. For another version run: ./install.sh --version vX.Y.Z" >&2; exit 1 ;;
   esac
+fi
+
+if [ ! -f .env.example ] && [ -n "$version" ] && grep -q 'ZEEKR_VERSION' docker-compose.yml 2>/dev/null; then
+  ex="$(mktemp .env.example.new.XXXXXX)"
+  if curl -fsSL --max-time 30 "https://raw.githubusercontent.com/patcsy88/zeekr-companion/$version/infra/.env.example" -o "$ex" \
+     && grep -q 'POSTGRES_PASSWORD' "$ex"; then
+    mv "$ex" .env.example
+    chmod 644 .env.example
+    echo "Downloaded .env.example for $version and saved it next to .env."
+  else
+    rm -f "$ex"
+    echo "Note: could not download .env.example for $version. .env gets the two secrets only; the settings are listed in infra/.env.example in the repository."
+  fi
 fi
 
 umask 077

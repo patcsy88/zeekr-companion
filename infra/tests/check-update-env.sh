@@ -54,6 +54,16 @@ absent "$out" "synthetic-value-do-not-print"
 absent "$out" "hunter2"
 absent "$out" "Contact for alerts."   # already in .env, so its comment is not repeated
 
+mkdir "$tmp/work" && (
+  cd "$tmp/work"
+  printf 'NEW=1\n' > fresh; env_keep fresh v0.0.1
+  [ "$(cat .env.example)" = "NEW=1" ] && [ ! -e .env.example.v0.0.1 ] || { echo "FAIL: first save"; exit 1; }
+  printf 'NEWER=2\n' > fresh; env_keep fresh v0.0.2
+  [ "$(cat .env.example)" = "NEWER=2" ] && [ "$(cat .env.example.v0.0.2)" = "NEW=1" ] || { echo "FAIL: keep old"; exit 1; }
+  printf 'NEWER=2\n' > fresh; env_keep fresh v0.0.3
+  [ ! -e .env.example.v0.0.3 ] || { echo "FAIL: kept an identical copy"; exit 1; }
+) || fail=1
+
 same="$(env_report "$tmp/new" "$tmp/new" "$tmp/env" v0.0.1)"
 [ -z "$same" ] || { echo "FAIL: output for identical files: $same"; fail=1; }
 
