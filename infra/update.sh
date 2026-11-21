@@ -10,7 +10,7 @@ BAR_WIDTH="${BAR_WIDTH:-6}"
 
 repo="patcsy88/zeekr-companion"
 api_url="https://api.github.com/repos/$repo"
-raw_url="https://raw.githubusercontent.com/$repo"
+raw_url="${RAW_URL:-https://raw.githubusercontent.com/$repo}"   # RAW_URL is for the tests
 image_api="ghcr.io/$repo-api"
 image_web="ghcr.io/$repo-web"
 tag_re='^v[0-9]+\.[0-9]+\.[0-9]+$'
@@ -32,6 +32,10 @@ Flags:
                     sets ZEEKR_VERSION in .env, then runs docker compose up -d --wait and
                     docker compose ps. Only containers whose image or settings changed are
                     recreated, so db keeps running. It always goes to the newest release.
+  --check-env       Read-only. Show the settings that .env.example gained between the running
+                    version and the newest release, and whether .env has a line for each. Prints
+                    names and the example's own comments, never a value from .env. Changes nothing.
+                    --restart shows the same list before it asks to update.
   --script-version  Print this script's version and exit.
   -h, --help        Show this text and exit.
 
@@ -45,14 +49,17 @@ Safety:
     only if you say a fresh encrypted export was taken (infra/backup/RESTORE.md, "Off-machine backup").
     It cannot check that you took it.
   - It refuses to go to a version older than the running one.
+  - It never writes to .env except ZEEKR_VERSION, and never prints a value from it.
   - It never prints .env, removes containers, volumes or images, or runs prune.
 EOF
 }
 
 [ $# -gt 0 ] || { usage; exit 0; }
+check_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --restart) shift ;;
+    --check-env) check_only=1; shift ;;
     --script-version) echo "update.sh $SCRIPT_VERSION"; exit 0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "update.sh: the flag \"$1\" is not recognised." >&2; echo >&2; usage >&2; exit 2 ;;
@@ -87,6 +94,63 @@ docker compose version >/dev/null 2>&1 || die "needs the Docker Compose plugin (
 [ -f .env ] || die "no .env in $here (run install.sh first)"
 grep -q 'ZEEKR_VERSION' docker-compose.yml \
   || die "docker-compose.yml is not the release compose file; update a clone install with deploy-guide.md section 7"
+
+# >>> env-compare
+env_names() { # env_names <file>: setting names in an example file, "NAME=" or "# NAME="
+  sed -nE 's/^#? ?([A-Z][A-Z0-9_]*)=.*/\1/p' "$1" | sort -u
+}
+
+env_comment() { # env_comment <file> <name>: the comment lines directly above that setting
+  awk -v n="$2" '
+    $0 ~ ("^#? ?" n "=") { printf "%s", buf; exit }
+    /^#? ?[A-Z][A-Z0-9_]*=/ { buf = ""; next }
+    /^#/ { buf = buf $0 "\n"; next }
+    { buf = "" }
+  ' "$1"
+}
+
+env_report() { # env_report <old example> <new example> <.env> <old tag>: names only, never values
+  local new_names name status text shown=0
+  new_names="$(comm -13 <(env_names "$1") <(env_names "$2"))"
+  [ -n "$new_names" ] || return 0
+  echo
+  echo "New settings in .env.example since $4 (names only; no value of yours is read or shown):"
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    if grep -qE "^${name}=" "$3"; then status="has a line in .env"; else status="not in .env"; fi
+    printf '  %-34s %s\n' "$name" "$status"
+    shown=$((shown + 1))
+  done <<EOF2
+$new_names
+EOF2
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    grep -qE "^${name}=" "$3" && continue
+    text="$(env_comment "$2" "$name")"
+    [ -n "$text" ] || continue   # a name with no comment of its own shares the block above it
+    echo
+    echo "$name"
+    printf '%s\n' "$text" | sed 's/^/    /'
+  done <<EOF3
+$new_names
+EOF3
+  echo
+  echo "Most are optional. Add one to .env only if you want that feature; update.sh will not edit .env."
+}
+# <<< env-compare
+
+env_check() { # env_check <old tag> <new tag>: advisory, never stops the update
+  local old new
+  old="$(mktemp)"; new="$(mktemp)"
+  if curl -fsSL --max-time 30 "$raw_url/$1/infra/.env.example" -o "$old" \
+     && curl -fsSL --max-time 30 "$raw_url/$2/infra/.env.example" -o "$new"; then
+    env_report "$old" "$new" .env "$1"
+  else
+    echo
+    echo "Could not read .env.example for $1 and $2, so new settings were not compared."
+  fi
+  rm -f "$old" "$new"
+}
 
 # --- What is configured and what is running -------------------------------------------------
 configured="$(grep -E '^ZEEKR_VERSION=' .env | tail -n 1 | cut -d= -f2- | tr -d '"'"'"' ')" || true
@@ -135,6 +199,12 @@ between="$(printf '%s\n' "$tags" | awk -v a="$current" -v b="$latest" '
   BEGIN { on = 0 } $0 == a { on = 1; next } on { print } $0 == b { exit }')"
 echo "Releases after $current: $(printf '%s' "$between" | tr '\n' ' ')"
 
+if [ "$check_only" -eq 1 ]; then
+  env_check "$current" "$latest"
+  echo "Checked .env against .env.example for $current to $latest. Nothing was changed."
+  exit 0
+fi
+
 # --- Does the update add a migration? --------------------------------------------------------
 migration="unknown"
 if compare="$(curl -fsSL --max-time 30 "$api_url/compare/$current...$latest")"; then
@@ -151,6 +221,8 @@ if compare="$(curl -fsSL --max-time 30 "$api_url/compare/$current...$latest")"; 
 else
   echo "Database migration:  unknown (GitHub did not answer). Treating it as yes."
 fi
+
+env_check "$current" "$latest"
 
 [ -t 0 ] || die "needs a terminal to answer y/n; nothing was changed"
 
