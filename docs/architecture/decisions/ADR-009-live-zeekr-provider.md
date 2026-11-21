@@ -281,3 +281,10 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **Code:** `map_engine_status` and `ENGINE_STATUS_LABELS` in `app/adapters/zeekr_live.py`; tests in `tests/test_zeekr_live.py`. The code tables are in `docs/architecture/vehicle-status-codes.md`.
 - **Not wired in:** nothing calls the function yet. It is not in `Snapshot` or `GeofenceInput`, is not stored, logged or shown, and adds no column, no API field and no migration. Using it in a rule still needs the rules data model and API contract to be approved.
 - **Unchanged:** read-only calls only, and no command is sent to the car.
+
+## Amendment (APPROVED by the owner, 2026-11-21, with ADR-015; not built): values used by notification rules
+
+- **`engineStatus` in memory:** the mapping of 2026-11-21 may be read for rules. It is held in memory with the last good read, like central locking, and never stored, logged or sent to the model.
+- **Position as a result:** a rule's `location` condition works out inside or outside the geofence in memory and keeps only true or false. The position and the distance are never stored, logged, returned or sent.
+- **Central locking in a push:** the fixed text "Central locking: Locked.", "Central locking: Unlocked." or "Central locking: no reading." may be sent to the saved phones. It passes through the phone maker's push service. This widens the 2026-11-15 approval, which was for the Vehicle card only.
+- **Unchanged:** read-only calls, no command to the car, no door, trunk or window lock fields. See ADR-015 and `docs/architecture/vehicle-status-codes.md`.

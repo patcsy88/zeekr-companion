@@ -79,3 +79,8 @@ All need the bearer token, answer `Cache-Control: no-store`, and report a bad bo
 ## Not in scope
 
 Reminder notifications, expense or warranty notifications, any command from a notification, actions inside the notification, and quiet hours.
+
+## Amendment (APPROVED by the owner, 2026-11-21, with ADR-015; not built): rule pushes
+
+- Notification rules send through the same sender to the same saved phones, with fixed text. The tap target for a rule push is the Vehicle tab. Geofence pushes keep opening the Sentry tab.
+- No new service, library or key. The `push.py` payload `url` becomes a parameter, with `/sentry` the default.

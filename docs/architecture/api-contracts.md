@@ -1151,3 +1151,57 @@ Four endpoints, all behind the bearer token, all `Cache-Control: no-store`. A ba
 - **Web client paths (build step 3).** The client allows exactly `/push/config`, `/push/subscriptions` and `/push/test`, with no query string.
 - **Real sender (build step 2).** With all three host values set, the API sends through `pywebpush` 2.5.0 with a 5-second timeout per phone; with any missing, the default sender fails every send. The payload is `{ "body": fixed text, "url": "/sentry" }`; no position is ever included.
 - **Alert hook.** When the geofence check opens a new alert (once per alert, never for an open one), after the automatic-send step it sends one fixed text to every phone: "Car is away from home and Sentry is off." (toggle off or skipped), "Car is away from home. Sentry was turned on automatically." (sent or already on), or "Car is away from home. Sentry could not be turned on." (anything else). Any failure logs one line and never stops the check or the automatic send.
+
+## Notification rules (APPROVED by the owner, 2026-11-21; ADR-015; not built)
+
+All paths are under `/api/v1` and need the owner login. Rules never send a command to the car.
+
+### Endpoints
+
+| Method and path                  | Purpose                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET /notification-rules`        | List the rules with `last_matched`, `last_sent_at` and `last_result`.              |
+| `POST /notification-rules`       | Create a rule. `409` when 5 rules already exist.                                   |
+| `PUT /notification-rules/{id}`   | Replace a rule. `404` for an unknown id.                                           |
+| `DELETE /notification-rules/{id}` | Delete a rule. `404` for an unknown id.                                           |
+| `GET /notification-rules/options` | The fields, codes and labels, the limits and the push state. The screen offers only these. |
+
+### Rule object
+
+| Field              | Type                      | Note                                                              |
+| ------------------ | ------------------------- | ----------------------------------------------------------------- |
+| `id`               | UUID                      | Read only.                                                        |
+| `name`             | string, 1 to 60           |                                                                   |
+| `enabled`          | boolean                   |                                                                   |
+| `match`            | `all` or `any`            | Default `all`.                                                    |
+| `conditions`       | list of 1 to 4            | See below. Each `field` at most once.                             |
+| `cooldown_minutes` | integer, 0 to 1440        | Default 10. 0 means none.                                         |
+| `last_matched`     | boolean or null           | Read only.                                                        |
+| `last_sent_at`     | timestamp (UTC) or null   | Read only.                                                        |
+| `last_result`      | string or null            | Read only. One of the phrases below.                              |
+
+Conditions:
+
+- `{"field": "vehicle_status", "codes": ["0", "1"]}`: codes from `0`, `1`, `2`, `3`, `4`, `13`.
+- `{"field": "engine_status", "codes": ["engine-off"]}`: codes from `engine-off`, `engine-running`, `ready`, `charging`.
+- `{"field": "gear", "codes": ["0"]}`: codes from `0`, `1`, `2`, `3`.
+- `{"field": "location", "where": "outside", "radius_km": 5}`: `where` is `outside` or `inside`; `radius_km` above 0 and at most 100. The home and office points come from the Geofence tab.
+
+`codes` has 1 to 6 distinct values. Unknown fields, codes or extra keys get a `400`.
+
+`last_result` phrases: "matched, sent", "matched, held by cooldown", "not matched", "no reading", "reading too old", "home not set", "push not set up", "not checked yet". Never a reading, a position or a place.
+
+### Options (`GET /notification-rules/options`)
+
+- `fields`: for each field, its name and `options` as `{code, label, verified}` (`verified` is `false` for every label today, so the screen marks them). `location` lists `outside` and `inside`.
+- `limits`: `max_rules` 5, `max_conditions` 4, `cooldown_minutes` min 0 and max 1440 and default 10, `radius_km` max 100.
+- `match`: `all` and `any`.
+- `push_ready`: whether push is set up on the host, so the screen can say nothing will be sent.
+
+### Errors
+
+`400` for an unknown field, code or key, a repeated field, or a value out of range. `404` for an unknown id. `409` at the limit of 5 rules. The error shape is the one in "Error shape" above.
+
+### Not stored or returned
+
+Vehicle status, engine status, gear, central locking, position and distance are never stored, logged or returned. The push text is fixed (ADR-015).
