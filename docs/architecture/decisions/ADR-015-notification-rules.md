@@ -90,7 +90,7 @@ Written in `docs/architecture/api-contracts.md`, section "Notification rules".
 ## Build steps (each approved before the next)
 
 1. **Built 2026-11-21, not released.** Migration `0021`, model, repository, options and the four endpoints, and the evaluation function with tests. No loop yet.
-2. The loop, the shared read, the send and the cooldown, with a fake sender and tests.
+2. **Built 2026-11-21, not released.** The loop, the shared read, the send and the cooldown, with a fake sender and tests. The check runs every `ZEEKR_LIVE_INTERVAL_MINUTES` (first check about 75 seconds after start), needs live readings and not the geofence, and uses the geofence stale limit. A send counts only if a phone accepted it; otherwise the rule stays unmarked and retries.
 3. The Setup, Notifications, Rules screen, the drop-down tick lists and tests.
 4. Docs, deploy notes, and a fresh encrypted export before deploying.
 

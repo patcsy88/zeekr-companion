@@ -64,6 +64,7 @@ describe('push: what the service worker shows', () => {
 
   it('never opens a page outside the allowed list and caps the text', () => {
     expect(parsePush(JSON.stringify({ url: '/geofence' })).url).toBe('/geofence');
+    expect(parsePush(JSON.stringify({ url: '/vehicle' })).url).toBe('/vehicle');
     expect(parsePush(JSON.stringify({ body: 'x'.repeat(500) })).body).toHaveLength(200);
   });
 

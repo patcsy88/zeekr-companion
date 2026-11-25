@@ -494,6 +494,7 @@ class ZeekrLiveTelemetryProvider:
         self._snapshot: Snapshot | None = None
         self._geofence: GeofenceInput | None = None
         self._central_locked: bool | None = None
+        self._engine_status: str | None = None
         self._next_try = 0.0
         self._failures = 0
         self._fetches = 0
@@ -534,6 +535,12 @@ class ZeekrLiveTelemetryProvider:
         read, after a failed one, and when the car gave no known code."""
         return self._central_locked
 
+    @property
+    def engine_status(self) -> str | None:
+        """The normalised engine status from the last successful read, in memory only (ADR-015).
+        None before the first read, after a failed one, and when the car gave no known value."""
+        return self._engine_status
+
     def _current(self) -> Snapshot | None:
         if self.stopped or self._clock() < self._next_try:
             return self._snapshot
@@ -543,10 +550,12 @@ class ZeekrLiveTelemetryProvider:
             self._snapshot = map_status(raw)
             self._geofence = map_geofence(raw)
             self._central_locked = map_central_lock(raw)
+            self._engine_status = map_engine_status(raw)
         except Exception:
             self._failures += 1
             self._geofence = None
             self._central_locked = None
+            self._engine_status = None
             # Never sooner than the interval, whatever the cap.
             wait = max(
                 self._min_interval, min(self._min_interval * 2**self._failures, self._max_backoff)

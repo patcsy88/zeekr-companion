@@ -51,6 +51,7 @@ from app.services.daily_read import daily_read_lifespan
 from app.services.geofence import geofence_lifespan
 from app.services.push import build_push_sender
 from app.services.reasoning import build_reasoning_model
+from app.services.rule_check import rules_lifespan
 from app.services.sentry_state import SentryStateHub
 
 logger = logging.getLogger("zeekr.api")
@@ -137,7 +138,7 @@ async def _on_unexpected(_: Request, exc: Exception) -> JSONResponse:
 
 @contextlib.asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    async with daily_read_lifespan(app), geofence_lifespan(app):
+    async with daily_read_lifespan(app), geofence_lifespan(app), rules_lifespan(app):
         yield
 
 

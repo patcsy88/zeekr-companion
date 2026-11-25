@@ -27,6 +27,7 @@ from app.schemas import (
 log = logging.getLogger("app.push")
 
 MAX_FAILURES = 5
+DEFAULT_URL = "/sentry"
 TEST_TEXT = "Test from Zeekr Companion."
 
 _OFF = "Push is not set up on the host."
@@ -40,7 +41,7 @@ class SendResult:
 
 
 class PushSender(Protocol):
-    def send(self, sub: SavedSubscription, text: str) -> str:
+    def send(self, sub: SavedSubscription, text: str, url: str = DEFAULT_URL) -> str:
         """Returns a SendResult value. Never raises, never logs the endpoint or the keys."""
         ...
 
@@ -48,7 +49,7 @@ class PushSender(Protocol):
 class NoSender:
     """Used until the real library is approved and installed: every send fails."""
 
-    def send(self, sub: SavedSubscription, text: str) -> str:
+    def send(self, sub: SavedSubscription, text: str, url: str = DEFAULT_URL) -> str:
         return SendResult.FAILED
 
 
@@ -74,7 +75,7 @@ class WebPushSender:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    def send(self, sub: SavedSubscription, text: str) -> str:
+    def send(self, sub: SavedSubscription, text: str, url: str = DEFAULT_URL) -> str:
         key = self._settings.vapid_private_key
         subject = self._settings.vapid_subject
         if key is None or subject is None:
@@ -83,7 +84,7 @@ class WebPushSender:
             from pywebpush import WebPushException, webpush
         except Exception:
             return SendResult.FAILED
-        payload = json.dumps({"body": text, "url": "/sentry"})
+        payload = json.dumps({"body": text, "url": url})
         try:
             webpush(
                 subscription_info={
@@ -159,13 +160,17 @@ class PushService:
         self._repo.delete_endpoint(endpoint)
         return PushDevicesOut(devices=self._repo.count())
 
-    def send_all(self, text: str, now: dt.datetime) -> PushTestOut:
+    def send_all(self, text: str, now: dt.datetime, url: str | None = None) -> PushTestOut:
         """One message to every saved phone. A gone phone is removed; repeated failures remove it
         too. One failure never stops the others."""
         sent = failed = 0
         for sub in self._repo.all():
             try:
-                outcome = self._sender.send(sub, text)
+                outcome = (
+                    self._sender.send(sub, text)
+                    if url is None
+                    else self._sender.send(sub, text, url)
+                )
             except Exception:
                 outcome = SendResult.FAILED
             if outcome == SendResult.OK:

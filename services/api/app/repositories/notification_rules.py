@@ -69,6 +69,28 @@ class NotificationRuleRepository:
             self._session.rollback()
             raise
 
+    def set_state(
+        self,
+        rule_id: uuid.UUID,
+        *,
+        last_matched: bool | None,
+        last_result: str | None,
+        last_sent_at: dt.datetime | None,
+    ) -> None:
+        """Saves what a check found. A rule deleted in the meantime is skipped."""
+        try:
+            row = self._session.get(NotificationRule, rule_id)
+            if row is not None:
+                row.last_matched = last_matched
+                row.last_result = last_result
+                row.last_sent_at = last_sent_at
+                self._session.commit()
+            else:
+                self._session.rollback()
+        except Exception:
+            self._session.rollback()
+            raise
+
     def delete(self, rule_id: uuid.UUID) -> bool:
         try:
             row = self._session.get(NotificationRule, rule_id)

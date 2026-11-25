@@ -6,7 +6,7 @@
 
 const TITLE = 'Zeekr Companion';
 const DEFAULT_URL = '/sentry';
-const ALLOWED_URLS = new Set(['/sentry', '/geofence']);
+const ALLOWED_URLS = new Set(['/sentry', '/geofence', '/vehicle']);
 
 export interface PushView {
   title: string;
