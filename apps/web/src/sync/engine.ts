@@ -379,8 +379,18 @@ export function flush(force = false): Promise<void> {
   return inFlight;
 }
 
+const runningSyncs = new Set<Promise<void>>();
+
 /** Flush, then refresh the cache from the server. Errors from the refresh are non-fatal. */
-export async function syncAll(force = false): Promise<void> {
+export function syncAll(force = false): Promise<void> {
+  const run = syncAllRun(force).finally(() => {
+    runningSyncs.delete(run);
+  });
+  runningSyncs.add(run);
+  return run;
+}
+
+async function syncAllRun(force: boolean): Promise<void> {
   await flush(force);
   if (!getSession().signedIn || !isOnline()) return;
   const queue = await listQueue();
@@ -433,6 +443,11 @@ export function startSyncTriggers(): () => void {
     unsubscribe();
     clearTimeout(retryTimer);
   };
+}
+
+/** Tests only: waits for every sync that is still running, so none outlives its test. */
+export async function settleSyncForTests(): Promise<void> {
+  await Promise.allSettled([...runningSyncs]);
 }
 
 export function resetSyncForTests(): void {

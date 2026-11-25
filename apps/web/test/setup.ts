@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { signOut } from '../src/auth/session';
 import { resetConnectivityForTests } from '../src/lib/connectivity';
 import { closeDbForTests } from '../src/storage/db';
-import { resetSyncForTests } from '../src/sync/engine';
+import { resetSyncForTests, settleSyncForTests } from '../src/sync/engine';
 import { resetFake, server } from './server';
 
 // Node's fetch needs absolute URLs; the app uses relative ones (same origin).
@@ -28,6 +28,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   cleanup();
+  await settleSyncForTests();
   window.history.replaceState(null, '', '/');
   server.resetHandlers();
   resetFake();

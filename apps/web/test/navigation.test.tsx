@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { App } from '../src/App';
 import { MAIN_TABS, tabFor } from '../src/lib/nav';
 import { setToken } from '../src/auth/session';
+import { server } from './server';
 
 function open(path: string) {
   window.history.pushState(null, '', path);
@@ -104,6 +106,16 @@ describe('AC-107: six main tabs', () => {
   });
 
   it('Geofence points to Setup for phone alerts and no longer holds the card', async () => {
+    // The page loads its settings. A real API error keeps the page online; an unhandled request
+    // would mark the server unreachable and hide the link.
+    server.use(
+      http.get('*/api/v1/geofence/settings', () =>
+        HttpResponse.json(
+          { error: { code: 'internal_error', message: 'Not needed here.', details: [] } },
+          { status: 500 },
+        ),
+      ),
+    );
     open('/geofence');
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Geofence' })).toBeInTheDocument();
