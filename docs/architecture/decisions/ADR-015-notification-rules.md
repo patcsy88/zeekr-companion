@@ -1,4 +1,4 @@
-# ADR-015: Notification rules (approved 2026-11-21, not built)
+# ADR-015: Notification rules (approved 2026-11-21, built through step 3, not released)
 
 Status: **Drafted 2026-11-21. The owner approved the design answers in chat on 2026-11-21: own radius per rule with the home and office points from the Geofence tab, a cooldown default of 10 minutes, AND or OR per rule, up to 5 rules, the position used as a true or false result, the central locking label in a push, and the engine status read in memory. The owner approved the data model and the API contract on 2026-11-21 ("yes"). No code is written yet; each build step is approved before it starts.**
 

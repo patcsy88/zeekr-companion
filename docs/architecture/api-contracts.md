@@ -1152,7 +1152,7 @@ Four endpoints, all behind the bearer token, all `Cache-Control: no-store`. A ba
 - **Real sender (build step 2).** With all three host values set, the API sends through `pywebpush` 2.5.0 with a 5-second timeout per phone; with any missing, the default sender fails every send. The payload is `{ "body": fixed text, "url": "/sentry" }`; no position is ever included.
 - **Alert hook.** When the geofence check opens a new alert (once per alert, never for an open one), after the automatic-send step it sends one fixed text to every phone: "Car is away from home and Sentry is off." (toggle off or skipped), "Car is away from home. Sentry was turned on automatically." (sent or already on), or "Car is away from home. Sentry could not be turned on." (anything else). Any failure logs one line and never stops the check or the automatic send.
 
-## Notification rules (APPROVED by the owner, 2026-11-21; ADR-015; not built)
+## Notification rules (APPROVED by the owner, 2026-11-21; ADR-015; built, not released)
 
 All paths are under `/api/v1` and need the owner login. Rules never send a command to the car.
 

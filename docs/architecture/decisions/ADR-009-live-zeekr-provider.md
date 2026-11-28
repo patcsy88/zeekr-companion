@@ -282,7 +282,7 @@ Two read-only review agents (security, QA) reported no High finding. Actioned, w
 - **Not wired in:** nothing calls the function yet. It is not in `Snapshot` or `GeofenceInput`, is not stored, logged or shown, and adds no column, no API field and no migration. Using it in a rule still needs the rules data model and API contract to be approved.
 - **Unchanged:** read-only calls only, and no command is sent to the car.
 
-## Amendment (APPROVED by the owner, 2026-11-21, with ADR-015; not built): values used by notification rules
+## Amendment (APPROVED by the owner, 2026-11-21, with ADR-015; built, not released): values used by notification rules
 
 - **`engineStatus` in memory:** the mapping of 2026-11-21 may be read for rules. It is held in memory with the last good read, like central locking, and never stored, logged or sent to the model.
 - **Position as a result:** a rule's `location` condition works out inside or outside the geofence in memory and keeps only true or false. The position and the distance are never stored, logged, returned or sent.

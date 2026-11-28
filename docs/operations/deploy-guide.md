@@ -142,6 +142,16 @@ Changing `VAPID_PUBLIC_KEY` later makes every phone turn alerts on again. A phon
 
 If Turn on alerts shows "The string contains invalid characters", the `VAPID_PUBLIC_KEY` line in the host `.env` has a stray character (a space, a line break, a quote or one extra letter). A good key is 87 characters of `A-Z a-z 0-9 - _`. This read-only check is **proposed, not found in the repo**; it prints a length and a verdict, never the key: `grep '^VAPID_PUBLIC_KEY=' .env | cut -d= -f2- | awk '{print length($0), ($0 ~ /^[A-Za-z0-9_-]+$/ ? "valid characters" : "INVALID characters")}'`. Fix the line, then `docker compose up -d --wait`.
 
+### Optional: notification rules (ADR-015)
+
+Rules send one notification when the car's states match, for example parked with the engine off and away from home. The text is fixed and says whether central locking is locked. It never holds a place, and rules never send a command to the car. Up to 5 rules, set up under Setup, Notifications, Rules.
+
+- **Needs alerts first.** Rules use the phones saved in the alerts section above. Without them the screen says nothing will be sent.
+- **Needs live readings on.** The check runs on the same interval as live readings (5 minutes by default) and makes no extra call to the car's service. Location rules use the home and office points from the Geofence tab.
+- **Migration.** The update that adds rules runs a database migration (`0021`), so take a fresh encrypted export first (section 7). `infra/update.sh` detects a migration and asks again before it goes on.
+- **Labels are unverified.** The status, engine and gear names come from a public integration and are not yet confirmed on this car (`docs/architecture/vehicle-status-codes.md`). The screen marks them "unverified".
+- **Verified:** the automated tests only. **Not verified:** a rule push on a real car and phone, how late it arrives, the engine status spelling on the car, and the screen on a real iPhone.
+
 ## 5. Check it
 
 ```
