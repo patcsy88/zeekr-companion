@@ -852,6 +852,25 @@ const liveHandlers = [
   http.get('*/api/v1/push/config', () =>
     HttpResponse.json({ enabled: false, public_key: null, devices: 0, max_devices: 5 }),
   ),
+  http.get('*/api/v1/notification-rules/options', () =>
+    HttpResponse.json({
+      fields: [],
+      match: [
+        { code: 'all', label: 'All conditions (AND)', verified: false },
+        { code: 'any', label: 'Any condition (OR)', verified: false },
+      ],
+      limits: {
+        max_rules: 5,
+        max_conditions: 4,
+        cooldown_minutes_min: 0,
+        cooldown_minutes_max: 1440,
+        cooldown_minutes_default: 10,
+        radius_km_max: 100,
+      },
+      push_ready: false,
+    }),
+  ),
+  http.get('*/api/v1/notification-rules', () => HttpResponse.json([])),
   http.get('*/api/v1/vehicle/sentry/state', () => HttpResponse.json({ state: null, at: null })),
   http.get('*/api/v1/vehicle/sentry/auto', () =>
     HttpResponse.json({

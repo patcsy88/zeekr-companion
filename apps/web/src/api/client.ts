@@ -70,7 +70,8 @@ const QUERY_RE = /^[A-Za-z0-9_.~%=&-]*$/;
  * the {uuid} forms of the three collections, with a plain query string on lists. The advisory
  * paths (ADR-008) and /live-vehicle and /live-vehicle/history (ADR-009) are allowed as well, and so are
  * /geofence/settings (Piece C), /geofence/map (AC-92), /vehicle/sentry, /vehicle/sentry/log, /vehicle/sentry/state and /vehicle/sentry/events (ADR-010), and /vehicle/sentry/auto (ADR-011),
- * and /push/config, /push/subscriptions and /push/test (ADR-014).
+ * and /push/config, /push/subscriptions and /push/test (ADR-014), and /notification-rules,
+ * /notification-rules/options and /notification-rules/{uuid} (ADR-015).
  * Anything else (traversal, encoded slashes, other hosts) is refused before fetch is called.
  */
 export function assertContractPath(path: string): void {
@@ -122,6 +123,16 @@ export function assertContractPath(path: string): void {
       (parts[2] === 'config' || parts[2] === 'subscriptions' || parts[2] === 'test') &&
       query === undefined;
     if (!pushOk) throw new ClientError('Refused a request outside the API contract.');
+    return;
+  }
+  if (parts[1] === 'notification-rules') {
+    // Notification rules (ADR-015): the collection, the options, and one rule by id. No query.
+    const rulesOk =
+      extra.length === 0 &&
+      parts[0] === '' &&
+      query === undefined &&
+      (parts.length === 2 || (parts.length === 3 && (parts[2] === 'options' || isUuid(parts[2]))));
+    if (!rulesOk) throw new ClientError('Refused a request outside the API contract.');
     return;
   }
   if (parts[1] === 'vehicle' && parts[2] === 'sentry') {

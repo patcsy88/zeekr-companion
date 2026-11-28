@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PushCard } from '../components/PushCard';
+import { RulesCard } from '../components/RulesCard';
 import { EmptyState, HEAD, LIST, MUTED, SMALL } from '../components/ListParts';
 import { ReminderItem } from '../components/ReminderParts';
 import { Skeleton } from '../components/Skeleton';
@@ -77,6 +78,7 @@ export function NotificationsPage() {
     <section aria-labelledby="notif-title">
       <h1 id="notif-title">Notifications</h1>
       <PushCard />
+      <RulesCard />
     </section>
   );
 }
